@@ -1,0 +1,9 @@
+# goal
+geographic_msgs/GeoPath path
+float32 speed
+---
+# result
+std_msgs/Empty result
+---
+# feedback
+float32 percent_complete

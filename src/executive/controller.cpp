@@ -11,14 +11,15 @@
 #include <sstream>
 #include <cmath>
 #include "communication.h"
-#include "ObjectPar.h"
+#include "path_planner/State.h"
 #include <cfloat>
+#include <functional>
 
 #include "controller.h"
 
 using namespace std;
 
-Controller::Controller(ControlReceiver *controlReceiver) {
+Controller::Controller(TrajectoryPublisher *controlReceiver) {
     m_ControlReceiver = controlReceiver;
 
     // TODO! -- should allow setting of boat characteristics; used to read from a file I think
@@ -32,19 +33,16 @@ Controller::Controller(ControlReceiver *controlReceiver) {
 
 Controller::~Controller() = default;
 
-void Controller::receiveRequest(ObjectPar* actionRequest)
+void Controller::receiveRequest(State* actionRequest)
 {
-    if (running)
+    mtx.lock();
+    start.set(actionRequest[0]);
+    for (int i = 1; i < 5; i++)
     {
-        mtx.lock();
-        start.set(actionRequest[0]);
-        for (int i = 1; i < 5; i++)
-        {
-            actions[i-1].set(actionRequest[i]);
-        }
-        mtx.unlock();
-        // Don't read a path because nobody's sending one anymore
+        actions[i-1].set(actionRequest[i]);
     }
+    mtx.unlock();
+
     delete actionRequest;
 }
 
@@ -97,10 +95,10 @@ void Controller::MPC(double &r, double &t)
 {
     // grab current starting position and reference trajectory
     mtx.lock();
-    ObjectPar startCopy;
+    State startCopy;
     startCopy.set(start);
 //    cerr << "Starting MPC from " << startCopy.toString() << endl;
-    ObjectPar actionsCopy[4];
+    State actionsCopy[4];
 //    cerr << "Reference trajectory: " << endl;
     for (int i = 0; i < 4; i++) {
         actionsCopy[i].set(actions[i]);
@@ -204,10 +202,11 @@ void Controller::MPC(double &r, double &t)
       //   << endl;
 }
 
-void Controller::sendAction()
+void Controller::sendAction(std::future<void> terminated)
 {
     double rudder, throttle;
-    while (running)
+    cerr << "Is the future valid? " << terminated.valid() << endl;
+    while (terminated.valid() && terminated.wait_for((chrono::milliseconds)0) == future_status::timeout)
     {
         if (getppid() == 1) // when could this happen??
         {
@@ -242,18 +241,24 @@ void Controller::sendAction()
         }
         this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    cerr << "Ending thread for MPC" << endl;
 }
 
 void Controller::startRunning()
 {
-    running = true;
-    thread thread_for_mpc(thread([=] { sendAction(); }));
+    cerr << "Starting controller" << endl;
+    m_TerminatePromise = promise<void>();
+    auto fut = m_TerminatePromise.get_future();
+    cerr << "Is the future valid now? " << fut.valid() << endl;
+    cerr << "Starting thread for MPC" << endl;
+    thread thread_for_mpc([&]{ sendAction(move(fut)); });
     thread_for_mpc.detach();
+    cerr << "Done starting controller" << endl;
 }
 
 void Controller::terminate()
 {
-    running = false;
+    m_TerminatePromise.set_value();
 }
 
 void Controller::startSendingControls()

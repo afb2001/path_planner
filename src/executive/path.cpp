@@ -22,7 +22,7 @@ bool Path::checkCollision(double sx, double sy, double ex, double ey)
     return false;
 }
 
-void Path::replacePath(ObjectPar &objectPar)
+void Path::replacePath(State &objectPar)
 {
     if (newpath.size() > 1)
     {
@@ -50,7 +50,7 @@ void Path::findStart()
     mtx_path.lock();
     int path_size = path.size();
     bool find = false, visit = true;
-    ObjectPar current_loc = current;
+    State current_loc = current;
     double time_time[4]{current_loc.otime + 1,current_loc.otime + 2,current_loc.otime + 3,current_loc.otime + 4};
     int index = 0;
     replacePath(current_loc);
@@ -89,7 +89,7 @@ void Path::findStart()
         {
             next_start.setEstimate(1, current_loc);
         }
-        actions[0] = ObjectPar(-1);
+        actions[0] = State(-1);
     }
     mtx_path.unlock();
 };
@@ -169,7 +169,7 @@ void Path::sendAction(string &s, int &sleep)
 {
     s = "";
     sleep = 50;
-    ObjectPar current_loc = current;
+    State current_loc = current;
     mtx_path.lock();
     int path_size = path.size();
     if (actions[0].otime > current_loc.otime)
@@ -193,11 +193,11 @@ void Path::sendAction(string &s, int &sleep)
     mtx_path.unlock();
 }
 
-ObjectPar* Path::getActions()
+State* Path::getActions()
 {
-    auto* ret = new ObjectPar[5]; // consumer frees
+    auto* ret = new State[5]; // consumer frees
     mtx_path.lock(); // should be quick
-    ObjectPar current_loc = current;
+    State current_loc = current;
     ret[0] = current_loc;
     int path_size = path.size();
     if (actions[0].otime > current_loc.otime)
@@ -216,7 +216,7 @@ ObjectPar* Path::getActions()
     }
     else
     {
-        ret[1] = (!cover.empty()) ? ObjectPar(-1) : ObjectPar(-2);
+        ret[1] = (!cover.empty()) ? State(-1) : State(-2);
     }
     mtx_path.unlock();
     return ret;
@@ -255,22 +255,22 @@ string Path::construct_request_string()
 }
 
 //below access method for executive
-const vector<ObjectPar> &Path::getDynamicObs() const
+const vector<State> &Path::getDynamicObs() const
 {
     return dyamic_obstacles;
 };
 
-const vector<ObjectPar> &Path::getPath() const
+const vector<State> &Path::getPath() const
 {
     return path;
 };
 
-const ObjectPar &Path::getNext() const
+const State &Path::getNext() const
 {
     return next_start;
 };
 
-const ObjectPar &Path::getCurrent() const
+const State &Path::getCurrent() const
 {
     return current;
 };
@@ -287,7 +287,7 @@ bool Path::finish()
 {
     if (cover.empty())
     {
-        actions[0] = ObjectPar(-2);
+        actions[0] = State(-2);
         return true;
     }
     return false;

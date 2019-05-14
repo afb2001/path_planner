@@ -1,21 +1,18 @@
-//
-// Created by alex on 4/22/19.
-//
-
 #ifndef SRC_EXECUTIVE_H
 #define SRC_EXECUTIVE_H
 
 #include <string.h>
+#include <condition_variable>
 #include "communication.h"
 #include "path.h"
-#include "controller.h"
+#include "../trajectory_publisher.h"
 
 
 class Executive
 {
 public:
 
-    explicit Executive(ControlReceiver *controlReceiver);
+    explicit Executive(TrajectoryPublisher *controlReceiver);
 
     ~Executive();
 
@@ -23,39 +20,35 @@ public:
 
     void addToCover(int x, int y);
 
-//    void run(int argc, char* argv[]);
-
-    void terminate();
-
-    void startController();
-
     void startPlanner(std::string mapFile);
+
+    bool plannerIsRunning();
+
+    void pause();
 
 private:
 
-    bool running = true;
+    bool m_Running = false;
     bool request_start = false;
     Path path;
 
     bool debug = true;
-    bool pause_all = true;
+
+    bool m_Pause = true;
+    bool m_PlannerPipeStale = true;
+
+    mutex m_PauseMutex;
+    condition_variable m_PauseCV;
 
     Communication communication_With_Planner;
 
-    Controller* m_Controller;
+    TrajectoryPublisher* m_TrajectoryPublisher;
 
-    ControlReceiver* m_ControlReceiver;
-
-    void checkTerminate();
+    bool plannerIsDead();
 
     static double getCurrentTime();
 
     void requestPath();
-
-    /**
-     * Signal to the node that we're done and pause everything until we make a new planner instance.
-     */
-    void finished();
 
 // TODO! -- Add a way to update obstacles
 
@@ -64,6 +57,21 @@ private:
     void sendAction();
 
     void print_map(std::string file);
+
+    /**
+     * Clear m_PauseAll and notify threads blocked on it.
+     */
+    void unPause();
+
+    /**
+     * Start threads for listening to the planner and updating the controller.
+     */
+    void startThreads();
+
+    /**
+     * Make sure the threads can exit and kill the planner (if it's running).
+     */
+    void terminate();
 
 //    void read_goal(std::string goal);
 };

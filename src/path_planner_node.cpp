@@ -1,5 +1,7 @@
 #include <utility>
 
+#include <utility>
+
 #include "ros/ros.h"
 #include "geographic_msgs/GeoPointStamped.h"
 #include "geographic_msgs/GeoPath.h"
@@ -14,6 +16,7 @@
 #include "project11/gz4d_geo.h"
 #include "path_planner/path_plannerAction.h"
 #include "actionlib/server/simple_action_server.h"
+#include "path_planner/Trajectory.h"
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -26,7 +29,7 @@
 #include <geometry_msgs/PoseStamped.h>
 
 #include "executive/executive.h"
-#include "control_receiver.h"
+#include "trajectory_publisher.h"
 
 
 /**
@@ -34,7 +37,7 @@
  * For now that system includes a controller, which conveys controls
  * to this node through the ControlReceiver interface.
  */
-class PathPlanner: public ControlReceiver
+class PathPlanner: public TrajectoryPublisher
 {
 public:
     explicit PathPlanner(std::string name):
@@ -45,7 +48,10 @@ public:
 
     m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
 
-    m_helm_pub = m_node_handle.advertise<marine_msgs::Helm>("/helm",1);
+//    m_helm_pub = m_node_handle.advertise<marine_msgs::Helm>("/helm",1);
+    m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
+    m_reference_trajectory_pub = m_node_handle.advertise<path_planner::Trajectory>("/reference_trajectory",1);
+
 
     m_position_sub = m_node_handle.subscribe("/position_map", 10, &PathPlanner::positionCallback, this);
     m_heading_sub = m_node_handle.subscribe("/heading", 10, &PathPlanner::headingCallback, this);
@@ -60,18 +66,34 @@ public:
 
     ~PathPlanner() final
     {
+        publishControllerMessage("stop running");
         delete m_Executive;
+        std::cerr << strerror(errno) << endl;
     }
 
     // This is really only designed to work once right now
     void goalCallback()
     {
-        std::cerr << "Received a goal" << std::endl;
+        std::cerr << "Grabbing goal...";
         auto goal = m_action_server.acceptNewGoal();
+        std::cerr << " done." << std::endl;
 
+        // make sure controller is up
+        publishControllerMessage("start running");
+
+
+        // if executive is already running, shut it down
+        m_Executive->pause();
+//        return;
+        publishControllerMessage("start sending controls");
+
+        std::cerr << "Touching goal for the first time...";
         m_current_speed = goal->speed;
+        std::cerr << " done." << std::endl;
 
         std::vector<std::pair<double, double>> currentPath;
+
+        std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 
         // interpolate points to cover from segments
         for (int i = 0; i + 1 < goal->path.poses.size(); i++)
@@ -115,10 +137,7 @@ public:
 
         for (auto p : currentPath) {
             m_Executive->addToCover((int)p.first, (int)p.second);
-            std::cerr << "To cover: " << p.first << ", " << p.second << endl;
         }
-
-        m_Executive->startController();
 
         // start planner
         m_Executive->startPlanner("NOFILE");
@@ -129,7 +148,8 @@ public:
         m_action_server.setPreempted();
 
         // Should the executive stop now? Probably?
-        m_Executive->terminate();
+        m_Executive->pause();
+        publishControllerMessage("stop sending controls");
     }
 
     void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg)
@@ -152,18 +172,15 @@ public:
         m_current_speed = inmsg->twist.linear.x; // this will change once /sog is a vector
     }
 
-    void receiveControl(double rudder, double throttle) final
+    void publishTrajectory(State* trajectory) final
     {
-        marine_msgs::Helm helm;
-        helm.rudder = rudder;
-        helm.throttle = throttle;
-        helm.header.stamp = ros::Time::now();
-        m_helm_pub.publish(helm);
-    }
-
-    void startController()
-    {
-        m_Executive->startController();
+        path_planner::Trajectory reference;
+        for (int i = 0; i < 5; i++) {
+            // explicit conversion to make this cleaner
+            reference.states.push_back((path_planner::StateMsg)trajectory[i]);
+        }
+        m_reference_trajectory_pub.publish(reference);
+        delete[] trajectory;
     }
 
     void allDone() final
@@ -171,6 +188,15 @@ public:
         std::cerr << "Planner appears to have finished" << std::endl;
         path_planner::path_plannerResult result;
         m_action_server.setSucceeded(result);
+
+        publishControllerMessage("stop sending controls");
+    }
+
+    void publishControllerMessage(string m)
+    {
+        std_msgs::String msg;
+        msg.data = std::move(m);
+        m_controller_msgs_pub.publish(msg);
     }
 
 private:
@@ -183,7 +209,8 @@ private:
     double m_current_speed;
     double m_current_heading;
 
-    ros::Publisher m_helm_pub;
+    ros::Publisher m_controller_msgs_pub;
+    ros::Publisher m_reference_trajectory_pub;
 
     ros::Subscriber m_position_sub;
     ros::Subscriber m_heading_sub;
@@ -200,6 +227,7 @@ private:
 
 int main(int argc, char **argv)
 {
+    std::cerr << "Starting planner node" << endl;
     ros::init(argc, argv, "path_planner");
     PathPlanner pp("path_planner_action");
     ros::spin();

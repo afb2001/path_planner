@@ -5,7 +5,8 @@
 #ifndef SRC_CONTROLLER_H
 #define SRC_CONTROLLER_H
 
-#include "../control_receiver.h"
+#include "../trajectory_publisher.h"
+#include <future>
 
 using namespace std;
 
@@ -13,7 +14,7 @@ class Controller
 {
 public:
 
-    explicit Controller(ControlReceiver* controlReceiver);
+    explicit Controller(TrajectoryPublisher* controlReceiver);
 
     ~Controller();
 
@@ -21,7 +22,7 @@ public:
      * Update the action request with a new trajectory.
      * @param actionRequest new reference trajectory
      */
-    void receiveRequest(ObjectPar* actionRequest);
+    void receiveRequest(State* actionRequest);
 
     /**
      * Starts a thread for listening to the executive (ActionSender interface)
@@ -49,7 +50,7 @@ public:
 
 private:
 
-    ControlReceiver* m_ControlReceiver;
+    TrajectoryPublisher* m_ControlReceiver;
 
     //model parameter
     double idle_rpm = 0.0;
@@ -83,8 +84,8 @@ private:
     mutex mtx;
     bool running = true;
     bool plan = false; // This is only false until a control request is received, and then true indefinitely.
-    ObjectPar start;
-    ObjectPar actions[4];
+    State start;
+    State actions[4];
 //    string path = "";
 //    string default_Command = "0,0";
 //    int receivePipeFromParent;
@@ -93,6 +94,8 @@ private:
     int iteration = 0;
     bool update = true;
     vector<pointc> future;
+
+    promise<void> m_TerminatePromise;
 
     double radians(double rudder_angle);
 
@@ -104,7 +107,7 @@ private:
 
     void MPC(double &r, double &t);
 
-    void sendAction();
+    void sendAction(std::future<void> terminated);
 };
 
 

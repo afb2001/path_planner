@@ -1,8 +1,10 @@
 #ifndef OBJECTPAR_H
 #define OBJECTPAR_H
-#include <string>
-#include <iostream>
-#include <cmath>
+#include "string"
+#include "iostream"
+#include "cmath"
+
+#include "path_planner/StateMsg.h"
 
 
 struct point{
@@ -53,16 +55,16 @@ struct hash<point>
 };
 }
 
-class ObjectPar
+class State
 {
 
   public:
     double x, y, heading, speed, otime;
-    ObjectPar(double x, double y, double heading, double speed, double otime)
+    State(double x, double y, double heading, double speed, double otime)
         : x(x), y(y), heading(heading), speed(speed), otime(otime){};
-    ObjectPar(int value)
+    State(int value)
         : x(value), y(value), heading(value), speed(value), otime(value){};
-    ObjectPar()
+    State()
         : x(-1), y(-1), heading(-1), speed(-1), otime(-1){};
 
     void set(double &newx, double &newy, double &newheading, double &newspeed, double &newtime)
@@ -74,7 +76,7 @@ class ObjectPar
         otime = newtime;
     }
 
-    void set(ObjectPar other)
+    void set(State other)
     {
         x = other.x;
         y = other.y;
@@ -83,7 +85,16 @@ class ObjectPar
         otime = other.otime;
     }
 
-    void setEstimate(double timeinterval, ObjectPar &object)
+    void set(path_planner::StateMsg other)
+    {
+        x = other.x;
+        y = other.y;
+        heading = other.heading;
+        speed = other.speed;
+        otime = other.time;
+    }
+
+    void setEstimate(double timeinterval, State &object)
     {
         double displacement = timeinterval * object.speed;
         x = object.x + sin(object.heading) * displacement;
@@ -92,6 +103,17 @@ class ObjectPar
         speed = object.speed;
         otime = object.otime + 1;
          
+    }
+
+    explicit operator path_planner::StateMsg()
+    {
+        path_planner::StateMsg state;
+        state.x = x;
+        state.y = y;
+        state.heading = heading;
+        state.speed = speed;
+        state.time = otime;
+        return state;
     }
 
     std::string toString()

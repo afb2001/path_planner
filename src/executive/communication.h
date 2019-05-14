@@ -11,12 +11,13 @@
 //#include<stdlib.h>
 #include <string>
 //#include<stdio.h>
+#include <mutex>
 
 class Communication
 {
 
   public:
-    Communication(std::string pathToExecutable,bool bindStdin, bool bindStdout, bool bindStderr, bool sendPipetoChild);
+    Communication(const std::string& pathToExecutable,bool bindStdin, bool bindStdout, bool bindStderr, bool sendPipetoChild);
 
     Communication()
     {
@@ -24,17 +25,19 @@ class Communication
 
     ~Communication();
 
-    void set(std::string pathToExecutable,bool bindStdin, bool bindStdout, bool bindStderr, bool sendPipetoChild);
+    void set(const std::string& pathToExecutable,bool bindStdin, bool bindStdout, bool bindStderr, bool sendPipetoChild);
 
-    void set(std::string pathToExecutable,bool bindStdin, bool bindStdout, bool bindStderr, bool sendPipetoChild,std::string s);
+    void set(const std::string& pathToExecutable,bool bindStdin, bool bindStdout, bool bindStderr, bool sendPipetoChild,const std::string& s);
 
-    void cwrite(std::string s);
+    void cwrite(const std::string& s);
 
     void cwrite(char s[]);
 
     void cwrite(const char s[]);
 
     void cread(char receive[], int length) const;
+
+    void readAll(char receive[]);
 
     int getWpipe()
     {
@@ -49,6 +52,9 @@ class Communication
     int getp[2];
     int sendp[2];
     int status;
+
+    std::mutex mtx;
+    FILE* readstream;
 };
 
 #endif

@@ -17,6 +17,12 @@ find_package(catkin REQUIRED COMPONENTS
         actionlib
         )
 
+add_message_files(
+        FILES
+        StateMsg.msg
+        Trajectory.msg
+)
+
 add_action_files(DIRECTORY action FILES path_planner.action)
 generate_messages(DEPENDENCIES actionlib_msgs geographic_msgs)
 
@@ -30,14 +36,14 @@ catkin_package(
 include_directories(
         # include
         ${catkin_INCLUDE_DIRS}
-        ${PROJECT_SOURCE_DIR}/path_planner/src/executive
+        ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}/src/executive
+        include
 )
 
 #add_subdirectory(src/executive)
 
 add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp
         src/executive/executive.cpp
-        src/executive/controller.cpp
         src/executive/path.cpp
         src/executive/communication.cpp)
 
@@ -61,9 +67,15 @@ target_link_libraries(${PROJECT_NAME}_node
 
 #target_link_libraries(Controller Path)
 
-install(TARGETS ${PROJECT_NAME}_node
-        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-        )
+## Install project namespaced headers
+install(DIRECTORY include/${PROJECT_NAME}
+        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+        FILES_MATCHING PATTERN "*.h"
+        PATTERN ".svn" EXCLUDE)
+
+#install(TARGETS ${PROJECT_NAME}_node
+#        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#        )
 

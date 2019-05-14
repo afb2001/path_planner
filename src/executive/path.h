@@ -1,7 +1,7 @@
 #ifndef __PATH_H__
 #define __PATH_H__
 
-#include "ObjectPar.h"
+#include "path_planner/State.h"
 #include <cmath>
 #include <vector>
 #include <list>
@@ -21,15 +21,15 @@ class Path
     Path()
     {
         pathindex = 0;
-        current = next_start = ObjectPar(0);
-        actions[0] = ObjectPar(-1);
+        current = next_start = State(0);
+        actions[0] = State(-1);
     };
 
     ~Path(){
         delete [] Obstacles;
     };
 
-    void replacePath(ObjectPar &objectPar);
+    void replacePath(State &objectPar);
     //lock this with update info
     void findStart();
 
@@ -62,7 +62,7 @@ class Path
      * free it.
      * @return array of length 5
      */
-    ObjectPar* getActions();
+    State* getActions();
 
     //below construct the request string
     void get_newcovered(string &s);
@@ -74,13 +74,13 @@ class Path
     bool checkCollision(double cx, double cy, double ex, double ey);
 
     //below access method for executive
-    const vector<ObjectPar> &getDynamicObs() const;
+    const vector<State> &getDynamicObs() const;
 
-    const vector<ObjectPar> &getPath() const;
+    const vector<State> &getPath() const;
 
-    const ObjectPar &getNext() const;
+    const State &getNext() const;
 
-    const ObjectPar &getCurrent() const;
+    const State &getCurrent() const;
 
     const list<point> &get_covered() const;
 
@@ -102,32 +102,32 @@ class Path
     
 
   private:
-    vector<ObjectPar> path;
-    vector<ObjectPar> newpath;
-    vector<ObjectPar> dyamic_obstacles;
+    vector<State> path;
+    vector<State> newpath;
+    vector<State> dyamic_obstacles;
 
     list<point> cover, newcover;
 
-    string defaultAction_1 = ObjectPar(-1).toString();
-    string defaultAction_2 = ObjectPar(-2).toString();
+    string defaultAction_1 = State(-1).toString();
+    string defaultAction_2 = State(-2).toString();
 
     mutex mtx_path, mtx_obs, mtx_cover;
 
-    ObjectPar current, next_start;
+    State current, next_start;
 
     int pathindex, dummy, byteREAD, dummyindex;
 
-    ObjectPar actions[4];
+    State actions[4];
     string initialVariance = " 1.7";
     double tempx, tempy, tempspeed, temptime, tempheading;
 
     //function
-    double estimate_x(double timeiterval, ObjectPar &object)
+    double estimate_x(double timeiterval, State &object)
     {
         return object.x + timeiterval * sin(object.heading) * object.speed;
     };
 
-    double estimate_y(double timeiterval, ObjectPar &object)
+    double estimate_y(double timeiterval, State &object)
     {
         return object.y + timeiterval * cos(object.heading) * object.speed;
     };

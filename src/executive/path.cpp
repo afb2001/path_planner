@@ -3,23 +3,25 @@ using namespace std;
 
 bool Path::checkCollision(double sx, double sy, double ex, double ey)
 {
-    double d = atan2(ey - sy, ex - sx);
-    double newx = sx, newy = sy;
-    double cx = newx - ex;
-    double cy = newy - ey;
-    point p;
-    while (true)
-    {
-        if (cx * cx + cy * cy < 0.09)
-            break;
-        newx += cos(d) * 0.3;
-        newy += sin(d) * 0.3;
-        if (Obstacles[getindex((int)newx,(int)newy)])
-            return true;
-        cx = newx - ex;
-        cy = newy - ey;
-    }
     return false;
+    // TODO! -- support negative map coordinates
+//    double d = atan2(ey - sy, ex - sx);
+//    double newx = sx, newy = sy;
+//    double cx = newx - ex;
+//    double cy = newy - ey;
+//    point p;
+//    while (true)
+//    {
+//        if (cx * cx + cy * cy < 0.09)
+//            break;
+//        newx += cos(d) * 0.3;
+//        newy += sin(d) * 0.3;
+//        if (Obstacles[getindex((int)newx,(int)newy)])
+//            return true;
+//        cx = newx - ex;
+//        cy = newy - ey;
+//    }
+//    return false;
 }
 
 void Path::replacePath(State &objectPar)
@@ -60,8 +62,11 @@ void Path::findStart()
         for (int i = pathindex; i < path_size; i++)
         {
 
-            if (path[i].otime <= time_time[0] && i + 1 < path_size  && checkCollision(path[i].x, path[i].y, path[i + 1].x, path[i + 1].y))
+            if (path[i].otime <= time_time[0] && i + 1 < path_size  && checkCollision(path[i].x, path[i].y, path[i + 1].x, path[i + 1].y)) {
+                cerr << "time less than time_time" << (path[i].otime <= time_time[0]) << endl;
+                cerr << "i + 1 < path size " << (i+1 < path_size) << endl;
                 cerr << "COLLISION " << endl;
+            }
             
             if (path[i].otime > time_time[index])
             {

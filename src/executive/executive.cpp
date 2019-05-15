@@ -217,7 +217,7 @@ void Executive::startPlanner(string mapFile)
         homedir = getpwuid(getuid())->pw_dir;
     }
 
-    communication_With_Planner.set(string(homedir) + "/go/src/github.com/afb2001/CCOM_planner/executive/planner", true, true, false, false);
+    communication_With_Planner.set(string(homedir) + "/go/src/github.com/afb2001/CCOM_planner/planner", true, true, false, false);
     communication_With_Planner.cwrite("Start");
     communication_With_Planner.cwrite("max speed 2.3");
     communication_With_Planner.cwrite("max turning radius 8");

@@ -20,6 +20,8 @@ public:
 
     void addToCover(int x, int y);
 
+    void updateDyamicObstacle(uint32_t mmsi, State obstacle);
+
     void startPlanner(std::string mapFile);
 
     bool plannerIsRunning();

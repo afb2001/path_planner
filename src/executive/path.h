@@ -38,8 +38,9 @@ class Path
 
 
     //below for dynamic obs update
-    int update_dynamic_obs(char ObsString[], int byte, int i);
+//    int update_dynamic_obs(char ObsString[], int byte, int i);
 
+void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
     //below for current location update
     void update_current(const char currentString[], int byte);
@@ -74,11 +75,11 @@ class Path
     bool checkCollision(double cx, double cy, double ex, double ey);
 
     //below access method for executive
-    const vector<State> &getDynamicObs() const;
-
-    const vector<State> &getPath() const;
-
-    const State &getNext() const;
+//    const vector<State> &getDynamicObs() const;
+//
+//    const vector<State> &getPath() const;
+//
+//    const State &getNext() const;
 
     const State &getCurrent() const;
 
@@ -104,7 +105,9 @@ class Path
   private:
     vector<State> path;
     vector<State> newpath;
-    vector<State> dyamic_obstacles;
+//    vector<State> dyamic_obstacles;
+
+    map<uint32_t,State> dynamic_obstacles;
 
     list<point> cover, newcover;
 

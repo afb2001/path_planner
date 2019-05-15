@@ -108,15 +108,20 @@ void Path::update_newpath(char currentString[], double &bound)
 };
 
 //below for dynamic obs update
-int Path::update_dynamic_obs(char ObsString[], int byte, int i)
+//int Path::update_dynamic_obs(char ObsString[], int byte, int i)
+//{
+//    if (dyamic_obstacles.size() <= i)
+//        dyamic_obstacles.emplace_back();
+//    if (sscanf(ObsString + byte, "%d,%lf,%lf,%lf,%lf,%lf\n%n", &dummyindex, &dyamic_obstacles[i].x, &dyamic_obstacles[i].y, &dyamic_obstacles[i].speed, &dyamic_obstacles[i].heading, &dyamic_obstacles[i].otime, &byteREAD) == 6)
+//        return byteREAD;
+//    dyamic_obstacles.pop_back();
+//    return 0;
+//};
+
+void Path::updateDynamicObstacle(uint32_t mmsi, State obstacle)
 {
-    if (dyamic_obstacles.size() <= i)
-        dyamic_obstacles.emplace_back();
-    if (sscanf(ObsString + byte, "%d,%lf,%lf,%lf,%lf,%lf\n%n", &dummyindex, &dyamic_obstacles[i].x, &dyamic_obstacles[i].y, &dyamic_obstacles[i].speed, &dyamic_obstacles[i].heading, &dyamic_obstacles[i].otime, &byteREAD) == 6)
-        return byteREAD;
-    dyamic_obstacles.pop_back();
-    return 0;
-};
+    dynamic_obstacles[mmsi] = obstacle;
+}
 
 //below for current location update
 void Path::update_current(const char currentString[], int byte)
@@ -242,10 +247,10 @@ void Path::get_newcovered(string &s)
 void Path::getDynamicObs(string &s)
 {
     mtx_obs.lock();
-    int dynamic_obs_size = dyamic_obstacles.size();
+    int dynamic_obs_size = dynamic_obstacles.size();
     s += "dynamic obs " + to_string(dynamic_obs_size);
-    for (int i = 0; i < dynamic_obs_size; i++)
-        s += "\n" + to_string(i) + " " + dyamic_obstacles[i].toString();// + initialVariance;
+    for (auto & obstacle : dynamic_obstacles)
+        s += "\n" + to_string(obstacle.first) + " " + obstacle.second.toString();// + initialVariance;
     mtx_obs.unlock();
 }
 
@@ -260,20 +265,20 @@ string Path::construct_request_string()
 }
 
 //below access method for executive
-const vector<State> &Path::getDynamicObs() const
-{
-    return dyamic_obstacles;
-};
-
-const vector<State> &Path::getPath() const
-{
-    return path;
-};
-
-const State &Path::getNext() const
-{
-    return next_start;
-};
+//const vector<State> &Path::getDynamicObs() const
+//{
+//    return dyamic_obstacles;
+//};
+//
+//const vector<State> &Path::getPath() const
+//{
+//    return path;
+//};
+//
+//const State &Path::getNext() const
+//{
+//    return next_start;
+//};
 
 const State &Path::getCurrent() const
 {

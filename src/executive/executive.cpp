@@ -136,7 +136,6 @@ void Executive::sendAction() {
 // fix the moving of start
 void Executive::requestPath()
 {
-//    FILE *readstream; // = fdopen(communication_With_Planner.getWpipe(), "r");
     double start, end, time_bound;
     int numberOfState, sleeptime;
     char response[1024];
@@ -151,14 +150,6 @@ void Executive::requestPath()
 //        cerr << "requestPath unblocked (with the lock)" << endl;
         lk.unlock();
 //        cerr << "requestPath released the lock" << endl;
-
-//        unique_lock<mutex> pipeLk(m_PlannerPipeMutex);
-//        pipeLk.lock();
-//        if (m_PlannerPipeStale) {
-//            readstream = fdopen(communication_With_Planner.getWpipe(), "r");
-//            m_PlannerPipeStale = false;
-//        }
-//        pipeLk.unlock();
 
         if (path.finish())
         {
@@ -301,4 +292,8 @@ void Executive::unPause() {
     m_Pause = false;
     m_PauseMutex.unlock();
     m_PauseCV.notify_all();
+}
+
+void Executive::updateDyamicObstacle(uint32_t mmsi, State obstacle) {
+    path.updateDynamicObstacle(mmsi, obstacle);
 }

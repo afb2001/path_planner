@@ -11,6 +11,7 @@
 #include "std_msgs/Float32.h"
 #include "std_msgs/Float64.h"
 #include "marine_msgs/Helm.h"
+#include "marine_msgs/Contact.h"
 #include "marine_msgs/NavEulerStamped.h"
 #include <vector>
 #include "project11/gz4d_geo.h"
@@ -48,14 +49,13 @@ public:
 
     m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
 
-//    m_helm_pub = m_node_handle.advertise<marine_msgs::Helm>("/helm",1);
     m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
     m_reference_trajectory_pub = m_node_handle.advertise<path_planner::Trajectory>("/reference_trajectory",1);
-
 
     m_position_sub = m_node_handle.subscribe("/position_map", 10, &PathPlanner::positionCallback, this);
     m_heading_sub = m_node_handle.subscribe("/heading", 10, &PathPlanner::headingCallback, this);
     m_speed_sub = m_node_handle.subscribe("/sog", 10, &PathPlanner::speedCallback, this);
+    m_contact_sub = m_node_handle.subscribe("/contact", 10, &PathPlanner::contactCallback, this);
 
     m_action_server.registerGoalCallback(boost::bind(&PathPlanner::goalCallback, this));
     m_action_server.registerPreemptCallback(boost::bind(&PathPlanner::preemptCallback, this));
@@ -172,6 +172,27 @@ public:
         m_current_speed = inmsg->twist.linear.x; // this will change once /sog is a vector
     }
 
+    void contactCallback(const marine_msgs::Contact::ConstPtr& inmsg)
+    {
+        State obstacle;
+
+        project11_transformations::LatLongToMap::Request request;
+        project11_transformations::LatLongToMap::Response response;
+
+        request.wgs84.position = inmsg->position;
+        if (m_lat_long_to_map_client.call(request, response)) {
+            obstacle.x = response.map.point.x;
+            obstacle.y = response.map.point.y;
+        } else {
+            std::cerr << "Error: LatLongToMap failed" << endl;
+        }
+
+        obstacle.heading = inmsg->cog;
+        obstacle.speed = inmsg->sog;
+
+        m_Executive->updateDyamicObstacle(inmsg->mmsi, obstacle);
+    }
+
     void publishTrajectory(State* trajectory) final
     {
         path_planner::Trajectory reference;
@@ -215,6 +236,7 @@ private:
     ros::Subscriber m_position_sub;
     ros::Subscriber m_heading_sub;
     ros::Subscriber m_speed_sub;
+    ros::Subscriber m_contact_sub;
 
     ros::ServiceClient m_lat_long_to_map_client;
 

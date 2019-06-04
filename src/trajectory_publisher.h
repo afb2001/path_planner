@@ -8,7 +8,8 @@ class TrajectoryPublisher
 {
 public:
     virtual ~TrajectoryPublisher() = default;
-    virtual void publishTrajectory(State* trajectory) = 0;
+    virtual void publishTrajectory(vector<State> trajectory) = 0;
+    virtual void displayTrajectory(vector<State> trajectory) = 0;
     virtual void allDone() = 0;
 };
 

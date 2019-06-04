@@ -121,7 +121,7 @@ void Executive::sendAction() {
 //        cerr << "sendAction released the lock" << endl;
         auto actions = path.getActions();
 //        cerr << "sendAction got path actions" << endl;
-        if (actions == nullptr)
+        if (actions.size() == 1)
             continue;
 //        cerr << "and they aren't null" << endl;
         m_TrajectoryPublisher->publishTrajectory(actions);
@@ -177,12 +177,16 @@ void Executive::requestPath()
         time_bound = path.getCurrent().otime;
 
         cerr << "Updating reference trajectory for controller" << endl;
+        vector<State> trajectory;
         for (int i = 0; i < numberOfState; i++) // if no new path then keep old path // ??
         {
 //            fgets(response, sizeof response, readstream);
             communication_With_Planner.readAll(response);
-            path.update_newpath(response, time_bound);
+            trajectory.push_back(Path::readStateFromPlanner(response, time_bound));
         }
+
+        path.setNewPath(trajectory);
+        m_TrajectoryPublisher->displayTrajectory(trajectory);
 
         end = getCurrentTime();
         sleeptime = (numberOfState) ? ((end - start <= 1) ? ((int)((1 - (end - start)) * 1000)) : 0) : 50;

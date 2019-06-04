@@ -66,6 +66,8 @@ class State
         : x(value), y(value), heading(value), speed(value), otime(value){};
     State()
         : x(-1), y(-1), heading(-1), speed(-1), otime(-1){};
+    explicit State(path_planner::StateMsg other)
+            : x(other.x), y(other.y), heading(other.heading), speed(other.speed), otime(other.time){}
 
     void set(double &newx, double &newy, double &newheading, double &newspeed, double &newtime)
     {

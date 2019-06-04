@@ -9,6 +9,7 @@
 #include <mutex>
 #include <unordered_set>
 #include <bitset>
+#include <deque>
 
 using namespace std;
 
@@ -20,21 +21,24 @@ class Path
     // Default constructor
     Path()
     {
-        pathindex = 0;
         current = next_start = State(0);
-        actions[0] = State(-1);
     };
 
     ~Path(){
         delete [] Obstacles;
     };
 
-    void replacePath(State &objectPar);
+    /**
+     * Update <code>path</code> from <code>newpath</code>, adjusting to where we actually are.
+     * @param currentLocation our current location
+     */
+    void updateAndAdjustPath(State &currentLocation);
+
     //lock this with update info
     void findStart();
 
     //below for reading the path from planner
-    void update_newpath(char currentString[], double &bound);
+    static State readStateFromPlanner(char *currentString, double &bound);
 
 
     //below for dynamic obs update
@@ -52,18 +56,13 @@ void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
     void add_covered(int x, int y);
 
-    //below construct string for controler
-    void construct_path_string(string &s);
-
-    void sendAction(string &s, int &sleep);
-
     /**
      * Returns an array of length 5 containing the current location and
      * the first four states of the plan. The consumer of this array must
      * free it.
      * @return array of length 5
      */
-    State* getActions();
+    vector<State> getActions();
 
     //below construct the request string
     void get_newcovered(string &s);
@@ -73,13 +72,6 @@ void updateDynamicObstacle(uint32_t mmsi, State obstacle);
     string construct_request_string();
 
     bool checkCollision(double cx, double cy, double ex, double ey);
-
-    //below access method for executive
-//    const vector<State> &getDynamicObs() const;
-//
-//    const vector<State> &getPath() const;
-//
-//    const State &getNext() const;
 
     const State &getCurrent() const;
 
@@ -100,11 +92,14 @@ void updateDynamicObstacle(uint32_t mmsi, State obstacle);
     int Maxx = 0;
     bool *Obstacles = 0;
     bool debug;
-    
 
-  private:
-    vector<State> path;
+
     vector<State> newpath;
+
+    void setNewPath(vector<State> trajectory);
+
+private:
+    deque<State> path;
 //    vector<State> dyamic_obstacles;
 
     map<uint32_t,State> dynamic_obstacles;
@@ -118,11 +113,11 @@ void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
     State current, next_start;
 
-    int pathindex, dummy, byteREAD, dummyindex;
+    int dummy;
 
-    State actions[4];
+    vector<State> actions;
     string initialVariance = " 1.7";
-    double tempx, tempy, tempspeed, temptime, tempheading;
+
 
     //function
     double estimate_x(double timeiterval, State &object)
@@ -134,6 +129,7 @@ void updateDynamicObstacle(uint32_t mmsi, State obstacle);
     {
         return object.y + timeiterval * cos(object.heading) * object.speed;
     };
+
 };
 
 #endif

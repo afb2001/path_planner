@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(path_planner)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
 
 add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED COMPONENTS
         geometry_msgs
         geographic_msgs
+        geographic_visualization_msgs
         marine_msgs
         roscpp
         rosbag
@@ -24,12 +25,12 @@ add_message_files(
 )
 
 add_action_files(DIRECTORY action FILES path_planner.action)
-generate_messages(DEPENDENCIES actionlib_msgs geographic_msgs)
+generate_messages(DEPENDENCIES actionlib_msgs geographic_msgs geographic_visualization_msgs)
 
 catkin_package(
         #  INCLUDE_DIRS include
         #  LIBRARIES asv_helm
-        CATKIN_DEPENDS geometry_msgs roscpp project11
+        CATKIN_DEPENDS geometry_msgs roscpp project11 geographic_visualization_msgs
         #  DEPENDS system_lib
 )
 

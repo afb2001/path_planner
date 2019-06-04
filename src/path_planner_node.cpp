@@ -18,7 +18,6 @@
 #include "path_planner/path_plannerAction.h"
 #include "actionlib/server/simple_action_server.h"
 #include "path_planner/Trajectory.h"
-
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -28,6 +27,9 @@
 #include <thread>
 #include <signal.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <project11_transformations/MapToLatLong.h>
+#include "geographic_visualization_msgs/GeoVizItem.h"
+#include "geographic_visualization_msgs/GeoVizPointList.h"
 
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
@@ -48,9 +50,11 @@ public:
     m_current_heading = 0;
 
     m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
+    m_map_to_lat_long_client = m_node_handle.serviceClient<project11_transformations::MapToLatLong>("map_to_wgs84");
 
     m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
     m_reference_trajectory_pub = m_node_handle.advertise<path_planner::Trajectory>("/reference_trajectory",1);
+    m_display_pub = m_node_handle.advertise<geographic_visualization_msgs::GeoVizItem>("/project11/display",1);
 
     m_position_sub = m_node_handle.subscribe("/position_map", 10, &PathPlanner::positionCallback, this);
     m_heading_sub = m_node_handle.subscribe("/heading", 10, &PathPlanner::headingCallback, this);
@@ -195,16 +199,46 @@ public:
         m_Executive->updateDyamicObstacle(inmsg->mmsi, obstacle);
     }
 
-    void publishTrajectory(State* trajectory) final
+    void publishTrajectory(vector<State> trajectory) final
     {
         path_planner::Trajectory reference;
-        for (int i = 0; i < 5; i++) {
+        for (State s : trajectory) {
             // explicit conversion to make this cleaner
-            reference.states.push_back((path_planner::StateMsg)trajectory[i]);
+            reference.states.push_back((path_planner::StateMsg)s);
         }
         m_reference_trajectory_pub.publish(reference);
-        delete[] trajectory;
     }
+
+    void displayTrajectory(vector<State> trajectory) final
+    {
+        geographic_visualization_msgs::GeoVizPointList displayPoints;
+        displayPoints.color.b = 1;
+        displayPoints.color.a = 1;
+        displayPoints.size = 3.0;
+        for (State s : trajectory) {
+            // explicit conversion to make this cleaner
+            geographic_msgs::GeoPoint point;
+            displayPoints.points.push_back(convertToLatLong(s));
+        }
+        geographic_visualization_msgs::GeoVizItem geoVizItem;
+        geoVizItem.id = "planner_trajectory";
+        geoVizItem.lines.push_back(displayPoints);
+        m_display_pub.publish(geoVizItem);
+    }
+
+    geographic_msgs::GeoPoint convertToLatLong(State state)
+    {
+        project11_transformations::MapToLatLong::Request request;
+        project11_transformations::MapToLatLong::Response response;
+        request.map.point.x = state.x;
+        request.map.point.y = state.y;
+        if (m_map_to_lat_long_client.call(request, response)){
+        } else {
+        }
+        return response.wgs84.position;
+    }
+
+
 
     void allDone() final
     {
@@ -234,6 +268,7 @@ private:
 
     ros::Publisher m_controller_msgs_pub;
     ros::Publisher m_reference_trajectory_pub;
+    ros::Publisher m_display_pub;
 
     ros::Subscriber m_position_sub;
     ros::Subscriber m_heading_sub;
@@ -241,10 +276,10 @@ private:
     ros::Subscriber m_contact_sub;
 
     ros::ServiceClient m_lat_long_to_map_client;
+    ros::ServiceClient m_map_to_lat_long_client;
 
     // handle on Executive
     Executive* m_Executive;
-
     // constant for linear interpolation of points to cover
     const double c_max_goal_distance = 10;
 };

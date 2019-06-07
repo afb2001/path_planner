@@ -49,10 +49,10 @@ void Executive::print_map(string file)
             cerr << "EXEUTIVE::START " << w << " " << h << endl;
             cerr << "EXECUTIVE::MAP::" + w + " " + h << endl;
             int width = stoi(w), height = stoi(h);
-            path.Maxx = width;
-            path.Obstacles = new bool[width * height];
+            m_Path.maxX = width;
+            m_Path.Obstacles = new bool[width * height];
             int hcount = 0;
-            communication_With_Planner.cwrite("map " + factor + " " + w + " " + h);
+            m_PipeToPlanner.cwrite("map " + factor + " " + w + " " + h);
             while (getline(f, line))
             {
                 ++hcount;
@@ -61,7 +61,7 @@ void Executive::print_map(string file)
                 int ncount = 0;
                 for (int i = 0; i < line.size(); i++)
                 {
-                    path.Obstacles[path.getindex(i, height - hcount)] = line[i] == '#';
+                    m_Path.Obstacles[m_Path.getindex(i, height - hcount)] = line[i] == '#';
 
                     if (line[i] != previous)
                     {
@@ -73,7 +73,7 @@ void Executive::print_map(string file)
                     }
                     ncount += 1;
                 }
-                communication_With_Planner.cwrite(s);
+                m_PipeToPlanner.cwrite(s);
             }
 
             f.close();
@@ -82,18 +82,18 @@ void Executive::print_map(string file)
     }
     string s = "";
     cerr << "EXECUTIVE::MAP::DEFAULT" << endl;
-    communication_With_Planner.cwrite("map 1 2000 2000");
+    m_PipeToPlanner.cwrite("map 1 2000 2000");
     for (int i = 0; i < 1999; i++)
         s += "_\n";
     s += "_";
-    path.Obstacles = new bool[2000 * 2000]{};
-    communication_With_Planner.cwrite(s);
+    m_Path.Obstacles = new bool[2000 * 2000]{};
+    m_PipeToPlanner.cwrite(s);
 }
 
 bool Executive::plannerIsDead()
 {
     int status;
-    pid_t result = waitpid(communication_With_Planner.getPid(), &status, WNOHANG);
+    pid_t result = waitpid(m_PipeToPlanner.getPid(), &status, WNOHANG);
 //    if (result != 0) {
 //        cerr << "Planner seems to be dead" << endl;
 //    } else {
@@ -104,9 +104,8 @@ bool Executive::plannerIsDead()
 
 void Executive::updateCovered(double x, double y, double speed, double heading, double t)
 {
-    request_start = true;
-    path.update_current(x,y,speed,heading,t);
-    path.update_covered();
+    m_Path.update_current(x,y,speed,heading,t);
+    m_Path.update_covered();
 }
 
 void Executive::sendAction() {
@@ -119,13 +118,14 @@ void Executive::sendAction() {
 //        cerr << "sendAction unblocked (with the lock)" << endl;
         lk.unlock();
 //        cerr << "sendAction released the lock" << endl;
-        auto actions = path.getActions();
+        auto actions = m_Path.getActions();
 //        cerr << "sendAction got path actions" << endl;
         if (actions.size() == 1)
             continue;
 //        cerr << "and they aren't null" << endl;
         m_TrajectoryPublisher->publishTrajectory(actions);
-//        cerr << "sendAction published trajectory" << endl;
+        m_TrajectoryPublisher->displayTrajectory(actions);
+//        cerr << "trajectory had length " << actions.size() << endl;
         this_thread::sleep_for(std::chrono::milliseconds(sleep));
 
 //        cerr << "sendAction asking if planner is dead" << endl;
@@ -140,7 +140,7 @@ void Executive::requestPath()
     int numberOfState, sleeptime;
     char response[1024];
 
-    path.initialize();
+    m_Path.initialize();
 
     while (m_Running)
     {
@@ -151,7 +151,7 @@ void Executive::requestPath()
         lk.unlock();
 //        cerr << "requestPath released the lock" << endl;
 
-        if (path.finish())
+        if (m_Path.finish())
         {
             this_thread::sleep_for(chrono::milliseconds(1000));
             cerr << "Finished path; pausing" << endl;
@@ -159,11 +159,11 @@ void Executive::requestPath()
         }
 
         start = getCurrentTime();
-        communication_With_Planner.cwrite(path.construct_request_string());
+        m_PipeToPlanner.cwrite(m_Path.construct_request_string());
 //        cerr << "requestPath sent the planner a request" << endl;
 
 //        fgets(response, sizeof response, readstream);
-        communication_With_Planner.readAll(response);
+        m_PipeToPlanner.readAll(response);
 //        cerr << "requestPath read the response" << endl;
         if (!strncmp(response, "done", 4))
         {
@@ -174,19 +174,19 @@ void Executive::requestPath()
         sscanf(response, "plan %d\n", &numberOfState);
 //        cerr << "which was a plan of length " << numberOfState << endl;
 
-        time_bound = path.getCurrent().otime;
+        time_bound = m_Path.getCurrent().time;
 
-        cerr << "Updating reference trajectory for controller" << endl;
         vector<State> trajectory;
         for (int i = 0; i < numberOfState; i++) // if no new path then keep old path // ??
         {
 //            fgets(response, sizeof response, readstream);
-            communication_With_Planner.readAll(response);
-            trajectory.push_back(Path::readStateFromPlanner(response, time_bound));
+            m_PipeToPlanner.readAll(response);
+            auto s = Path::readStateFromPlanner(response);
+            if (s.time > time_bound) trajectory.push_back(s);
         }
 
-        path.setNewPath(trajectory);
-        m_TrajectoryPublisher->displayTrajectory(trajectory);
+        m_Path.setNewPath(trajectory);
+//        m_TrajectoryPublisher->displayTrajectory(trajectory);
 
         end = getCurrentTime();
         sleeptime = (numberOfState) ? ((end - start <= 1) ? ((int)((1 - (end - start)) * 1000)) : 0) : 50;
@@ -200,7 +200,7 @@ void Executive::requestPath()
 
 void Executive::addToCover(int x, int y)
 {
-    path.add_covered(x, y);
+    m_Path.add_covered(x, y);
 }
 
 void Executive::startPlanner(string mapFile)
@@ -212,22 +212,22 @@ void Executive::startPlanner(string mapFile)
         homedir = getpwuid(getuid())->pw_dir;
     }
 
-    communication_With_Planner.set(string(homedir) + "/go/src/github.com/afb2001/CCOM_planner/planner", true, true, false, false);
-    communication_With_Planner.cwrite("Start");
-    communication_With_Planner.cwrite("max speed 2.3");
-    communication_With_Planner.cwrite("max turning radius 8");
+    m_PipeToPlanner.set(string(homedir) + "/go/src/github.com/afb2001/CCOM_planner/planner", true, true, false, false);
+    m_PipeToPlanner.cwrite("Start");
+    m_PipeToPlanner.cwrite("max speed 2.3");
+    m_PipeToPlanner.cwrite("max turning radius 8");
     print_map(std::move(mapFile));
 
     // assume you've already set up path to cover
-    communication_With_Planner.cwrite("path to cover " + to_string(path.get_covered().size()));
-    for (point p : path.get_covered())
-        communication_With_Planner.cwrite(to_string(p.x) + " " + to_string(p.y));
+    m_PipeToPlanner.cwrite("path to cover " + to_string(m_Path.getToCover().size()));
+    for (point p : m_Path.getToCover())
+        m_PipeToPlanner.cwrite(to_string(p.x) + " " + to_string(p.y));
 
     cerr << "Waiting for planner to finish starting" << endl;
 
     // wait for it to finish initializing (?)
     char done[100];
-    communication_With_Planner.cread(done, 100);
+    m_PipeToPlanner.cread(done, 100);
     m_PlannerPipeStale = true;
 
     cerr << "Planner is up and running" << endl;
@@ -257,9 +257,9 @@ void Executive::terminate()
 
     // if the planner isn't dead, kill it
     int status;
-    pid_t result = waitpid(communication_With_Planner.getPid(), &status, WNOHANG);
+    pid_t result = waitpid(m_PipeToPlanner.getPid(), &status, WNOHANG);
     if (result == 0) {
-        kill(communication_With_Planner.getPid(), SIGKILL);
+        kill(m_PipeToPlanner.getPid(), SIGKILL);
     }
 }
 
@@ -280,9 +280,9 @@ void Executive::pause()
 
     // if the planner isn't dead, kill it
     int status;
-    pid_t result = waitpid(communication_With_Planner.getPid(), &status, WNOHANG);
+    pid_t result = waitpid(m_PipeToPlanner.getPid(), &status, WNOHANG);
     if (result == 0) {
-        kill(communication_With_Planner.getPid(), SIGKILL);
+        kill(m_PipeToPlanner.getPid(), SIGKILL);
     }
 }
 
@@ -299,5 +299,5 @@ void Executive::unPause() {
 }
 
 void Executive::updateDyamicObstacle(uint32_t mmsi, State obstacle) {
-    path.updateDynamicObstacle(mmsi, obstacle);
+    m_Path.updateDynamicObstacle(mmsi, obstacle);
 }

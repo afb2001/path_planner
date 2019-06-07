@@ -33,21 +33,26 @@ void Path::updateAndAdjustPath(State &currentLocation)
         path.clear();
 
         double angle = atan2(currentLocation.y - next_start.y, currentLocation.x - next_start.x);
-        double displacement = (currentLocation.otime - next_start.otime) * currentLocation.speed;
+        double displacement = (currentLocation.time - next_start.time) * currentLocation.speed;
         double diffx = currentLocation.x + displacement * cos(angle) - next_start.x;
         double diffy = currentLocation.y + displacement * sin(angle) - next_start.y;
         if (debug)
             diffx = diffy = 0;
-        for (auto i : newpath)
-            if (i.otime > currentLocation.otime)
-                path.emplace_back(i.x + diffx, i.y + diffy, i.heading, i.speed, i.otime);
+        for (auto i : newpath) {
+            if (i.time > currentLocation.time) {
+                path.emplace_back(i.x + diffx, i.y + diffy, i.heading, i.speed, i.time);
+                diffx /= 2;
+                diffy /= 2;
+//                path.emplace_back(i.x, i.y, i.heading, i.speed, i.time);
+            }
+        }
 
 //        if (!debug)
 //            path.insert(path.end(), newpath.begin(), newpath.end());
     } else {
-        cerr << "newpath is empty" << endl;
+//        cerr << "newpath is empty" << endl;
     }
-    newpath.clear();
+//    newpath.clear();
 }
 //lock this with update info
 void Path::findStart()
@@ -58,7 +63,7 @@ void Path::findStart()
     updateAndAdjustPath(current_loc);
     actions.clear();
 
-    if (!path.empty() && path.back().otime > 1 + current_loc.otime)
+    if (!path.empty() && path.back().time > 1 + current_loc.time)
     {
         for (int i = 0; i < path.size(); i++)
         {
@@ -68,14 +73,14 @@ void Path::findStart()
                 cerr << "COLLISION " << endl;
             }
             
-            if (path[i].otime > current_loc.otime)
+            if (path[i].time > current_loc.time)
             {
 //                path[i].heading = fmod(path[i].heading + 10000 * M_PI, 2 * M_PI);
                 actions.push_back(path[i]);
                 if(index == 0)
                 {
-                    next_start = path[i];
                     // TODO! -- this gets out of sync with reality
+                    next_start = path[i];
 //                    cerr << "next start heading: " << next_start.heading << endl;
                 }
                 index++;
@@ -90,13 +95,12 @@ void Path::findStart()
     mtx_path.unlock();
 }
 
-State Path::readStateFromPlanner(char *currentString, double &bound)
+State Path::readStateFromPlanner(char *currentString)
 {
     double x, y, heading, speed, t;
     sscanf(currentString, "%lf %lf %lf %lf %lf\n", &x, &y, &heading, &speed, &t);
     auto s = State(x, y, heading, speed, t); // not sure why but this breaks if I don't do this
-    if (bound < t)
-        return s;
+    return s;
 }
 
 void Path::setNewPath(vector<State> trajectory)
@@ -111,27 +115,21 @@ void Path::updateDynamicObstacle(uint32_t mmsi, State obstacle)
     dynamic_obstacles[mmsi] = obstacle;
 }
 
-//below for current location update
-void Path::update_current(const char currentString[], int byte)
-{
-    sscanf(currentString + byte, "%lf,%lf,%lf,%lf,%lf [%d]", &current.x, &current.y, &current.speed, &current.heading, &current.otime, &dummy);
-}
-
 void Path::update_current(double x, double y, double speed, double heading, double otime)
 {
     current.x = x;
     current.y = y;
     current.speed = speed;
     current.heading = heading;
-    current.otime = otime;
+    current.time = otime;
 }
 
 //below for coverd path update
 void Path::update_covered()
 {
     mtx_cover.lock();
-    auto it = cover.begin();
-    while (it != cover.end())
+    auto it = toCover.begin();
+    while (it != toCover.end())
     {
         float x = it->x - current.x;
         float y = it->y - current.y;
@@ -140,7 +138,7 @@ void Path::update_covered()
             auto it1 = it;
             newcover.push_back(*it);
             ++it;
-            cover.erase(it1);
+            toCover.erase(it1);
         }
         else
             ++it;
@@ -150,18 +148,19 @@ void Path::update_covered()
 
 void Path::add_covered(int x, int y)
 {
-    cover.emplace_back(x, y);
+    toCover.emplace_back(x, y);
 }
 
 vector<State> Path::getActions()
 {
     vector<State> ret;
+    findStart(); // trying this out
     mtx_path.lock(); // should be quick
     ret.push_back(current);
-    if (!actions.empty() && actions[0].otime > current.otime)
+    if (!actions.empty() && actions[0].time > current.time)
     {
         // ditch states already in the past
-        while (!path.empty() && current.otime > path.front().otime)
+        while (!path.empty() && current.time > path.front().time)
             path.pop_front();
         if (path.empty()) {
             // All states in the trajectory are in the past
@@ -176,7 +175,7 @@ vector<State> Path::getActions()
     else
     {
         if (actions.empty()) cerr << "actions is empty" << endl;
-        ret.push_back ((!cover.empty()) ? State(-1) : State(-2));
+        ret.push_back ((!toCover.empty()) ? State(-1) : State(-2));
     }
     mtx_path.unlock();
     return ret;
@@ -221,15 +220,15 @@ const State &Path::getCurrent() const
 
 
 
-const list<point> &Path::get_covered() const
+const list<point> &Path::getToCover() const
 {
-    return cover;
+    return toCover;
 }
 
 //below condition check or lock access
 bool Path::finish()
 {
-    if (cover.empty())
+    if (toCover.empty())
     {
         actions.emplace_back(-2);
         return true;
@@ -242,15 +241,5 @@ void Path::initialize()
     actions.clear();
     next_start = current;
     actions.push_back(current);
-    next_start.otime += 1;
-}
-
-void Path::lock_obs()
-{
-    mtx_obs.lock();
-}
-
-void Path::unlock_obs()
-{
-    mtx_obs.unlock();
+    next_start.time += 1;
 }

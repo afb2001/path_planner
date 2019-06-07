@@ -194,7 +194,7 @@ public:
         obstacle.heading = inmsg->cog;
         obstacle.speed = inmsg->sog;
 
-        obstacle.otime = inmsg->header.stamp.toNSec() / 1.0e9;
+        obstacle.time = inmsg->header.stamp.toNSec() / 1.0e9;
 
         m_Executive->updateDyamicObstacle(inmsg->mmsi, obstacle);
     }

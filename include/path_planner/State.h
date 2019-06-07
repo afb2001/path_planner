@@ -6,76 +6,28 @@
 
 #include "path_planner/StateMsg.h"
 
-
-struct point{
-    int x, y;
-    point()
-    :x(0),y(0) {}
-
-    point(int x,int y)
-    :x(x),y(y) {}
-
-    bool operator==(const point &s) const
-    {
-        return x == s.x && y == s.y;
-    }
-
-    std::string toString()
-    {
-        return std::to_string(x) + " " + std::to_string(y);
-    }
-};
-
-namespace std
-{
-
-template <>
-struct hash<point>
-{
-    size_t operator()(const point &c) const
-    {
-        int x = c.x, y = c.y;
-        unsigned long value = 0;
-        for (int i = 0; i < 4; i++)
-        {
-            if (!x)
-                break;
-            value += value * 31 + (x & 8);
-            x = x >> 8;
-        }
-        for (int i = 0; i < 4; i++)
-        {
-            if (!y)
-                break;
-            value += value * 31 + (y & 8);
-            y = y >> 8;
-        }
-        return value;
-    }
-};
-}
-
 class State
 {
 
   public:
-    double x, y, heading, speed, otime;
+    double x, y, heading, speed, time;
     State(double x, double y, double heading, double speed, double otime)
-        : x(x), y(y), heading(heading), speed(speed), otime(otime){};
+        : x(x), y(y), heading(heading), speed(speed), time(otime){};
     State(int value)
-        : x(value), y(value), heading(value), speed(value), otime(value){};
+        : x(value), y(value), heading(value), speed(value), time(value){};
     State()
-        : x(-1), y(-1), heading(-1), speed(-1), otime(-1){};
+        : x(-1), y(-1), heading(-1), speed(-1), time(-1){};
     explicit State(path_planner::StateMsg other)
-            : x(other.x), y(other.y), heading(other.heading), speed(other.speed), otime(other.time){}
+            : x(other.x), y(other.y), heading(other.heading), speed(other.speed), time(other.time){}
+    State(State const &other)=default;
 
-    void set(double &newx, double &newy, double &newheading, double &newspeed, double &newtime)
+    void set(double newX, double newY, double newHeading, double newSpeed, double newTime)
     {
-        x = newx;
-        y = newy;
-        heading = newheading;
-        speed = newspeed;
-        otime = newtime;
+        x = newX;
+        y = newY;
+        heading = newHeading;
+        speed = newSpeed;
+        time = newTime;
     }
 
     void set(State other)
@@ -84,7 +36,7 @@ class State
         y = other.y;
         heading = other.heading;
         speed = other.speed;
-        otime = other.otime;
+        time = other.time;
     }
 
     void set(path_planner::StateMsg other)
@@ -93,17 +45,17 @@ class State
         y = other.y;
         heading = other.heading;
         speed = other.speed;
-        otime = other.time;
+        time = other.time;
     }
 
-    void setEstimate(double timeinterval, State &object)
+    void setEstimate(double timeInterval, State &object)
     {
-        double displacement = timeinterval * object.speed;
+        double displacement = timeInterval * object.speed;
         x = object.x + sin(object.heading) * displacement;
         y = object.y + cos(object.heading) * displacement;
         heading = object.heading;
         speed = object.speed;
-        otime = object.otime + 1;
+        time = object.time + 1;
          
     }
 
@@ -114,28 +66,33 @@ class State
         state.y = y;
         state.heading = heading;
         state.speed = speed;
-        state.time = otime;
+        state.time = time;
         return state;
+    }
+
+    /**
+     * Note: squared distance
+     * TODO! -- should include heading distance
+     */
+    double getDistanceScore(const State &other) const
+    {
+        double timeDistance = time - other.time;
+        double headingDistance = fabs(fmod((heading - other.heading), 2 * M_PI) / 4);
+        double speedDifference = fabs(speed - other.speed) / 2;
+        double displacement = timeDistance * other.speed;
+        double dx = x - (other.x + sin(other.heading)*displacement);
+        double dy = y - (other.y + cos(other.heading)*displacement);
+        return (dx * dx + dy * dy) + headingDistance + speedDifference; // how do you score headings??
     }
 
     std::string toString()
     {
-        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(otime);
+        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(time);
     }
 
     std::string toString() const
     {
-        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(otime);
-    }
-
-    void print()
-    {
-        std::cout << x << " " << y << " " << heading << " " << speed << " " << otime << std::endl;
-    }
-
-    void printerror()
-    {
-        std::cerr << x << " " << y << " " << heading << " " << speed << " " << otime << std::endl;
+        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(time);
     }
 };
 

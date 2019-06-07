@@ -31,18 +31,15 @@ public:
 private:
 
     bool m_Running = false;
-    bool request_start = false;
-    Path path;
-
-    bool debug = true;
-
     bool m_Pause = true;
     bool m_PlannerPipeStale = true;
+
+    Path m_Path;
 
     mutex m_PauseMutex;
     condition_variable m_PauseCV;
 
-    Communication communication_With_Planner;
+    Communication m_PipeToPlanner;
 
     TrajectoryPublisher* m_TrajectoryPublisher;
 
@@ -53,8 +50,6 @@ private:
     void requestPath();
 
 // TODO! -- Add a way to update obstacles
-
-//    void requestWorldInformation();
 
     void sendAction();
 
@@ -74,8 +69,6 @@ private:
      * Make sure the threads can exit and kill the planner (if it's running).
      */
     void terminate();
-
-//    void read_goal(std::string goal);
 };
 
 #endif //SRC_EXECUTIVE_H

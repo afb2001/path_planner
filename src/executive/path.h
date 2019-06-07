@@ -11,6 +11,54 @@
 #include <bitset>
 #include <deque>
 
+struct point{
+    int x, y;
+    point()
+            :x(0),y(0) {}
+
+    point(int x,int y)
+            :x(x),y(y) {}
+
+    bool operator==(const point &s) const
+    {
+        return x == s.x && y == s.y;
+    }
+
+    std::string toString()
+    {
+        return std::to_string(x) + " " + std::to_string(y);
+    }
+};
+
+namespace std
+{
+
+    template <>
+    struct hash<point>
+    {
+        size_t operator()(const point &c) const
+        {
+            int x = c.x, y = c.y;
+            unsigned long value = 0;
+            for (int i = 0; i < 4; i++)
+            {
+                if (!x)
+                    break;
+                value += value * 31 + (x & 8);
+                x = x >> 8;
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                if (!y)
+                    break;
+                value += value * 31 + (y & 8);
+                y = y >> 8;
+            }
+            return value;
+        }
+    };
+}
+
 using namespace std;
 
 class Path
@@ -38,16 +86,11 @@ class Path
     void findStart();
 
     //below for reading the path from planner
-    static State readStateFromPlanner(char *currentString, double &bound);
+    static State readStateFromPlanner(char *currentString);
 
 
     //below for dynamic obs update
-//    int update_dynamic_obs(char ObsString[], int byte, int i);
-
-void updateDynamicObstacle(uint32_t mmsi, State obstacle);
-
-    //below for current location update
-    void update_current(const char currentString[], int byte);
+    void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
     void update_current(double x, double y, double speed, double heading, double otime);
 
@@ -75,22 +118,19 @@ void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
     const State &getCurrent() const;
 
-    const list<point> &get_covered() const;
+    const list<point> &getToCover() const;
 
     int getindex(int x,int y)
     {
-        return y * Maxx + x;
+        return y * maxX + x;
     };
 
-    //below condition check or lock access
     bool finish();
 
     void initialize();
-    void lock_obs();
-    void unlock_obs();
 
-    int Maxx = 0;
-    bool *Obstacles = 0;
+    int maxX = 0;
+    bool *Obstacles = nullptr;
     bool debug;
 
 
@@ -104,10 +144,7 @@ private:
 
     map<uint32_t,State> dynamic_obstacles;
 
-    list<point> cover, newcover;
-
-    string defaultAction_1 = State(-1).toString();
-    string defaultAction_2 = State(-2).toString();
+    list<point> toCover, newcover;
 
     mutex mtx_path, mtx_obs, mtx_cover;
 
@@ -116,8 +153,6 @@ private:
     int dummy;
 
     vector<State> actions;
-    string initialVariance = " 1.7";
-
 
     //function
     double estimate_x(double timeiterval, State &object)

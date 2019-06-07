@@ -25,11 +25,11 @@ If everything works out you should be able to run <code>catkin_make</code>. I al
 
 NOTE: if your version of the go planner is in a different place, that script will not work and neither will the path planner ROS node. If that's the case, you'll need to run some version of <code>go build</code> on your own and edit ~/project11/catkin_ws/src/path_planner/src/executive/executive.cpp line 211:
 ```
-communication_With_Planner.set(string(homedir) + "/go/src/github.com/afb2001/CCOM_planner/planner", true, true, false, false);
+m_PipeToPlanner.set(string(homedir) + "/go/src/github.com/afb2001/CCOM_planner/planner", true, true, false, false);
 ```
 to be
 ```
-communication_With_Planner.set("path/to/your/version/of/the/planner/executable", true, true, false, false);
+m_PipeToPlanner.set("path/to/your/version/of/the/planner/executable", true, true, false, false);
 ```
 
 ## Usage

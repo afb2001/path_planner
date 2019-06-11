@@ -9,8 +9,9 @@ class TrajectoryPublisher
 public:
     virtual ~TrajectoryPublisher() = default;
     virtual void publishTrajectory(vector<State> trajectory) = 0;
-    virtual void displayTrajectory(vector<State> trajectory) = 0;
+    virtual void displayTrajectory(vector<State> trajectory, bool plannerTrajectory=true) = 0;
     virtual void allDone() = 0;
+    virtual State getEstimatedState(double desiredTime) = 0;
 };
 
 

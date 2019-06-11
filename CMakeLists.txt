@@ -46,7 +46,8 @@ include_directories(
 add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp
         src/executive/executive.cpp
         src/executive/path.cpp
-        src/executive/communication.cpp)
+        src/executive/communication.cpp
+        include/path_planner/TrajectoryDisplayer.h)
 
 #add_library(Path src/executive/path.cpp)
 #add_library(Communication src/executive/communication.cpp)

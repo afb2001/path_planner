@@ -28,8 +28,10 @@
 #include <signal.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <project11_transformations/MapToLatLong.h>
+#include <mpc/EstimateState.h>
 #include "geographic_visualization_msgs/GeoVizItem.h"
 #include "geographic_visualization_msgs/GeoVizPointList.h"
+#include "path_planner/TrajectoryDisplayer.h"
 
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
@@ -40,21 +42,21 @@
  * For now that system includes a controller, which conveys controls
  * to this node through the ControlReceiver interface.
  */
-class PathPlanner: public TrajectoryPublisher
+class PathPlanner: public TrajectoryDisplayer, public TrajectoryPublisher
 {
 public:
-    explicit PathPlanner(std::string name):
+    explicit PathPlanner(std::string name): TrajectoryDisplayer(),
     m_action_server(m_node_handle, std::move(name), false)
 {
     m_current_speed = 3.0;
     m_current_heading = 0;
 
     m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
-    m_map_to_lat_long_client = m_node_handle.serviceClient<project11_transformations::MapToLatLong>("map_to_wgs84");
+    m_estimate_state_client = m_node_handle.serviceClient<mpc::EstimateState>("/mpc/estimate_state");
 
     m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
     m_reference_trajectory_pub = m_node_handle.advertise<path_planner::Trajectory>("/reference_trajectory",1);
-    m_display_pub = m_node_handle.advertise<geographic_visualization_msgs::GeoVizItem>("/project11/display",1);
+
 
     m_position_sub = m_node_handle.subscribe("/position_map", 10, &PathPlanner::positionCallback, this);
     m_heading_sub = m_node_handle.subscribe("/heading", 10, &PathPlanner::headingCallback, this);
@@ -209,42 +211,35 @@ public:
         m_reference_trajectory_pub.publish(reference);
     }
 
-    void displayTrajectory(vector<State> trajectory) final
+    void displayTrajectory(vector<State> trajectory, bool plannerTrajectory) override
     {
-        geographic_visualization_msgs::GeoVizPointList displayPoints;
-        displayPoints.color.b = 1;
-        displayPoints.color.a = 1;
-        displayPoints.size = 3.0;
-        for (State s : trajectory) {
-            // explicit conversion to make this cleaner
-            geographic_msgs::GeoPoint point;
-            displayPoints.points.push_back(convertToLatLong(s));
-        }
-        geographic_visualization_msgs::GeoVizItem geoVizItem;
-        geoVizItem.id = "planner_trajectory";
-        geoVizItem.lines.push_back(displayPoints);
-        m_display_pub.publish(geoVizItem);
+        TrajectoryDisplayer::displayTrajectory(trajectory, plannerTrajectory);
     }
 
-    geographic_msgs::GeoPoint convertToLatLong(State state)
+    State getEstimatedState(double desiredTime) final
     {
-        project11_transformations::MapToLatLong::Request request;
-        project11_transformations::MapToLatLong::Response response;
-        request.map.point.x = state.x;
-        request.map.point.y = state.y;
-        if (m_map_to_lat_long_client.call(request, response)){
-        } else {
+        mpc::EstimateStateRequest req;
+        mpc::EstimateStateResponse res;
+        req.desiredTime = desiredTime;
+        if (m_estimate_state_client.call(req, res)) {
+            return State(res.state);
         }
-        return response.wgs84.position;
+        cerr << "EstimateState service call failed" << endl;
+        return State(-1);
     }
-
-
 
     void allDone() final
     {
         std::cerr << "Planner appears to have finished" << std::endl;
         path_planner::path_plannerResult result;
         m_action_server.setSucceeded(result);
+
+        // publish empty trajectory to clear the display
+        geographic_visualization_msgs::GeoVizItem geoVizItem;
+        geoVizItem.id = "planner_trajectory";
+        m_display_pub.publish(geoVizItem);
+        geoVizItem.id = "controller_trajectory";
+        m_display_pub.publish(geoVizItem);
 
         publishControllerMessage("stop sending controls");
     }
@@ -257,7 +252,7 @@ public:
     }
 
 private:
-    ros::NodeHandle m_node_handle;
+//    ros::NodeHandle m_node_handle;
     actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
 
     // Since speed and heading are updated through different topics than position,
@@ -268,7 +263,7 @@ private:
 
     ros::Publisher m_controller_msgs_pub;
     ros::Publisher m_reference_trajectory_pub;
-    ros::Publisher m_display_pub;
+//    ros::Publisher m_display_pub;
 
     ros::Subscriber m_position_sub;
     ros::Subscriber m_heading_sub;
@@ -276,7 +271,8 @@ private:
     ros::Subscriber m_contact_sub;
 
     ros::ServiceClient m_lat_long_to_map_client;
-    ros::ServiceClient m_map_to_lat_long_client;
+//    ros::ServiceClient m_map_to_lat_long_client;
+    ros::ServiceClient m_estimate_state_client;
 
     // handle on Executive
     Executive* m_Executive;

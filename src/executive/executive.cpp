@@ -1,7 +1,6 @@
 #include <utility>
 #include <thread>
 #include <string.h>
-//#include "State.h"
 #include "communication.h"
 #include <fstream>
 #include <wait.h>
@@ -61,7 +60,7 @@ void Executive::print_map(string file)
                 int ncount = 0;
                 for (int i = 0; i < line.size(); i++)
                 {
-                    m_Path.Obstacles[m_Path.getindex(i, height - hcount)] = line[i] == '#';
+                    m_Path.Obstacles[m_Path.getIndex(i, height - hcount)] = line[i] == '#';
 
                     if (line[i] != previous)
                     {
@@ -124,7 +123,7 @@ void Executive::sendAction() {
             continue;
 //        cerr << "and they aren't null" << endl;
         m_TrajectoryPublisher->publishTrajectory(actions);
-        m_TrajectoryPublisher->displayTrajectory(actions);
+//        m_TrajectoryPublisher->displayTrajectory(actions, false);
 //        cerr << "trajectory had length " << actions.size() << endl;
         this_thread::sleep_for(std::chrono::milliseconds(sleep));
 
@@ -159,7 +158,7 @@ void Executive::requestPath()
         }
 
         start = getCurrentTime();
-        m_PipeToPlanner.cwrite(m_Path.construct_request_string());
+        m_PipeToPlanner.cwrite(m_Path.construct_request_string(m_TrajectoryPublisher->getEstimatedState(m_Path.getCurrent().time + 1)));
 //        cerr << "requestPath sent the planner a request" << endl;
 
 //        fgets(response, sizeof response, readstream);
@@ -186,7 +185,7 @@ void Executive::requestPath()
         }
 
         m_Path.setNewPath(trajectory);
-//        m_TrajectoryPublisher->displayTrajectory(trajectory);
+        m_TrajectoryPublisher->displayTrajectory(trajectory);
 
         end = getCurrentTime();
         sleeptime = (numberOfState) ? ((end - start <= 1) ? ((int)((1 - (end - start)) * 1000)) : 0) : 50;

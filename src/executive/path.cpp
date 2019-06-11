@@ -18,7 +18,7 @@ bool Path::checkCollision(double sx, double sy, double ex, double ey)
 //            break;
 //        newx += cos(d) * 0.3;
 //        newy += sin(d) * 0.3;
-//        if (Obstacles[getindex((int)newx,(int)newy)])
+//        if (Obstacles[getIndex((int)newx,(int)newy)])
 //            return true;
 //        cx = newx - ex;
 //        cy = newy - ey;
@@ -28,31 +28,31 @@ bool Path::checkCollision(double sx, double sy, double ex, double ey)
 
 void Path::updateAndAdjustPath(State &currentLocation)
 {
-    if (newpath.size() > 1)
+    if (!newPath.empty())
     {
         path.clear();
 
-        double angle = atan2(currentLocation.y - next_start.y, currentLocation.x - next_start.x);
-        double displacement = (currentLocation.time - next_start.time) * currentLocation.speed;
-        double diffx = currentLocation.x + displacement * cos(angle) - next_start.x;
-        double diffy = currentLocation.y + displacement * sin(angle) - next_start.y;
-        if (debug)
-            diffx = diffy = 0;
-        for (auto i : newpath) {
+//        double angle = atan2(currentLocation.y - next_start.y, currentLocation.x - next_start.x);
+//        double displacement = (currentLocation.time - next_start.time) * currentLocation.speed;
+//        double diffx = currentLocation.x + displacement * cos(angle) - next_start.x;
+//        double diffy = currentLocation.y + displacement * sin(angle) - next_start.y;
+//        if (debug)
+//            diffx = diffy = 0;
+        for (auto i : newPath) {
             if (i.time > currentLocation.time) {
-                path.emplace_back(i.x + diffx, i.y + diffy, i.heading, i.speed, i.time);
-                diffx /= 2;
-                diffy /= 2;
-//                path.emplace_back(i.x, i.y, i.heading, i.speed, i.time);
+//                path.emplace_back(i.x + diffx, i.y + diffy, i.heading, i.speed, i.time);
+//                diffx /= 2;
+//                diffy /= 2;
+                path.emplace_back(i.x, i.y, i.heading, i.speed, i.time);
             }
         }
 
 //        if (!debug)
-//            path.insert(path.end(), newpath.begin(), newpath.end());
+//            path.insert(path.end(), newPath.begin(), newPath.end());
     } else {
-//        cerr << "newpath is empty" << endl;
+//        cerr << "newPath is empty" << endl;
     }
-//    newpath.clear();
+//    newPath.clear();
 }
 //lock this with update info
 void Path::findStart()
@@ -77,19 +77,20 @@ void Path::findStart()
             {
 //                path[i].heading = fmod(path[i].heading + 10000 * M_PI, 2 * M_PI);
                 actions.push_back(path[i]);
-                if(index == 0)
-                {
+//                if(index == 0)
+//                {
                     // TODO! -- this gets out of sync with reality
-                    next_start = path[i];
+//                    next_start = path[i];
 //                    cerr << "next start heading: " << next_start.heading << endl;
-                }
+//                }
                 index++;
 
             }
         }
     } else {
-        cerr << "path is in the past. If we're just starting this is fine" << endl;
-        next_start.setEstimate(1, current_loc);
+        if (path.empty()) cerr << "path is empty." << endl;
+        else cerr << "path is in the past. If we're just starting this is fine" << endl;
+//        next_start.setEstimate(1, current_loc);
         actions.emplace_back(-1);
     }
     mtx_path.unlock();
@@ -106,7 +107,7 @@ State Path::readStateFromPlanner(char *currentString)
 void Path::setNewPath(vector<State> trajectory)
 {
     mtx_path.lock();
-    newpath = std::move(trajectory);
+    newPath = std::move(trajectory);
     mtx_path.unlock();
 }
 
@@ -115,13 +116,13 @@ void Path::updateDynamicObstacle(uint32_t mmsi, State obstacle)
     dynamic_obstacles[mmsi] = obstacle;
 }
 
-void Path::update_current(double x, double y, double speed, double heading, double otime)
+void Path::update_current(double x, double y, double speed, double heading, double t)
 {
     current.x = x;
     current.y = y;
     current.speed = speed;
     current.heading = heading;
-    current.time = otime;
+    current.time = t;
 }
 
 //below for coverd path update
@@ -136,7 +137,7 @@ void Path::update_covered()
         if (x * x + y * y <= 20)
         {
             auto it1 = it;
-            newcover.push_back(*it);
+            newlyCovered.push_back(*it);
             ++it;
             toCover.erase(it1);
         }
@@ -166,11 +167,9 @@ vector<State> Path::getActions()
             // All states in the trajectory are in the past
             // TODO! -- appropriate error handling for this case
             cerr << "All the states the planner gave us are in the past" << endl;
-            mtx_path.unlock();
-            return ret;
+        } else {
+            for (auto s : actions) ret.push_back(s);
         }
-        for (auto s : actions) ret.push_back(s);
-
     }
     else
     {
@@ -185,11 +184,11 @@ vector<State> Path::getActions()
 void Path::get_newcovered(string &s)
 {
     mtx_cover.lock();
-    int size = newcover.size();
+    int size = newlyCovered.size();
     s += "newly covered " + to_string(size);
-    for (point p : newcover)
+    for (point p : newlyCovered)
         s += "\n" + p.toString();
-    newcover.clear();
+    newlyCovered.clear();
     mtx_cover.unlock();
 }
 
@@ -203,8 +202,9 @@ void Path::getDynamicObs(string &s)
     mtx_obs.unlock();
 }
 
-string Path::construct_request_string()
+string Path::construct_request_string(State startState)
 {
+    next_start = startState;
     string s = "plan\n";
     get_newcovered(s);
     findStart();

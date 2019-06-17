@@ -226,7 +226,7 @@ const list<point> &Path::getToCover() const
 }
 
 //below condition check or lock access
-bool Path::finish()
+bool Path::isFinished()
 {
     if (toCover.empty())
     {

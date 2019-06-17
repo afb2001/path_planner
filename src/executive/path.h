@@ -34,12 +34,13 @@ struct point{
 
 // endregion
 
-using namespace std;
-
+/**
+ * This class does a lot of internal stuff for the Executive, namely managing the most recent plan, the static and
+ * dynamic obstacles, and the current location of the vehicle.
+ */
 class Path
 {
   public:
-    // Default constructor
     Path()
     {
         current = next_start = State(0);
@@ -55,68 +56,120 @@ class Path
      */
     void updateAndAdjustPath(State &currentLocation);
 
-    //below for reading the path from planner
+    /**
+     * Parse a state from a C-style string.
+     * @param currentString the string
+     * @return a state based on that string
+     */
     static State readStateFromPlanner(char *currentString);
 
-    //below for dynamic obs update
+    /**
+     * Update the dynamic obstacle mmsi with a new observation.
+     * @param mmsi the dynamic obstacle's mmsi
+     * @param obstacle the new observation of the obstacle
+     */
     void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
+    /**
+     * Update the state of the vehicle.
+     * @param x
+     * @param y
+     * @param speed
+     * @param heading
+     * @param t
+     */
     void update_current(double x, double y, double speed, double heading, double t);
 
-    //below for covered path update
+    /**
+     * Check whether we've covered any new points.
+     */
     void update_covered();
 
+    /**
+     * Add a point to cover at <x, y>.
+     * @param x
+     * @param y
+     */
     void add_covered(int x, int y);
 
     /**
      * @return a vector containing the reference trajectory for the controller
      */
-    vector<State> getActions();
+    std::vector<State> getActions();
 
-    string construct_request_string(State startState);
+    /**
+     * Build a string to send to the planner to ask for a plan from startState.
+     * @param startState the desired starting state
+     * @return a string for the planner
+     */
+    std::string construct_request_string(State startState);
 
+    /**
+     * Get the current state of the vehicle.
+     * @return the current state of the vehicle
+     */
     const State &getCurrent() const;
 
-    const list<point> &getToCover() const;
+    /**
+     * Get the list of points to cover.
+     * @return the list of points to cover
+     */
+    const std::list<point> &getToCover() const;
 
+    /**
+     * Get an index into the map corresponding to the grid cell at (x,y).
+     * @param x
+     * @param y
+     * @return an index into the map
+     */
     int getIndex(int x, int y)
     {
         return y * maxX + x;
     };
 
-    bool finish();
+    /**
+     * @return whether we've covered all the points or not
+     */
+    bool isFinished();
 
+    /**
+     * Reset some things.
+     */
     void initialize();
 
     int maxX = 0;
     bool *Obstacles = nullptr;
 
-    vector<State> newPath;
+    std::vector<State> newPath;
 
-    void setNewPath(vector<State> trajectory);
+    /**
+     * Set the new path, presumably coming from the planner.
+     * @param trajectory the new plan
+     */
+    void setNewPath(std::vector<State> trajectory);
 
 private:
     //lock this with update info
     void findStart();
 
     //below construct the request string
-    void get_newcovered(string &s);
+    void get_newcovered(std::string &s);
 
-    void getDynamicObs(string &s);
+    void getDynamicObs(std::string &s);
 
     bool checkCollision(double cx, double cy, double ex, double ey);
 
-    deque<State> path;
+    std::deque<State> path;
 
-    map<uint32_t,State> dynamic_obstacles;
+    std::map<uint32_t,State> dynamic_obstacles;
 
-    list<point> toCover, newlyCovered;
+    std::list<point> toCover, newlyCovered;
 
-    mutex mtx_path, mtx_obs, mtx_cover;
+    std::mutex mtx_path, mtx_obs, mtx_cover;
 
     State current, next_start;
 
-    vector<State> actions;
+    std::vector<State> actions;
 };
 
 #endif

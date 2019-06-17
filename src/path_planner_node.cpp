@@ -36,11 +36,13 @@
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
 
+using std::string;
+using std::vector;
+using std::cerr;
+using std::endl;
 
 /**
  * Node to act as interface between ROS and path planning system.
- * For now that system includes a controller, which conveys controls
- * to this node through the ControlReceiver interface.
  */
 class PathPlanner: public TrajectoryDisplayer, public TrajectoryPublisher
 {

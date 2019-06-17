@@ -13,6 +13,10 @@
 //#include<stdio.h>
 #include <mutex>
 
+/**
+ * Class which handles direct communication with the planner. It basically just uses pipes and is a bit clunky
+ * in my opinion.
+ */
 class Communication
 {
 

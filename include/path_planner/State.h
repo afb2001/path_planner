@@ -6,17 +6,32 @@
 
 #include "path_planner/StateMsg.h"
 
+/**
+ * This class represents a state of the vehicle in five dimensions: x, y, heading, speed, time.
+ */
 class State
 {
 
   public:
     double x, y, heading, speed, time;
-    State(double x, double y, double heading, double speed, double otime)
-        : x(x), y(y), heading(heading), speed(speed), time(otime){};
+    /**
+     * Construct a State.
+     * @param x
+     * @param y
+     * @param heading
+     * @param speed
+     * @param t
+     */
+    State(double x, double y, double heading, double speed, double t)
+        : x(x), y(y), heading(heading), speed(speed), time(t){};
     State(int value)
         : x(value), y(value), heading(value), speed(value), time(value){};
     State()
         : x(-1), y(-1), heading(-1), speed(-1), time(-1){};
+    /**
+     * Construct a State from a StateMsg
+     * @param other the StateMsg
+     */
     explicit State(path_planner::StateMsg other)
             : x(other.x), y(other.y), heading(other.heading), speed(other.speed), time(other.time){}
     State(State const &other)=default;
@@ -39,15 +54,6 @@ class State
         time = other.time;
     }
 
-    void set(path_planner::StateMsg other)
-    {
-        x = other.x;
-        y = other.y;
-        heading = other.heading;
-        speed = other.speed;
-        time = other.time;
-    }
-
     void setEstimate(double timeInterval, State &object)
     {
         double displacement = timeInterval * object.speed;
@@ -59,6 +65,10 @@ class State
          
     }
 
+    /**
+     * Convert a State to a StateMsg.
+     * @return a StateMsg matching the fields of this State.
+     */
     explicit operator path_planner::StateMsg()
     {
         path_planner::StateMsg state;
@@ -71,7 +81,12 @@ class State
     }
 
     /**
+     * Get the score of another state.
+     *
+     * This is meant for doing MPC.
+     *
      * Note: squared distance
+     *
      * TODO! -- should include heading distance
      */
     double getDistanceScore(const State &other) const

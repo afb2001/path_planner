@@ -150,7 +150,7 @@ void Executive::requestPath()
         lk.unlock();
 //        cerr << "requestPath released the lock" << endl;
 
-        if (m_Path.finish())
+        if (m_Path.isFinished())
         {
             this_thread::sleep_for(chrono::milliseconds(1000));
             cerr << "Finished path; pausing" << endl;

@@ -32,18 +32,18 @@ void Path::updateAndAdjustPath(State &currentLocation)
     {
         path.clear();
 
-//        double angle = atan2(currentLocation.y - next_start.y, currentLocation.x - next_start.x);
-//        double displacement = (currentLocation.time - next_start.time) * currentLocation.speed;
-//        double diffx = currentLocation.x + displacement * cos(angle) - next_start.x;
-//        double diffy = currentLocation.y + displacement * sin(angle) - next_start.y;
+        double angle = atan2(currentLocation.y - next_start.y, currentLocation.x - next_start.x);
+        double displacement = (currentLocation.time - next_start.time) * currentLocation.speed;
+        double diffx = currentLocation.x + displacement * cos(angle) - next_start.x;
+        double diffy = currentLocation.y + displacement * sin(angle) - next_start.y;
 //        if (debug)
 //            diffx = diffy = 0;
         for (auto i : newPath) {
             if (i.time > currentLocation.time) {
-//                path.emplace_back(i.x + diffx, i.y + diffy, i.heading, i.speed, i.time);
+                path.emplace_back(i.x + diffx, i.y + diffy, i.heading, i.speed, i.time);
 //                diffx /= 2;
 //                diffy /= 2;
-                path.emplace_back(i.x, i.y, i.heading, i.speed, i.time);
+//                path.emplace_back(i.x, i.y, i.heading, i.speed, i.time);
             }
         }
 

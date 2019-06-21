@@ -8,6 +8,7 @@
 
 /**
  * This class represents a state of the vehicle in five dimensions: x, y, heading, speed, time.
+ * TODO! -- add expected units
  */
 class State
 {

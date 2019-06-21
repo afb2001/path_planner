@@ -162,6 +162,7 @@ void Executive::requestPath()
 //        cerr << "requestPath sent the planner a request" << endl;
 
 //        fgets(response, sizeof response, readstream);
+        // TODO! -- make a way to fail gracefully if we need to shut down or some error happens
         m_PipeToPlanner.readAll(response);
 //        cerr << "requestPath read the response" << endl;
         if (!strncmp(response, "done", 4))
@@ -188,6 +189,8 @@ void Executive::requestPath()
         m_TrajectoryPublisher->displayTrajectory(trajectory);
 
         end = getCurrentTime();
+        // TODO! -- have another look at this (seconds vs ms?) also don't use inline ifs
+        // also make 1 second a constant or variable or something
         sleeptime = (numberOfState) ? ((end - start <= 1) ? ((int)((1 - (end - start)) * 1000)) : 0) : 50;
 
         this_thread::sleep_for(chrono::milliseconds(sleeptime));

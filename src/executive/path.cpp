@@ -152,6 +152,7 @@ void Path::add_covered(int x, int y)
     toCover.emplace_back(x, y);
 }
 
+// TODO! -- move path micro-updating to controller
 vector<State> Path::getActions()
 {
     vector<State> ret;

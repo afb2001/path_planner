@@ -104,6 +104,7 @@ public:
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 
         // interpolate points to cover from segments
+        // TODO! -- add "why" comments
         for (int i = 0; i + 1 < goal->path.poses.size(); i++)
         {
             // assume points represent track-line pairs
@@ -133,7 +134,7 @@ public:
             dx = end.x - start.x; dy = end.y - start.y;
             d = sqrt(dx * dx + dy * dy);
             // number of points
-            n = ceil(d / c_max_goal_distance);
+            n = ceil(d / c_max_interpolation_distance);
             // distance between each point
             dx = dx / n; dy = dy / n;
             for (int j = 1; j < n - 1; j++) {
@@ -162,6 +163,7 @@ public:
 
     void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg)
     {
+        // TODO! -- check when we last got an update
         m_Executive->updateCovered(
                 inmsg->pose.position.x,
                 inmsg->pose.position.y,
@@ -279,7 +281,7 @@ private:
     // handle on Executive
     Executive* m_Executive;
     // constant for linear interpolation of points to cover
-    const double c_max_goal_distance = 10;
+    const double c_max_interpolation_distance = 10;
 };
 
 int main(int argc, char **argv)

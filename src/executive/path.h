@@ -37,6 +37,11 @@ struct point{
 /**
  * This class does a lot of internal stuff for the Executive, namely managing the most recent plan, the static and
  * dynamic obstacles, and the current location of the vehicle.
+ *
+ * TODO! -- fix this class' name and other names as well -- TrajectoryManager?
+ * trajectories
+ * obstacles
+ * map
  */
 class Path
 {

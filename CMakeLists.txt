@@ -27,14 +27,13 @@ add_action_files(DIRECTORY action FILES path_planner.action)
 generate_messages(DEPENDENCIES actionlib_msgs geographic_msgs)
 
 catkin_package(
-        #  INCLUDE_DIRS include
+          INCLUDE_DIRS include
         #  LIBRARIES asv_helm
         CATKIN_DEPENDS geometry_msgs roscpp project11
         #  DEPENDS system_lib
 )
 
 include_directories(
-        # include
         ${catkin_INCLUDE_DIRS}
         ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}/src/executive
         include

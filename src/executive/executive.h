@@ -32,7 +32,7 @@ private:
 
     bool m_Running = false;
     bool request_start = false;
-    Path path;
+    ExecutiveInternalsManager path;
 
     bool debug = true;
 

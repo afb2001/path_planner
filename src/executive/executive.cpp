@@ -174,7 +174,7 @@ void Executive::requestPath()
         sscanf(response, "plan %d\n", &numberOfState);
 //        cerr << "which was a plan of length " << numberOfState << endl;
 
-        time_bound = path.getCurrent().otime;
+        time_bound = path.getCurrent().time;
 
         cerr << "Updating reference trajectory for controller" << endl;
         for (int i = 0; i < numberOfState; i++) // if no new path then keep old path // ??

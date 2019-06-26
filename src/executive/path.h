@@ -1,7 +1,11 @@
+#include <utility>
+
 #ifndef __PATH_H__
 #define __PATH_H__
 
 #include "path_planner/State.h"
+#include "../planner/common/Path.h"
+
 #include <cmath>
 #include <vector>
 #include <list>
@@ -12,20 +16,20 @@
 
 using namespace std;
 
-class Path
+class ExecutiveInternalsManager
 {
 
 
   public:
     // Default constructor
-    Path()
+    ExecutiveInternalsManager()
     {
         pathindex = 0;
         current = next_start = State(0);
         actions[0] = State(-1);
     };
 
-    ~Path(){
+    ~ExecutiveInternalsManager(){
         delete [] Obstacles;
     };
 

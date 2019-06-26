@@ -1,7 +1,7 @@
 #include "path.h"
 using namespace std;
 
-bool Path::checkCollision(double sx, double sy, double ex, double ey)
+bool ExecutiveInternalsManager::checkCollision(double sx, double sy, double ex, double ey)
 {
     return false;
     // TODO! -- support negative map coordinates
@@ -24,7 +24,7 @@ bool Path::checkCollision(double sx, double sy, double ex, double ey)
 //    return false;
 }
 
-void Path::replacePath(State &objectPar)
+void ExecutiveInternalsManager::replacePath(State &objectPar)
 {
     if (newpath.size() > 1)
     {
@@ -32,14 +32,14 @@ void Path::replacePath(State &objectPar)
         pathindex = 0;
 
         double angle = atan2(objectPar.y - next_start.y, objectPar.x - next_start.x);
-        double displacement = (objectPar.otime - next_start.otime) * objectPar.speed;
+        double displacement = (objectPar.time - next_start.time) * objectPar.speed;
         double diffx = objectPar.x + displacement * cos(angle) - next_start.x;
         double diffy = objectPar.y + displacement * sin(angle) - next_start.y;
         if (debug)
             diffx = diffy = 0;
         for (auto i : newpath)
-            if (i.otime > objectPar.otime)
-                path.emplace_back(i.x + diffx, i.y + diffy, i.heading, i.speed, i.otime);
+            if (i.time > objectPar.time)
+                path.emplace_back(i.x + diffx, i.y + diffy, i.heading, i.speed, i.time);
 
         if (!debug)
             path.insert(path.end(), newpath.begin(), newpath.end());
@@ -47,13 +47,13 @@ void Path::replacePath(State &objectPar)
     newpath.clear();
 };
 //lock this with update info
-void Path::findStart()
+void ExecutiveInternalsManager::findStart()
 {
     mtx_path.lock();
     int path_size = path.size();
     bool find = false, visit = true;
     State current_loc = current;
-    double time_time[4]{current_loc.otime + 1,current_loc.otime + 2,current_loc.otime + 3,current_loc.otime + 4};
+    double time_time[4]{current_loc.time + 1,current_loc.time + 2,current_loc.time + 3,current_loc.time + 4};
     int index = 0;
     replacePath(current_loc);
 
@@ -62,16 +62,16 @@ void Path::findStart()
         for (int i = pathindex; i < path_size; i++)
         {
 
-            if (path[i].otime <= time_time[0] && i + 1 < path_size  && checkCollision(path[i].x, path[i].y, path[i + 1].x, path[i + 1].y)) {
-                cerr << "time less than time_time" << (path[i].otime <= time_time[0]) << endl;
+            if (path[i].time <= time_time[0] && i + 1 < path_size  && checkCollision(path[i].x, path[i].y, path[i + 1].x, path[i + 1].y)) {
+                cerr << "time less than time_time" << (path[i].time <= time_time[0]) << endl;
                 cerr << "i + 1 < path size " << (i+1 < path_size) << endl;
                 cerr << "COLLISION " << endl;
             }
             
-            if (path[i].otime > time_time[index])
+            if (path[i].time > time_time[index])
             {
                 double predictHead = fmod(path[i].heading + 10000 * M_PI, 2 * M_PI);
-                actions[index].set(path[i].x, path[i].y, predictHead, path[i].speed, path[i].otime);   
+                actions[index].set(path[i].x, path[i].y, predictHead, path[i].speed, path[i].time);
                 if(index == 3)
                 {
                     find = true;
@@ -100,7 +100,7 @@ void Path::findStart()
 };
 
 //below for reading the path from planner
-void Path::update_newpath(char currentString[], double &bound)
+void ExecutiveInternalsManager::update_newpath(char currentString[], double &bound)
 {
     sscanf(currentString, "%lf %lf %lf %lf %lf\n", &tempx, &tempy, &tempheading, &tempspeed, &temptime);
     if (bound < temptime)
@@ -112,34 +112,34 @@ void Path::update_newpath(char currentString[], double &bound)
 //{
 //    if (dyamic_obstacles.size() <= i)
 //        dyamic_obstacles.emplace_back();
-//    if (sscanf(ObsString + byte, "%d,%lf,%lf,%lf,%lf,%lf\n%n", &dummyindex, &dyamic_obstacles[i].x, &dyamic_obstacles[i].y, &dyamic_obstacles[i].speed, &dyamic_obstacles[i].heading, &dyamic_obstacles[i].otime, &byteREAD) == 6)
+//    if (sscanf(ObsString + byte, "%d,%lf,%lf,%lf,%lf,%lf\n%n", &dummyindex, &dyamic_obstacles[i].x, &dyamic_obstacles[i].y, &dyamic_obstacles[i].speed, &dyamic_obstacles[i].heading, &dyamic_obstacles[i].time, &byteREAD) == 6)
 //        return byteREAD;
 //    dyamic_obstacles.pop_back();
 //    return 0;
 //};
 
-void Path::updateDynamicObstacle(uint32_t mmsi, State obstacle)
+void ExecutiveInternalsManager::updateDynamicObstacle(uint32_t mmsi, State obstacle)
 {
     dynamic_obstacles[mmsi] = obstacle;
 }
 
 //below for current location update
-void Path::update_current(const char currentString[], int byte)
+void ExecutiveInternalsManager::update_current(const char currentString[], int byte)
 {
-    sscanf(currentString + byte, "%lf,%lf,%lf,%lf,%lf [%d]", &current.x, &current.y, &current.speed, &current.heading, &current.otime, &dummy);
+    sscanf(currentString + byte, "%lf,%lf,%lf,%lf,%lf [%d]", &current.x, &current.y, &current.speed, &current.heading, &current.time, &dummy);
 };
 
-void Path::update_current(double x, double y, double speed, double heading, double otime)
+void ExecutiveInternalsManager::update_current(double x, double y, double speed, double heading, double otime)
 {
     current.x = x;
     current.y = y;
     current.speed = speed;
     current.heading = heading;
-    current.otime = otime;
+    current.time = otime;
 };
 
 //below for coverd path update
-void Path::update_covered()
+void ExecutiveInternalsManager::update_covered()
 {
     mtx_cover.lock();
     auto it = cover.begin();
@@ -160,13 +160,13 @@ void Path::update_covered()
     mtx_cover.unlock();
 }
 
-void Path::add_covered(int x, int y)
+void ExecutiveInternalsManager::add_covered(int x, int y)
 {
     cover.emplace_back(x, y);
 };
 
 //below construct string for controler
-void Path::construct_path_string(string &s)
+void ExecutiveInternalsManager::construct_path_string(string &s)
 {
     int size = path.size();
     s += "path " + to_string(size - pathindex) + "\n";
@@ -175,16 +175,16 @@ void Path::construct_path_string(string &s)
     s += next_start.toString() + '\0'; //for estimate start
 };
 
-void Path::sendAction(string &s, int &sleep)
+void ExecutiveInternalsManager::sendAction(string &s, int &sleep)
 {
     s = "";
     sleep = 50;
     State current_loc = current;
     mtx_path.lock();
     int path_size = path.size();
-    if (actions[0].otime > current_loc.otime)
+    if (actions[0].time > current_loc.time)
     {
-        while (path_size > pathindex && current_loc.otime > path[pathindex].otime)
+        while (path_size > pathindex && current_loc.time > path[pathindex].time)
             pathindex++;
         if (path_size == pathindex)
             return;
@@ -203,16 +203,16 @@ void Path::sendAction(string &s, int &sleep)
     mtx_path.unlock();
 }
 
-State* Path::getActions()
+State* ExecutiveInternalsManager::getActions()
 {
     auto* ret = new State[5]; // consumer frees
     mtx_path.lock(); // should be quick
     State current_loc = current;
     ret[0] = current_loc;
     int path_size = path.size();
-    if (actions[0].otime > current_loc.otime)
+    if (actions[0].time > current_loc.time)
     {
-        while (path_size > pathindex && current_loc.otime > path[pathindex].otime)
+        while (path_size > pathindex && current_loc.time > path[pathindex].time)
             pathindex++;
         if (path_size == pathindex) {
             // All states in the trajectory are in the past
@@ -233,7 +233,7 @@ State* Path::getActions()
 }
 
 //below construct the request string
-void Path::get_newcovered(string &s)
+void ExecutiveInternalsManager::get_newcovered(string &s)
 {
     mtx_cover.lock();
     int size = newcover.size();
@@ -244,7 +244,7 @@ void Path::get_newcovered(string &s)
     mtx_cover.unlock();
 };
 
-void Path::getDynamicObs(string &s)
+void ExecutiveInternalsManager::getDynamicObs(string &s)
 {
     mtx_obs.lock();
     int dynamic_obs_size = dynamic_obstacles.size();
@@ -254,7 +254,7 @@ void Path::getDynamicObs(string &s)
     mtx_obs.unlock();
 }
 
-string Path::construct_request_string()
+string ExecutiveInternalsManager::construct_request_string()
 {
     string s = "plan\n";
     get_newcovered(s);
@@ -280,20 +280,20 @@ string Path::construct_request_string()
 //    return next_start;
 //};
 
-const State &Path::getCurrent() const
+const State &ExecutiveInternalsManager::getCurrent() const
 {
     return current;
 };
 
 
 
-const list<point> &Path::get_covered() const
+const list<point> &ExecutiveInternalsManager::get_covered() const
 {
     return cover;
 };
 
 //below condition check or lock access
-bool Path::finish()
+bool ExecutiveInternalsManager::finish()
 {
     if (cover.empty())
     {
@@ -303,18 +303,18 @@ bool Path::finish()
     return false;
 }
 
-void Path::initialize()
+void ExecutiveInternalsManager::initialize()
 {
     actions[0] = next_start = current;
-    next_start.otime += 1;
+    next_start.time += 1;
 }
 
-void Path::lock_obs()
+void ExecutiveInternalsManager::lock_obs()
 {
     mtx_obs.lock();
 };
 
-void Path::unlock_obs()
+void ExecutiveInternalsManager::unlock_obs()
 {
     mtx_obs.unlock();
 }

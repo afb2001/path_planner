@@ -59,13 +59,14 @@ class State
 {
 
   public:
-    double x, y, heading, speed, otime;
+    // x, y in meters, heading in radians east of north, speed in m/s, time in seconds
+    double x, y, heading, speed, time;
     State(double x, double y, double heading, double speed, double otime)
-        : x(x), y(y), heading(heading), speed(speed), otime(otime){};
+        : x(x), y(y), heading(heading), speed(speed), time(otime){};
     State(int value)
-        : x(value), y(value), heading(value), speed(value), otime(value){};
+        : x(value), y(value), heading(value), speed(value), time(value){};
     State()
-        : x(-1), y(-1), heading(-1), speed(-1), otime(-1){};
+        : x(-1), y(-1), heading(-1), speed(-1), time(-1){};
 
     void set(double &newx, double &newy, double &newheading, double &newspeed, double &newtime)
     {
@@ -73,7 +74,7 @@ class State
         y = newy;
         heading = newheading;
         speed = newspeed;
-        otime = newtime;
+        time = newtime;
     }
 
     void set(State other)
@@ -82,7 +83,7 @@ class State
         y = other.y;
         heading = other.heading;
         speed = other.speed;
-        otime = other.otime;
+        time = other.time;
     }
 
     void set(path_planner::StateMsg other)
@@ -91,7 +92,7 @@ class State
         y = other.y;
         heading = other.heading;
         speed = other.speed;
-        otime = other.time;
+        time = other.time;
     }
 
     void setEstimate(double timeinterval, State &object)
@@ -101,7 +102,7 @@ class State
         y = object.y + cos(object.heading) * displacement;
         heading = object.heading;
         speed = object.speed;
-        otime = object.otime + 1;
+        time = object.time + 1;
          
     }
 
@@ -112,28 +113,28 @@ class State
         state.y = y;
         state.heading = heading;
         state.speed = speed;
-        state.time = otime;
+        state.time = time;
         return state;
     }
 
     std::string toString()
     {
-        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(otime);
+        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(time);
     }
 
     std::string toString() const
     {
-        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(otime);
+        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(time);
     }
 
     void print()
     {
-        std::cout << x << " " << y << " " << heading << " " << speed << " " << otime << std::endl;
+        std::cout << x << " " << y << " " << heading << " " << speed << " " << time << std::endl;
     }
 
     void printerror()
     {
-        std::cerr << x << " " << y << " " << heading << " " << speed << " " << otime << std::endl;
+        std::cerr << x << " " << y << " " << heading << " " << speed << " " << time << std::endl;
     }
 };
 

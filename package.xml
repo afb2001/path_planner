@@ -28,6 +28,7 @@
   <exec_depend>project11</exec_depend>
   <depend>actionlib</depend>
   <depend>actionlib_msgs</depend>
+  <depend>dubins_curves</depend>
   <export>
   </export>
 </package>

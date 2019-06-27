@@ -6,6 +6,7 @@
 #include "communication.h"
 #include "path.h"
 #include "../trajectory_publisher.h"
+#include "../planner/Planner.h"
 
 
 class Executive
@@ -42,11 +43,12 @@ private:
     mutex m_PauseMutex;
     condition_variable m_PauseCV;
 
-    Communication communication_With_Planner;
+    std::unique_ptr<Planner> m_Planner;
+//    Communication communication_With_Planner;
 
     TrajectoryPublisher* m_TrajectoryPublisher;
 
-    bool plannerIsDead();
+//    bool plannerIsDead();
 
     static double getCurrentTime();
 

@@ -117,10 +117,10 @@ class State
         return state;
     }
 
-    std::string toString()
-    {
-        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(time);
-    }
+//    std::string toString()
+//    {
+//        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(time);
+//    }
 
     std::string toString() const
     {
@@ -135,6 +135,42 @@ class State
     void printerror()
     {
         std::cerr << x << " " << y << " " << heading << " " << speed << " " << time << std::endl;
+    }
+
+    // from the Go version of State:
+
+    double headingTo(const State& other) {
+        double dx = other.x - x;
+        double dy = other.y - y;
+        double h = M_PI_2 - atan2(dy, dx); // TODO! -- is this correct?
+        if (h < 0) h += 2 * M_PI;
+        return h;
+    }
+
+    void setHeadingTowards(const State& other) {
+        heading = headingTo(other);
+        if (heading < 0) heading += 2 * M_PI;
+    }
+
+    /**
+     * Heading north of east. Val called it "yaw".
+     * @return
+     */
+    double yaw() const {
+        double h = M_PI_2 - heading;
+        if (h < 0) h += 2 * M_PI;
+        return h;
+    }
+
+    double timeUntil(const State& other) const {
+        return other.time - time;
+    }
+
+    inline bool operator==(const State& rhs) const {
+        return x == rhs.x &&
+                y == rhs.y &&
+                heading == rhs.heading &&
+                time == rhs.time;
     }
 };
 

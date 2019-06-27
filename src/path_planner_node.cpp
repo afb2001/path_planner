@@ -1,7 +1,4 @@
 #include <utility>
-
-#include <utility>
-
 #include "ros/ros.h"
 #include "geographic_msgs/GeoPointStamped.h"
 #include "geographic_msgs/GeoPath.h"
@@ -18,7 +15,6 @@
 #include "path_planner/path_plannerAction.h"
 #include "actionlib/server/simple_action_server.h"
 #include "path_planner/Trajectory.h"
-
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -28,9 +24,9 @@
 #include <thread>
 #include <signal.h>
 #include <geometry_msgs/PoseStamped.h>
-
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
+#include "path_planner/TrajectoryDisplayer.h"
 
 
 /**
@@ -38,7 +34,7 @@
  * For now that system includes a controller, which conveys controls
  * to this node through the ControlReceiver interface.
  */
-class PathPlanner: public TrajectoryPublisher
+class PathPlanner: public TrajectoryDisplayer, public TrajectoryPublisher
 {
 public:
     explicit PathPlanner(std::string name):
@@ -190,19 +186,37 @@ public:
         obstacle.heading = inmsg->cog;
         obstacle.speed = inmsg->sog;
 
+        obstacle.time = inmsg->header.stamp.toNSec() / 1.0e9;
+
         m_Executive->updateDyamicObstacle(inmsg->mmsi, obstacle);
     }
 
-    void publishTrajectory(State* trajectory) final
+    void publishTrajectory(vector<State> trajectory) final
     {
         path_planner::Trajectory reference;
-        for (int i = 0; i < 5; i++) {
+        for (State s : trajectory) {
             // explicit conversion to make this cleaner
-            reference.states.push_back((path_planner::StateMsg)trajectory[i]);
+            reference.states.push_back((path_planner::StateMsg)s);
         }
         m_reference_trajectory_pub.publish(reference);
-        delete[] trajectory;
     }
+
+    void displayTrajectory(vector<State> trajectory, bool plannerTrajectory) override
+    {
+        TrajectoryDisplayer::displayTrajectory(trajectory, plannerTrajectory);
+    }
+
+//    State getEstimatedState(double desiredTime) final
+//    {
+//        mpc::EstimateStateRequest req;
+//        mpc::EstimateStateResponse res;
+//        req.desiredTime = desiredTime;
+//        if (m_estimate_state_client.call(req, res)) {
+//            return State(res.state);
+//        }
+//        cerr << "EstimateState service call failed" << endl;
+//        return State(-1);
+//    }
 
     void allDone() final
     {

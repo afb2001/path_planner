@@ -107,6 +107,13 @@ void ExecutiveInternalsManager::update_newpath(char currentString[], double &bou
         newpath.emplace_back(tempx, tempy, tempheading, tempspeed, temptime);
 };
 
+void ExecutiveInternalsManager::setNewPath(vector<State> trajectory)
+{
+    mtx_path.lock();
+    newpath = std::move(trajectory);
+    mtx_path.unlock();
+}
+
 //below for dynamic obs update
 //int Path::update_dynamic_obs(char ObsString[], int byte, int i)
 //{
@@ -317,4 +324,13 @@ void ExecutiveInternalsManager::lock_obs()
 void ExecutiveInternalsManager::unlock_obs()
 {
     mtx_obs.unlock();
+}
+
+list<point> ExecutiveInternalsManager::getNewlyCovered() {
+    return newcover;
+}
+
+State ExecutiveInternalsManager::getStart() {
+    findStart();
+    return next_start;
 }

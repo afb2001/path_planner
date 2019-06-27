@@ -40,11 +40,10 @@ class ExecutiveInternalsManager
     //below for reading the path from planner
     void update_newpath(char currentString[], double &bound);
 
+    void setNewPath(vector<State> trajectory);
 
     //below for dynamic obs update
-//    int update_dynamic_obs(char ObsString[], int byte, int i);
-
-void updateDynamicObstacle(uint32_t mmsi, State obstacle);
+    void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
     //below for current location update
     void update_current(const char currentString[], int byte);
@@ -71,6 +70,10 @@ void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
     //below construct the request string
     void get_newcovered(string &s);
+
+    list<point> getNewlyCovered();
+
+    State getStart();
 
     void getDynamicObs(string &s);
 

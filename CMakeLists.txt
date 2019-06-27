@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(path_planner)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g -O0")
 
 add_compile_options(-std=c++11)
 
@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
         genmsg
         actionlib_msgs
         actionlib
+        dubins_curves
         )
 
 add_message_files(
@@ -36,20 +37,23 @@ catkin_package(
 include_directories(
         ${catkin_INCLUDE_DIRS}
         ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}/src/executive
+        ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}/src/planner/*
+        ${dubinscurves_INCLUDE_DIRS}
         include
 )
-
-#add_subdirectory(src/executive)
 
 add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp
         src/executive/executive.cpp
         src/executive/path.cpp
-        src/executive/communication.cpp)
-
-#add_library(Path src/executive/path.cpp)
-#add_library(Communication src/executive/communication.cpp)
-#add_library(Executive src/executive/executive.cpp)
-#add_library(Controller src/executive/controller.cpp)
+        src/executive/communication.cpp
+        src/planner/Planner.cpp src/planner/Planner.h
+        src/planner/common/Map.cpp src/planner/common/Map.h
+        src/planner/search/Vertex.cpp src/planner/search/Vertex.h
+        src/planner/search/Edge.cpp src/planner/search/Edge.h
+        src/planner/common/DynamicObstacles.cpp src/planner/common/DynamicObstacles.h
+        src/planner/search/DubinsIntegration.cpp src/planner/search/DubinsIntegration.h
+        src/planner/common/Path.cpp src/planner/common/Path.h
+        src/planner/common/Plan.cpp src/planner/common/Plan.h)
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp)
@@ -58,13 +62,19 @@ add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp)
 
 target_link_libraries(${PROJECT_NAME}_node
         ${catkin_LIBRARIES}
-#        Path
-#        Communication
-#        Executive
-#        Controller
+        dubins
         )
 
-#target_link_libraries(Controller Path)
+catkin_add_gtest(test_planner test/planner/test_planner.cpp src/planner/Planner.cpp
+        src/planner/common/Map.cpp src/planner/common/Map.h
+        src/planner/search/Vertex.cpp src/planner/search/Vertex.h
+        src/planner/search/Edge.cpp src/planner/search/Edge.h
+        src/planner/common/DynamicObstacles.cpp src/planner/common/DynamicObstacles.h
+        src/planner/search/DubinsIntegration.cpp src/planner/search/DubinsIntegration.h
+        src/planner/common/Path.cpp src/planner/common/Path.h
+        src/planner/common/Plan.cpp src/planner/common/Plan.h)
+
+target_link_libraries(test_planner dubins)
 
 ## Install project namespaced headers
 install(DIRECTORY include/${PROJECT_NAME}

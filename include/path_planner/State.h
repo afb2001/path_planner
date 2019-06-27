@@ -67,6 +67,8 @@ class State
         : x(value), y(value), heading(value), speed(value), time(value){};
     State()
         : x(-1), y(-1), heading(-1), speed(-1), time(-1){};
+    State(const path_planner::StateMsg& other)
+        : State(other.x, other.y, other.heading, other.speed, other.time) {};
 
     void set(double &newx, double &newy, double &newheading, double &newspeed, double &newtime)
     {
@@ -115,6 +117,26 @@ class State
         state.speed = speed;
         state.time = time;
         return state;
+    }
+
+    /**
+     * Get the score of another state.
+     *
+     * This is meant for doing MPC.
+     *
+     * Note: squared distance
+     *
+     * TODO! -- should include heading distance
+     */
+    double getDistanceScore(const State &other) const
+    {
+        double timeDistance = time - other.time;
+        double headingDistance = fabs(fmod((heading - other.heading), 2 * M_PI) / 4);
+        double speedDifference = fabs(speed - other.speed) / 2;
+        double displacement = timeDistance * other.speed;
+        double dx = x - (other.x + sin(other.heading)*displacement);
+        double dy = y - (other.y + cos(other.heading)*displacement);
+        return (dx * dx + dy * dy) + headingDistance + speedDifference; // how do you score headings??
     }
 
 //    std::string toString()

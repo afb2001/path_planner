@@ -24,6 +24,9 @@
 #include <thread>
 #include <signal.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <mpc/EstimateStateRequest.h>
+#include <mpc/EstimateStateResponse.h>
+#include <mpc/EstimateState.h>
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
 #include "path_planner/TrajectoryDisplayer.h"
@@ -31,8 +34,6 @@
 
 /**
  * Node to act as interface between ROS and path planning system.
- * For now that system includes a controller, which conveys controls
- * to this node through the ControlReceiver interface.
  */
 class PathPlanner: public TrajectoryDisplayer, public TrajectoryPublisher
 {
@@ -44,6 +45,7 @@ public:
     m_current_heading = 0;
 
     m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
+    m_estimate_state_client = m_node_handle.serviceClient<mpc::EstimateState>("/mpc/estimate_state");
 
     m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
     m_reference_trajectory_pub = m_node_handle.advertise<path_planner::Trajectory>("/reference_trajectory",1);
@@ -206,17 +208,19 @@ public:
         TrajectoryDisplayer::displayTrajectory(trajectory, plannerTrajectory);
     }
 
-//    State getEstimatedState(double desiredTime) final
-//    {
-//        mpc::EstimateStateRequest req;
-//        mpc::EstimateStateResponse res;
-//        req.desiredTime = desiredTime;
-//        if (m_estimate_state_client.call(req, res)) {
-//            return State(res.state);
-//        }
-//        cerr << "EstimateState service call failed" << endl;
-//        return State(-1);
-//    }
+    State getEstimatedState(double desiredTime) final
+    {
+        mpc::EstimateStateRequest req;
+        mpc::EstimateStateResponse res;
+        req.desiredTime = desiredTime;
+        if (m_estimate_state_client.call(req, res)) {
+            cerr << "Asking planner to plan from " << res.state.x << ", " << res.state.y << endl;
+//            cerr << "and are currently in state  " <<
+            return State(res.state);
+        }
+        cerr << "EstimateState service call failed" << endl;
+        return State(-1);
+    }
 
     void allDone() final
     {
@@ -253,6 +257,7 @@ private:
     ros::Subscriber m_contact_sub;
 
     ros::ServiceClient m_lat_long_to_map_client;
+    ros::ServiceClient m_estimate_state_client;
 
     // handle on Executive
     Executive* m_Executive;

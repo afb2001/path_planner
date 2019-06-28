@@ -41,8 +41,8 @@ void ExecutiveInternalsManager::replacePath(State &objectPar)
             if (i.time > objectPar.time)
                 path.emplace_back(i.x + diffx, i.y + diffy, i.heading, i.speed, i.time);
 
-        if (!debug)
-            path.insert(path.end(), newpath.begin(), newpath.end());
+//        if (!debug)
+//            path.insert(path.end(), newpath.begin(), newpath.end());
     }
     newpath.clear();
 };

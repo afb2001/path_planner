@@ -36,7 +36,7 @@ public:
 
     double computeApproxCost(double maxSpeed, double maxTurningRadius);
 
-    void smooth();
+    void smooth(Map* map, DynamicObstacles* obstacles, double maxSpeed, double maxTurningRadius);
 
     Plan getPlan(double maxSpeed);
 

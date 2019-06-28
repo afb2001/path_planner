@@ -28,7 +28,7 @@ protected:
 
     Map m_Map;
 
-    Plan tracePlan(std::shared_ptr<Vertex> v, bool smoothing);
+    Plan tracePlan(std::shared_ptr<Vertex> v, bool smoothing, DynamicObstacles* obstacles);
 };
 
 

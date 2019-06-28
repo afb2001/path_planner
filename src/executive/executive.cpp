@@ -165,12 +165,25 @@ void Executive::requestPath()
         auto newlyCoveredList = path.getNewlyCovered();
         vector<pair<double, double>> newlyCovered;
         for (auto p : newlyCoveredList) newlyCovered.emplace_back(p.x, p.y);
-        auto plan = m_Planner->plan(newlyCovered, path.getStart(), DynamicObstacles());
+        vector<State> plan;
+        try {
+            // change this line to use controller's starting estimate
+            plan = m_Planner->plan(newlyCovered, path.getStart(), DynamicObstacles());
+//            plan = m_Planner->plan(newlyCovered, m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1), DynamicObstacles());
+        } catch (...) {
+            cerr << "Exception thrown while planning; pausing" << endl;
+            pause();
+            throw;
+        }
 
         path.setNewPath(plan);
 //        m_TrajectoryPublisher->publishTrajectory(plan);
         m_TrajectoryPublisher->displayTrajectory(plan, true);
-
+//        cerr << "Plan: " << '\n';
+//        for (auto s : plan) {
+//            cerr << s.toString() << '\n';
+//        }
+//        cerr << endl;
         end = getCurrentTime();
         sleeptime = (end - start <= 1) ? ((int)((1 - (end - start)) * 1000)) : 0;
 

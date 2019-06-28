@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <utility>
+#include "path_planner/State.h"
 
 class Path {
 public:
@@ -23,6 +24,10 @@ public:
     void remove(const std::pair<double, double> &point);
 
     void remove(const std::vector<std::pair<double, double>>& points);
+
+    int size() const;
+
+    double maxDistanceFrom(const State& state);
 
 private:
     std::vector<std::pair<double, double>> m_Points;

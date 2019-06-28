@@ -23,7 +23,7 @@ public:
      * @param desiredTime the desired time for the estimated state
      * @return an estimated state at desiredTime
      */
-//    virtual State getEstimatedState(double desiredTime) = 0;
+    virtual State getEstimatedState(double desiredTime) = 0;
 };
 
 

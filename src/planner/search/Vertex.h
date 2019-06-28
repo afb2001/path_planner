@@ -6,14 +6,11 @@
 #include "Edge.h"
 #include "../common/Path.h"
 
+#define HEURISTIC "maxD"
+
 class Edge;
 class Vertex {
 public:
-    State state;
-    std::shared_ptr<Edge> parentEdge; // vertex owns its parent edge
-    Path uncovered;
-    double currentCost;
-    bool currentCostIsSet;
 
     /**
      * Construct the root vertex (no parent edge).
@@ -35,7 +32,6 @@ public:
      * @param next the ending state
      * @return a vertex connected by a new edge to @start
      */
-//    static std::shared_ptr<Vertex> connect(const std::weak_ptr<Vertex>& start, const State& next);
     static std::shared_ptr<Vertex> connect(const std::shared_ptr<Vertex>& start, const State& next);
 
     ~Vertex();
@@ -43,7 +39,37 @@ public:
     std::shared_ptr<Vertex> parent() const;
 
     bool isRoot() const;
+
+    /**
+     * Estimate the heuristic value at a given state, assuming we don't cover anything along this edge to it.
+     * Why would this be useful? We'll see I guess
+     * @param destination the destination state
+     * @return an estimate of the heuristic value at that state (from here)
+     */
+    double estimateApproxToGo(const State& destination);
+
+    double computeApproxToGo();
+
+    void setState(const State& state);
+
+    void setParentEdge(const std::shared_ptr<Edge>& parentEdge);
+
+    void setUncovered(const Path& uncovered);
+
+    State& state();
+
+    const std::shared_ptr<Edge>& parentEdge() const;
+
+    Path& uncovered();
+
+    double currentCost() const;
+
+    double approxToGo();
 private:
+    State m_State;
+    std::shared_ptr<Edge> m_ParentEdge; // vertex owns its parent edge
+    Path m_Uncovered;
+    double m_CurrentCost = -1;
     double m_ApproxCost;
     double m_ApproxToGo;
 };

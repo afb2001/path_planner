@@ -26,12 +26,12 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles, const Path& 
     if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
     auto newlyCovered = d.computeEdgeCollisionPenaltyAndNewlyCovered(dubinsPath, map, obstacles, toCover,
                                                                      collisionPenalty);
-    end()->state.time = start()->state.time + dubins_path_length(&dubinsPath) / maxSpeed;
+    end()->state().time = start()->state().time + dubins_path_length(&dubinsPath) / maxSpeed;
 
-    end()->uncovered.clear();
-    for (auto p : start()->uncovered.get()) {
+    end()->uncovered().clear();
+    for (auto p : start()->uncovered().get()) {
         if (std::find(newlyCovered.begin(), newlyCovered.end(), p) != newlyCovered.end()) {
-            end()->uncovered.add(p);
+            end()->uncovered().add(p);
         }
     }
     m_TrueCost = netTime() * TIME_PENALTY + collisionPenalty;
@@ -42,8 +42,8 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles, const Path& 
 }
 
 double Edge::computeApproxCost(double maxSpeed, double maxTurningRadius) {
-    double q0[3] = {start()->state.x, start()->state.y, start()->state.yaw()};
-    double q1[3] = {end()->state.x, end()->state.y, end()->state.yaw()};
+    double q0[3] = {start()->state().x, start()->state().y, start()->state().yaw()};
+    double q1[3] = {end()->state().x, end()->state().y, end()->state().yaw()};
     int err = dubins_shortest_path(&dubinsPath, q0, q1, maxTurningRadius);
     if (err != EDUBOK) {
         std::cerr << "Encountered an error in the Dubins library" << std::endl;
@@ -54,16 +54,25 @@ double Edge::computeApproxCost(double maxSpeed, double maxTurningRadius) {
 }
 
 double Edge::netTime() {
-    return end()->state.time - start()->state.time;
+    return end()->state().time - start()->state().time;
 }
 
-void Edge::smooth() {
-
+void Edge::smooth(Map* map, DynamicObstacles* obstacles, double maxSpeed, double maxTurningRadius) {
+    if (start()->isRoot()) return;
+    double parentCost = start()->parentEdge()->m_TrueCost; // should be up to date in A*, check for BIT*
+    auto smoothed = Vertex::connect(start()->parent(), end()->state());
+    double smoothedCost = smoothed->parentEdge()->computeTrueCost(map, obstacles, start()->uncovered(), maxSpeed, maxTurningRadius);
+    if (smoothedCost < parentCost + m_TrueCost && smoothed->approxToGo() <= end()->approxToGo()) {
+        // Should be memory-safe, as smoothed will delete the old vertex when it goes out of scope, and all pointers
+        // to *end() will still be valid
+        // TODO! -- apparently this is actually broken (something throws std::bar_weak_ptr when smoothing runs)
+        std::swap(*(smoothed.get()), *(end().get()));
+    }
 }
 
 Plan Edge::getPlan(double maxSpeed) {
     DubinsIntegration d;
-    return d.getPlan(start()->state, dubinsPath, maxSpeed);
+    return d.getPlan(start()->state(), dubinsPath, maxSpeed);
 }
 
 std::shared_ptr<Vertex> Edge::setEnd(const State &state) {

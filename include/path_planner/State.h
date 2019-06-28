@@ -194,6 +194,14 @@ class State
                 heading == rhs.heading &&
                 time == rhs.time;
     }
+
+    double distanceTo(const State& other) const {
+        return distanceTo(other.x, other.y);
+    }
+
+    double distanceTo(double x1, double y1) const {
+        return sqrt((this->x - x1)*(this->x - x1) + (this->y - y1)*(this->y - y1));
+    }
 };
 
 #endif

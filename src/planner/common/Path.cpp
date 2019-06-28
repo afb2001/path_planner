@@ -38,3 +38,16 @@ std::vector<std::pair<double, double>> Path::get() const {
 void Path::add(double x, double y) {
     m_Points.emplace_back(x, y);
 }
+
+int Path::size() const {
+    return m_Points.size();
+}
+
+double Path::maxDistanceFrom(const State &state) {
+    double max = 0;
+    for (auto p : m_Points) {
+        auto d = state.distanceTo(p.first, p.second);
+        if (max < d) max = d;
+    }
+    return max;
+}

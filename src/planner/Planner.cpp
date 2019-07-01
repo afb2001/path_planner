@@ -8,7 +8,7 @@ using std::vector;
 using std::pair;
 using std::shared_ptr;
 
-Planner::Planner(double maxSpeed, double maxTurningRadius, Map staticMap) {
+Planner::Planner(double maxSpeed, double maxTurningRadius, const Map& staticMap) {
     m_MaxSpeed = maxSpeed;
     m_MaxTurningRadius = maxTurningRadius;
     m_Map = staticMap;
@@ -30,8 +30,8 @@ std::vector<State> Planner::plan(const vector<pair<double, double>> &newlyCovere
     shared_ptr<Vertex> prev(nullptr);
     cur->setUncovered(m_PointsToCover);
     vector<State> pointsWithHeadings; // points to cover with headings
-    for (auto it = m_PointsToCover.get().begin(); it != m_PointsToCover.get().end(); it++) {
-        pointsWithHeadings.emplace_back(it->first, it->second, 0, m_MaxSpeed, 0);
+    for (auto & p : m_PointsToCover.get()) {
+        pointsWithHeadings.emplace_back(p.first, p.second, 0, m_MaxSpeed, 0);
         if (pointsWithHeadings.size() > 1) {
             (pointsWithHeadings.end() - 2)->setHeadingTowards(pointsWithHeadings.back());
         }
@@ -39,13 +39,13 @@ std::vector<State> Planner::plan(const vector<pair<double, double>> &newlyCovere
     for (auto p : pointsWithHeadings) {
         prev = cur;
         cur = Vertex::connect(cur, p);
-        cur->parentEdge()->computeTrueCost(&m_Map, &dynamicObstacles, m_PointsToCover, m_MaxSpeed, m_MaxTurningRadius);
+        cur->parentEdge()->computeTrueCost(&m_Map, &dynamicObstacles, m_MaxSpeed, m_MaxTurningRadius);
     }
     auto p = tracePlan(cur, false, &dynamicObstacles);
     return p.get();
 }
 
-Plan Planner::tracePlan(shared_ptr<Vertex> v, bool smoothing, DynamicObstacles* obstacles) {
+Plan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, DynamicObstacles* obstacles) {
     vector<shared_ptr<Edge>> branch;
     if (!v) {
         return Plan();

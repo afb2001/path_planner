@@ -22,7 +22,7 @@ Edge::Edge(std::shared_ptr<Vertex> start, const State& end) : Edge(std::move(sta
     setEnd(end);
 }
 
-double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles, const Path& toCover,
+double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
                              double maxSpeed, double maxTurningRadius) {
     double collisionPenalty;
     if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
@@ -32,7 +32,9 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles, const Path& 
     double lengthSoFar = 0;
     double length = dubins_path_length(&dubinsPath);
     double obstacleDistance = 0;
-    std::vector<std::pair<double, double>> newlyCovered1;
+    std::vector<std::pair<double, double>> newlyCovered;
+
+    // collision check along the curve (and watch out for newly covered points, too)
     while (lengthSoFar < length) {
         dubins_path_sample(&dubinsPath, lengthSoFar, q);
         if (obstacleDistance > DUBINS_INCREMENT) {
@@ -52,22 +54,23 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles, const Path& 
                 }
             }
         }
-        for (auto p : toCover.get()) {
+        for (auto p : start()->uncovered().get()) {
             if ((p.first - q[0]) * (p.first - q[0]) + (p.second - q[1]) * (p.second - q[1]) < COVERAGE_THRESHOLD * COVERAGE_THRESHOLD) {
-                newlyCovered1.push_back(p);
+                newlyCovered.push_back(p);
             }
         }
         lengthSoFar += DUBINS_INCREMENT;
 
     }
-    if (!newlyCovered1.empty()) {
-        std::sort(newlyCovered1.begin(), newlyCovered1.end());
-        newlyCovered1.erase(std::unique(newlyCovered1.begin(), newlyCovered1.end()), newlyCovered1.end());
+    if (!newlyCovered.empty()) {
+        std::sort(newlyCovered.begin(), newlyCovered.end());
+        newlyCovered.erase(std::unique(newlyCovered.begin(), newlyCovered.end()), newlyCovered.end());
     }
-    result = newlyCovered1;
-    auto newlyCovered = result;
+
+    // set end's state's time
     end()->state().time = start()->state().time + dubins_path_length(&dubinsPath) / maxSpeed;
 
+    // set end's uncovered list
     end()->uncovered().clear();
     for (auto p : start()->uncovered().get()) {
         if (std::find(newlyCovered.begin(), newlyCovered.end(), p) != newlyCovered.end()) {
@@ -101,7 +104,7 @@ void Edge::smooth(Map* map, DynamicObstacles* obstacles, double maxSpeed, double
     if (start()->isRoot()) return;
     double parentCost = start()->parentEdge()->m_TrueCost; // should be up to date in A*, check for BIT*
     auto smoothed = Vertex::connect(start()->parent(), end()->state());
-    double smoothedCost = smoothed->parentEdge()->computeTrueCost(map, obstacles, start()->uncovered(), maxSpeed, maxTurningRadius);
+    double smoothedCost = smoothed->parentEdge()->computeTrueCost(map, obstacles, maxSpeed, maxTurningRadius);
     if (smoothedCost < parentCost + m_TrueCost && smoothed->approxToGo() <= end()->approxToGo()) {
         // Should be memory-safe, as smoothed will delete the old vertex when it goes out of scope, and all pointers
         // to *end() will still be valid

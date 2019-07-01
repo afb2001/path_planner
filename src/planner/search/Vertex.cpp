@@ -67,4 +67,9 @@ double Vertex::approxToGo() {
     return m_ApproxToGo;
 }
 
+int Vertex::getDepth() const {
+    if (isRoot()) return 0;
+    return 1 + parent()->getDepth();
+}
+
 Vertex::~Vertex() = default;

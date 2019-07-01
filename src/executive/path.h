@@ -29,9 +29,7 @@ class ExecutiveInternalsManager
         actions.emplace_back(-1);
     };
 
-    ~ExecutiveInternalsManager(){
-        delete [] Obstacles;
-    };
+    ~ExecutiveInternalsManager() = default;
 
     void replacePath(State &objectPar);
     //lock this with update info
@@ -64,7 +62,6 @@ class ExecutiveInternalsManager
 
     void initialize();
 
-    bool *Obstacles = 0;
     bool debug;
     
 

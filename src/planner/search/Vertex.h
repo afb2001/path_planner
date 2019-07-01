@@ -65,6 +65,8 @@ public:
     double currentCost() const;
 
     double approxToGo();
+
+    int getDepth() const;
 private:
     State m_State;
     std::shared_ptr<Edge> m_ParentEdge; // vertex owns its parent edge

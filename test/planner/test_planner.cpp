@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "../../src/planner/Planner.h"
 #include "../../src/planner/search/Edge.h"
+#include "../../src/planner/SamplingBasedPlanner.h"
 //extern "C" {
 //#include "dubins.h"
 //}
@@ -34,7 +35,7 @@ TEST(UnitTests, DubinsIntegrationComputeEdgeCostTest) {
     DynamicObstacles dynamicObstacles;
     Path path;
     path.add(0, 10);
-    auto c = e->computeTrueCost(&map, &dynamicObstacles, path, 1, 2);
+    auto c = e->computeTrueCost(&map, &dynamicObstacles, 1, 2);
     EXPECT_DOUBLE_EQ(c, a);
 }
 
@@ -73,6 +74,19 @@ TEST(PlannerTests, PointToPointTest1) {
     auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstacles());
     for (auto s : plan) cerr << s.toString() << endl;
 }
+
+TEST(PlannerTests, UCSTest1) {
+    vector<pair<double, double>> points;
+    points.emplace_back(0, 10);
+    points.emplace_back(0, 20);
+    points.emplace_back(0, 30);
+    SamplingBasedPlanner planner(2.5, 8, Map());
+    planner.addToCover(points);
+    State start(0, 0, 0, 2.5, 1);
+    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstacles());
+    for (auto s : plan) cerr << s.toString() << endl;
+}
+
 
 int main(int argc, char **argv){
     testing::InitGoogleTest(&argc, argv);

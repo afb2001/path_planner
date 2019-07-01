@@ -1,20 +1,16 @@
 #include <gtest/gtest.h>
 #include "../../src/planner/Planner.h"
-#include "../../src/planner/search/DubinsIntegration.h"
-#include "dubins.h"
+#include "../../src/planner/search/Edge.h"
+//extern "C" {
+//#include "dubins.h"
+//}
 
 using std::vector;
 using std::pair;
 using std::cerr;
 using std::endl;
 
-TEST(UnitTests, ConstructDubinsIntegrationTest) {
-    DubinsIntegration d;
-
-}
-
 TEST(UnitTests, DubinsIntegrationMakePlanTest) {
-    DubinsIntegration d;
     State s1(0, 0, 0, 1, 1);
     State s2(0, 5, 0, 1, 6);
     auto v1 = std::make_shared<Vertex>(s1);
@@ -22,26 +18,24 @@ TEST(UnitTests, DubinsIntegrationMakePlanTest) {
     auto e = v2->parentEdge();
     auto a = e->computeApproxCost(1, 2);
     EXPECT_DOUBLE_EQ(a, 5);
-    auto plan = d.getPlan(e->start()->state(), e->dubinsPath, 1);
+    auto plan = e->getPlan(1);
     EXPECT_TRUE(plan.getRef().front() == s1);
     EXPECT_GE(plan.getRef().back().y, 4.5); // because of plan density
 }
 
 TEST(UnitTests, DubinsIntegrationComputeEdgeCostTest) {
-    DubinsIntegration d;
     State s1(0, 0, 0, 1, 1);
     State s2(0, 5, 0, 1, 6);
     auto v1 = std::make_shared<Vertex>(s1);
     auto v2 = Vertex::connect(v1, s2);
     auto e = v2->parentEdge();
-    e->computeApproxCost(1, 2);
+    auto a = e->computeApproxCost(1, 2);
     Map map;
     DynamicObstacles dynamicObstacles;
     Path path;
     path.add(0, 10);
-    double c, t;
-    auto newlyCovered = d.computeEdgeCollisionPenaltyAndNewlyCovered(e->dubinsPath, &map, &dynamicObstacles, path, c);
-    EXPECT_DOUBLE_EQ(c, 0);
+    auto c = e->computeTrueCost(&map, &dynamicObstacles, path, 1, 2);
+    EXPECT_DOUBLE_EQ(c, a);
 }
 
 TEST(PlannerTests, DubinsWalkTest) {

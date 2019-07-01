@@ -51,7 +51,6 @@ add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp
         src/planner/search/Vertex.cpp src/planner/search/Vertex.h
         src/planner/search/Edge.cpp src/planner/search/Edge.h
         src/planner/common/DynamicObstacles.cpp src/planner/common/DynamicObstacles.h
-        src/planner/search/DubinsIntegration.cpp src/planner/search/DubinsIntegration.h
         src/planner/common/Path.cpp src/planner/common/Path.h
         src/planner/common/Plan.cpp src/planner/common/Plan.h)
 
@@ -70,7 +69,6 @@ catkin_add_gtest(test_planner test/planner/test_planner.cpp src/planner/Planner.
         src/planner/search/Vertex.cpp src/planner/search/Vertex.h
         src/planner/search/Edge.cpp src/planner/search/Edge.h
         src/planner/common/DynamicObstacles.cpp src/planner/common/DynamicObstacles.h
-        src/planner/search/DubinsIntegration.cpp src/planner/search/DubinsIntegration.h
         src/planner/common/Path.cpp src/planner/common/Path.h
         src/planner/common/Plan.cpp src/planner/common/Plan.h)
 

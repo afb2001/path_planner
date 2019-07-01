@@ -121,18 +121,15 @@ void Executive::sendAction() {
 //        cerr << "sendAction released the lock" << endl;
         auto actions = path.getActions();
 //        cerr << "sendAction got path actions" << endl;
-        if (actions == nullptr)
+        if (actions.empty())
             continue;
 //        cerr << "and they aren't null" << endl;
-        vector<State> a;
-        for (int i = 0; i < 5; i++) a.push_back(actions[i]);
-        m_TrajectoryPublisher->publishTrajectory(a);
+        m_TrajectoryPublisher->publishTrajectory(actions);
 //        cerr << "sendAction published trajectory" << endl;
         this_thread::sleep_for(std::chrono::milliseconds(sleep));
 
 //        cerr << "sendAction asking if planner is dead" << endl;
 //        if (plannerIsDead()) pause();
-        delete[] actions;
     }
 }
 

@@ -214,7 +214,7 @@ public:
         mpc::EstimateStateResponse res;
         req.desiredTime = desiredTime;
         if (m_estimate_state_client.call(req, res)) {
-            cerr << "Asking planner to plan from " << res.state.x << ", " << res.state.y << endl;
+//            cerr << "Asking planner to plan from " << res.state.x << ", " << res.state.y << endl;
 //            cerr << "and are currently in state  " <<
             return State(res.state);
         }

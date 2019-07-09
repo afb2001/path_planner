@@ -31,7 +31,7 @@ class ExecutiveInternalsManager
 
     ~ExecutiveInternalsManager() = default;
 
-    void replacePath(State &objectPar);
+    void replacePath(State &currentLoc);
     //lock this with update info
     void findStart();
 

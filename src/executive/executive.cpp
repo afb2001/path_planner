@@ -67,9 +67,8 @@ void Executive::sendAction() {
 // fix the moving of start
 void Executive::requestPath()
 {
-    double start, end, time_bound;
-    int numberOfState, sleeptime;
-    char response[1024];
+    double start, end;
+    int sleeptime;
 
     m_InternalsManager.initialize();
 
@@ -96,16 +95,17 @@ void Executive::requestPath()
         vector<State> plan;
         try {
             // change this line to use controller's starting estimate
-//            plan = m_Planner->plan(newlyCovered, path.getStart(), DynamicObstacles());
-            plan = m_Planner->plan(newlyCovered, m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1), DynamicObstacles());
+            plan = m_Planner->plan(newlyCovered, m_InternalsManager.getStart(), DynamicObstacles());
+//            plan = m_Planner->plan(newlyCovered, m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1), DynamicObstacles());
         } catch (...) {
             cerr << "Exception thrown while planning; pausing" << endl;
             pause();
             throw;
         }
 
+        cerr << "Setting new path of length " << plan.size() << endl;
         m_InternalsManager.setNewPath(plan);
-        m_TrajectoryPublisher->publishTrajectory(plan);
+//        m_TrajectoryPublisher->publishTrajectory(plan);
         m_TrajectoryPublisher->displayTrajectory(plan, true);
         end = getCurrentTime();
         sleeptime = (end - start <= 1) ? ((int)((1 - (end - start)) * 1000)) : 0;
@@ -142,9 +142,9 @@ void Executive::startPlanner(string mapFile)
 void Executive::startThreads()
 {
     m_Running = true;
-//    cerr << "Starting thread to publish to controller" << endl;
-//    thread thread_for_controller(thread([=] { sendAction(); }));
-//    thread_for_controller.detach();
+    cerr << "Starting thread to publish to controller" << endl;
+    thread thread_for_controller(thread([=] { sendAction(); }));
+    thread_for_controller.detach();
     cerr << "Starting thread to listen to planner" << endl;
     thread thread_for_planner(thread([=] { requestPath(); }));
     thread_for_planner.detach();

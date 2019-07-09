@@ -9,10 +9,11 @@
 #include "../common/Map.h"
 #include "../common/DynamicObstacles.h"
 #include "../common/Path.h"
+#include <robust_dubins/RobustDubins.h>
 
-extern "C" {
-#include <dubins.h>
-}
+//extern "C" {
+//#include <dubins.h>
+//}
 
 Edge::Edge(std::shared_ptr<Vertex> start) {
     this->m_Start = std::move(start);
@@ -28,26 +29,27 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
     if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
     double& penalty = collisionPenalty;
     std::vector<std::pair<double, double>> result;
-    double q[3];
-    double lengthSoFar = 0;
-    double length = dubins_path_length(&dubinsPath);
-    double obstacleDistance = 0;
+    std::vector<double> x,y,h; //
+    dubinsPath.computePathHistory();
+    x = dubinsPath.get_xHistory();
+    y = dubinsPath.get_yHistory();
+    double obstacleDistance = 0, lengthSoFar = 0;
     std::vector<std::pair<double, double>> newlyCovered;
-
-    // collision check along the curve (and watch out for newly covered points, too)
-    while (lengthSoFar < length) {
-        dubins_path_sample(&dubinsPath, lengthSoFar, q);
+    for (int i = 0; i < x.size(); i++) {
         if (obstacleDistance > DUBINS_INCREMENT) {
             obstacleDistance -= DUBINS_INCREMENT;
         } else {
-            double staticDistance = map->getUnblockedDistance(q[0], q[1]);
+            double staticDistance = map->getUnblockedDistance(x[i], y[i]);
             if (staticDistance <= 0) {
                 penalty += COLLISION_PENALTY;
                 obstacleDistance = 0;
             } else {
-                double dynamicDistance = obstacles->distanceToNearestPossibleCollision(q);
+                // TODO! -- the new Dubins library doesn't make promises about spacing so the times could be off here
+                double dynamicDistance = obstacles->distanceToNearestPossibleCollision(x[i], y[i], maxSpeed,
+                                                                                       start()->state().time +
+                                                                                       lengthSoFar / maxSpeed);
                 if (dynamicDistance <= 0) {
-                    penalty += obstacles->collisionExists(q) * COLLISION_PENALTY;
+                    penalty += obstacles->collisionExists(x[i], y[i], start()->state().time + lengthSoFar / maxSpeed) * COLLISION_PENALTY;
                     obstacleDistance = 0;
                 } else {
                     obstacleDistance = fmin(staticDistance, dynamicDistance);
@@ -55,20 +57,20 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
             }
         }
         for (auto p : start()->uncovered().get()) {
-            if ((p.first - q[0]) * (p.first - q[0]) + (p.second - q[1]) * (p.second - q[1]) < COVERAGE_THRESHOLD * COVERAGE_THRESHOLD) {
+            if ((p.first - x[i]) * (p.first - x[i]) + (p.second - y[i]) * (p.second - y[i]) < COVERAGE_THRESHOLD * COVERAGE_THRESHOLD) {
                 newlyCovered.push_back(p);
             }
         }
         lengthSoFar += DUBINS_INCREMENT;
-
     }
+
     if (!newlyCovered.empty()) {
         std::sort(newlyCovered.begin(), newlyCovered.end());
         newlyCovered.erase(std::unique(newlyCovered.begin(), newlyCovered.end()), newlyCovered.end());
     }
 
     // set end's state's time
-    end()->state().time = start()->state().time + dubins_path_length(&dubinsPath) / maxSpeed;
+    end()->state().time = start()->state().time + dubinsPath.get_cost() / maxSpeed;
 
     // set end's uncovered list
     end()->uncovered().clear();
@@ -85,14 +87,16 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
 }
 
 double Edge::computeApproxCost(double maxSpeed, double maxTurningRadius) {
-    double q0[3] = {start()->state().x, start()->state().y, start()->state().yaw()};
-    double q1[3] = {end()->state().x, end()->state().y, end()->state().yaw()};
-    int err = dubins_shortest_path(&dubinsPath, q0, q1, maxTurningRadius);
-    if (err != EDUBOK) {
-        std::cerr << "Encountered an error in the Dubins library" << std::endl;
-    } else {
-        m_ApproxCost = dubins_path_length(&dubinsPath) / maxSpeed * TIME_PENALTY;
-    }
+    RobustDubins::Problem problem;
+    problem.set_stateInitial(start()->state().x, start()->state().y, start()->state().yaw());
+    problem.set_stateFinal(end()->state().x, end()->state().y, end()->state().yaw());
+    problem.set_minTurningRadius(maxTurningRadius);
+    RobustDubins::Solver solver;
+    solver.set_problemStatement(problem);
+    solver.solve();
+    dubinsPath = solver.get_optimalPath();
+    dubinsPath.set_spacing(DUBINS_INCREMENT); // do this now for computing true cost and getting a plan
+    m_ApproxCost = dubinsPath.get_cost() / maxSpeed * TIME_PENALTY;
     return m_ApproxCost;
 }
 
@@ -114,16 +118,18 @@ void Edge::smooth(Map* map, DynamicObstacles* obstacles, double maxSpeed, double
 }
 
 Plan Edge::getPlan(double maxSpeed) {
-    double q[3];
     double lengthSoFar = 0;
-    double length = dubins_path_length(&dubinsPath);
-    Plan plan1;
-    while (lengthSoFar < length) {
-        dubins_path_sample(&dubinsPath, lengthSoFar, q);
-        plan1.append(State(q[0], q[1], M_PI_2 - q[2], maxSpeed, lengthSoFar / maxSpeed + start()->state().time));
+    Plan plan;
+    std::vector<double> x,y,h; //
+    dubinsPath.computePathHistory();
+    x = dubinsPath.get_xHistory();
+    y = dubinsPath.get_yHistory();
+    h = dubinsPath.get_hHistory();
+    for (int i = 0; i < x.size(); i++) {
+        plan.append(State(x[i], y[i], M_PI_2 - h[i], maxSpeed, lengthSoFar / maxSpeed + start()->state().time));
         lengthSoFar += DUBINS_INCREMENT;
     }
-    return plan1;
+    return plan;
 }
 
 std::shared_ptr<Vertex> Edge::setEnd(const State &state) {

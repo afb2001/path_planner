@@ -2,11 +2,8 @@
 #define SRC_EDGE_H
 
 
-#include <boost/exception/detail/shared_ptr.hpp>
 #include "Vertex.h"
-extern "C" {
-#include "dubins.h"
-}
+#include <robust_dubins/RobustDubins.h>
 #include "../common/Map.h"
 #include "../common/DynamicObstacles.h"
 #include "../common/Path.h"
@@ -21,10 +18,10 @@ extern "C" {
 //int dubins_path_length(DubinsPath*);
 
 class Vertex;
+
 class Edge {
 public:
-    DubinsPath dubinsPath;
-    std::vector<State> plan;
+    RobustDubins::Path dubinsPath;
 
     Edge(std::shared_ptr<Vertex> start);
 

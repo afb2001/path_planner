@@ -24,26 +24,29 @@ bool ExecutiveInternalsManager::checkCollision(double sx, double sy, double ex, 
 //    return false;
 }
 
-void ExecutiveInternalsManager::replacePath(State &objectPar)
+void ExecutiveInternalsManager::replacePath(State &currentLoc)
 {
     if (newpath.size() > 1)
     {
         path.clear();
 
-        double angle = atan2(objectPar.y - next_start.y, objectPar.x - next_start.x);
-        double displacement = (objectPar.time - next_start.time) * objectPar.speed;
-        double diffx = objectPar.x + displacement * cos(angle) - next_start.x;
-        double diffy = objectPar.y + displacement * sin(angle) - next_start.y;
-        if (debug)
+        double angle = atan2(currentLoc.y - next_start.y, currentLoc.x - next_start.x);
+        double displacement = (currentLoc.time - next_start.time) * currentLoc.speed;
+        double diffx = currentLoc.x + displacement * cos(angle) - next_start.x;
+        double diffy = currentLoc.y + displacement * sin(angle) - next_start.y;
+//        if (debug)
             diffx = diffy = 0;
         for (auto i : newpath)
-            if (i.time > objectPar.time)
+            if (i.time > currentLoc.time)
                 path.emplace_back(i.x + diffx, i.y + diffy, i.heading, i.speed, i.time);
+            else cerr << "Did not emplace state at time " << i.time << " because the current time is " << currentLoc.time << endl;
 
 //        if (!debug)
 //            path.insert(path.end(), newpath.begin(), newpath.end());
+    } else {
+        cerr << "no new path" << endl;
     }
-    newpath.clear();
+//    newpath.clear();
 };
 //lock this with update info
 void ExecutiveInternalsManager::findStart()
@@ -71,7 +74,7 @@ void ExecutiveInternalsManager::findStart()
 //                if(index == 0)
 //                {
                 // TODO! -- this gets out of sync with reality
-//                    next_start = path[i];
+                    next_start = path[i];
 //                    cerr << "next start heading: " << next_start.heading << endl;
 //                }
                 index++;
@@ -81,7 +84,7 @@ void ExecutiveInternalsManager::findStart()
     } else {
         if (path.empty()) cerr << "path is empty." << endl;
         else cerr << "path is in the past. If we're just starting this is fine" << endl;
-//        next_start.setEstimate(1, current_loc);
+        next_start.setEstimate(1, current_loc);
         actions.emplace_back(-1);
     }
     mtx_path.unlock();

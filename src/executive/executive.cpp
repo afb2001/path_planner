@@ -11,6 +11,8 @@
 // #include "geotiffio.h"
 
 #include "executive.h"
+#include "../planner/SamplingBasedPlanner.h"
+#include "../planner/AStarPlanner.h"
 
 using namespace std;
 
@@ -168,7 +170,7 @@ void Executive::requestPath()
         vector<State> plan;
         try {
             // change this line to use controller's starting estimate
-            plan = m_Planner->plan(newlyCovered, path.getStart(), DynamicObstacles());
+            plan = m_Planner->plan(newlyCovered, path.getStart(), DynamicObstacles(), 0.95);
 //            plan = m_Planner->plan(newlyCovered, m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1), DynamicObstacles());
         } catch (...) {
             cerr << "Exception thrown while planning; pausing" << endl;
@@ -202,7 +204,8 @@ void Executive::startPlanner(string mapFile)
 {
     cerr << "Starting planner" << endl;
 
-    m_Planner = std::unique_ptr<Planner>(new Planner(2.3, 8, Map()));
+//    m_Planner = std::unique_ptr<Planner>(new Planner(2.3, 8, Map()));
+    m_Planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, Map()));
 
     // assume you've already set up path to cover
     vector<pair<double, double>> toCover;

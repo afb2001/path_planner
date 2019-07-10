@@ -27,6 +27,10 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
                              double maxSpeed, double maxTurningRadius) {
     double collisionPenalty;
     if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
+    if (m_ApproxCost == 0) {
+        m_TrueCost = 0; // edge is a point
+        return 0;
+    }
     double& penalty = collisionPenalty;
     std::vector<std::pair<double, double>> result;
     std::vector<double> x,y,h; //
@@ -75,28 +79,32 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
     // set end's uncovered list
     end()->uncovered().clear();
     for (auto p : start()->uncovered().get()) {
-        if (std::find(newlyCovered.begin(), newlyCovered.end(), p) != newlyCovered.end()) {
+        if (std::find(newlyCovered.begin(), newlyCovered.end(), p) == newlyCovered.end()) {
             end()->uncovered().add(p);
         }
     }
     m_TrueCost = netTime() * TIME_PENALTY + collisionPenalty;
 
-    // maybe update end's true cost?
+    end()->setCurrentCost();
 
     return m_TrueCost;
 }
 
 double Edge::computeApproxCost(double maxSpeed, double maxTurningRadius) {
-    RobustDubins::Problem problem;
-    problem.set_stateInitial(start()->state().x, start()->state().y, start()->state().yaw());
-    problem.set_stateFinal(end()->state().x, end()->state().y, end()->state().yaw());
-    problem.set_minTurningRadius(maxTurningRadius);
-    RobustDubins::Solver solver;
-    solver.set_problemStatement(problem);
-    solver.solve();
-    dubinsPath = solver.get_optimalPath();
-    dubinsPath.set_spacing(DUBINS_INCREMENT); // do this now for computing true cost and getting a plan
-    m_ApproxCost = dubinsPath.get_cost() / maxSpeed * TIME_PENALTY;
+    if (start()->state().colocated(end()->state())) {
+        m_ApproxCost = 0;
+    } else {
+        RobustDubins::Problem problem;
+        problem.set_stateInitial(start()->state().x, start()->state().y, start()->state().yaw());
+        problem.set_stateFinal(end()->state().x, end()->state().y, end()->state().yaw());
+        problem.set_minTurningRadius(maxTurningRadius);
+        RobustDubins::Solver solver;
+        solver.set_problemStatement(problem);
+        solver.solve();
+        dubinsPath = solver.get_optimalPath();
+        dubinsPath.set_spacing(DUBINS_INCREMENT); // do this now for computing true cost and getting a plan
+        m_ApproxCost = dubinsPath.get_cost() / maxSpeed * TIME_PENALTY;
+    }
     return m_ApproxCost;
 }
 
@@ -145,6 +153,10 @@ std::shared_ptr<Vertex> Edge::start() {
 std::shared_ptr<Vertex> Edge::end() {
     std::shared_ptr<Vertex> s(m_End);
     return s;
+}
+
+double Edge::trueCost() const {
+    return m_TrueCost;
 }
 
 Edge::~Edge() = default;

@@ -44,19 +44,24 @@ include_directories(
         include
 )
 
+add_library(planner
+        src/planner/Planner.cpp
+        src/planner/common/Map.cpp
+        src/planner/search/Vertex.cpp
+        src/planner/search/Edge.cpp
+        src/planner/common/DynamicObstacles.cpp
+        src/planner/common/Path.cpp
+        src/planner/common/Plan.cpp
+        src/planner/common/StateGenerator.cpp
+        src/planner/SamplingBasedPlanner.cpp
+        src/planner/AStarPlanner.cpp)
+
+target_link_libraries(planner robust_dubins)
+
 add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp
         src/executive/executive.cpp
         src/executive/path.cpp
-        src/executive/communication.cpp
-        src/planner/Planner.cpp src/planner/Planner.h
-        src/planner/common/Map.cpp src/planner/common/Map.h
-        src/planner/search/Vertex.cpp src/planner/search/Vertex.h
-        src/planner/search/Edge.cpp src/planner/search/Edge.h
-        src/planner/common/DynamicObstacles.cpp src/planner/common/DynamicObstacles.h
-        src/planner/common/Path.cpp src/planner/common/Path.h
-        src/planner/common/Plan.cpp src/planner/common/Plan.h
-        src/planner/common/StateGenerator.cpp src/planner/common/StateGenerator.h
-        src/planner/SamplingBasedPlanner.cpp src/planner/SamplingBasedPlanner.h)
+        src/executive/communication.cpp)
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp)
@@ -65,21 +70,12 @@ add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp)
 
 target_link_libraries(${PROJECT_NAME}_node
         ${catkin_LIBRARIES}
-        dubins
-        robust_dubins
+        planner
         )
 
-catkin_add_gtest(test_planner test/planner/test_planner.cpp src/planner/Planner.cpp
-        src/planner/common/Map.cpp src/planner/common/Map.h
-        src/planner/search/Vertex.cpp src/planner/search/Vertex.h
-        src/planner/search/Edge.cpp src/planner/search/Edge.h
-        src/planner/common/DynamicObstacles.cpp src/planner/common/DynamicObstacles.h
-        src/planner/common/Path.cpp src/planner/common/Path.h
-        src/planner/common/Plan.cpp src/planner/common/Plan.h
-        src/planner/common/StateGenerator.cpp src/planner/common/StateGenerator.h
-        src/planner/SamplingBasedPlanner.cpp src/planner/SamplingBasedPlanner.h)
+catkin_add_gtest(test_planner test/planner/test_planner.cpp)
 
-target_link_libraries(test_planner dubins robust_dubins)
+target_link_libraries(test_planner planner)
 
 ## Install project namespaced headers
 install(DIRECTORY include/${PROJECT_NAME}

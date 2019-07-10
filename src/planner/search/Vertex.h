@@ -14,12 +14,13 @@ public:
 
     /**
      * Construct the root vertex (no parent edge).
+     * Use Vertex::makeRoot for full root construction.
      * @param state the starting state
      */
     Vertex(State state);
 
     /**
-     * Construct a non-root vertex. Not for external use.
+     * Construct a non-root vertex. Use Vertex::connect for full non-root construction.
      * @param state the underlying state
      * @param parent the parent edge
      */
@@ -33,6 +34,8 @@ public:
      * @return a vertex connected by a new edge to @start
      */
     static std::shared_ptr<Vertex> connect(const std::shared_ptr<Vertex>& start, const State& next);
+
+    static std::shared_ptr<Vertex> makeRoot(const State& start, const Path& uncovered);
 
     ~Vertex();
 
@@ -50,11 +53,11 @@ public:
 
     double computeApproxToGo();
 
-    void setState(const State& state);
+//    void setState(const State& state);
+//
+//    void setParentEdge(const std::shared_ptr<Edge>& parentEdge);
 
-    void setParentEdge(const std::shared_ptr<Edge>& parentEdge);
-
-    void setUncovered(const Path& uncovered);
+//    void setUncovered(const Path& uncovered);
 
     State& state();
 
@@ -64,16 +67,22 @@ public:
 
     double currentCost() const;
 
+    void setCurrentCost();
+
     double approxToGo();
 
+    double f();
+
     int getDepth() const;
+
+    std::pair<double, double> getNearestPoint();
 private:
     State m_State;
     std::shared_ptr<Edge> m_ParentEdge; // vertex owns its parent edge
     Path m_Uncovered;
     double m_CurrentCost = -1;
-    double m_ApproxCost;
-    double m_ApproxToGo;
+    double m_ApproxCost = -1;
+    double m_ApproxToGo = -1;
 };
 
 

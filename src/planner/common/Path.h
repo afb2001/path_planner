@@ -21,7 +21,7 @@ public:
 
     std::vector<std::pair<double, double>> get() const;
 
-    void remove(const std::pair<double, double> &point);
+    bool remove(const std::pair<double, double> &point);
 
     void remove(const std::vector<std::pair<double, double>>& points);
 

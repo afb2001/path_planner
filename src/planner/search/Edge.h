@@ -31,8 +31,9 @@ public:
 
     std::shared_ptr<Vertex> setEnd(const State& state);
 
-    double
-    computeTrueCost(Map *map, DynamicObstacles *obstacles, double maxSpeed, double maxTurningRadius);
+    double computeTrueCost(Map *map, DynamicObstacles *obstacles, double maxSpeed, double maxTurningRadius);
+
+    double trueCost() const;
 
     double computeApproxCost(double maxSpeed, double maxTurningRadius);
 

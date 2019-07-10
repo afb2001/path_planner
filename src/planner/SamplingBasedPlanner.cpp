@@ -5,7 +5,8 @@ SamplingBasedPlanner::SamplingBasedPlanner(double maxSpeed, double maxTurningRad
         maxSpeed, maxTurningRadius, staticMap) {}
 
 std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double, double>>& newlyCovered,
-                                              const State& start, DynamicObstacles dynamicObstacles) {
+                                              const State& start,
+                                              DynamicObstacles dynamicObstacles, double timeRemaining) {
     m_StartStateTime = start.time;
     m_Samples.clear();
     m_VertexQueue.clear();
@@ -44,8 +45,9 @@ std::function<bool(std::shared_ptr<Vertex> v1,
 }
 
 std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getStateComparator(const State& origin) {
-    return [&origin](const State& s1, const State& s2) {
-        return s1.distanceTo(origin) < s2.distanceTo(origin); // use Dubins distance?
+    return [&](const State& s1, const State& s2) {
+//        return s1.dubinsDistanceTo(origin, m_MaxTurningRadius) > s2.dubinsDistanceTo(origin, m_MaxTurningRadius);
+        return s1.distanceTo(origin) > s2.distanceTo(origin);
     };
 }
 
@@ -57,29 +59,27 @@ bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstacles* obstacles) {
     // add nearest point to cover
     if (m_PointsToCover.size() != 0) {
-        std::pair<double, double> nearest;
-        auto minDistance = DBL_MAX;
-        for (auto p : m_PointsToCover.get()) {
-            auto d = sourceVertex->state().distanceTo(p.first, p.second);
-            if (d < minDistance) {
-                nearest = p;
-            }
-        }
+        std::pair<double, double> nearest = sourceVertex->getNearestPoint();
         // TODO! -- which heading for points?
-        pushVertexQueue(std::make_shared<Vertex>(State(nearest.first, nearest.second, 0, m_MaxSpeed, 0)));
+        auto destinationVertex = Vertex::connect(sourceVertex, State(nearest.first, nearest.second, 0, m_MaxSpeed, 0));
+        destinationVertex->parentEdge()->computeTrueCost(&m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
+        pushVertexQueue(destinationVertex);
     }
     auto comp = getStateComparator(sourceVertex->state());
+    // TODO! -- heapify first by Euclidean distance then use it to push to second heap on Dubins distance, keeping
+    // only the top K
     std::make_heap(m_Samples.begin(), m_Samples.end(), comp);
     for (int i = 0; i < k(); i++) {
         auto destinationVertex = Vertex::connect(sourceVertex, m_Samples.front());
         std::pop_heap(m_Samples.begin(), m_Samples.end() - i, comp);
-        if (destinationVertex->state() == sourceVertex->state()) {
+        if (destinationVertex->state().colocated(sourceVertex->state())) {
             i--;
         } else {
             destinationVertex->parentEdge()->computeTrueCost(&m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
             pushVertexQueue(destinationVertex);
         }
     }
+    m_ExpandedCount += k();
 }
 
 int SamplingBasedPlanner::k() const {
@@ -94,4 +94,8 @@ void SamplingBasedPlanner::addSamples(StateGenerator& generator, int n) {
 
 void SamplingBasedPlanner::addSamples(StateGenerator& generator) {
     addSamples(generator, m_Samples.size());
+}
+
+void SamplingBasedPlanner::clearVertexQueue() {
+    m_VertexQueue.clear();
 }

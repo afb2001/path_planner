@@ -17,15 +17,20 @@ public:
 
     void clearToCover();
 
-    virtual std::vector<State> plan(const std::vector<std::pair<double, double>> &newlyCovered,
-            const State &start, DynamicObstacles dynamicObstacles);
+    virtual std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
+                                    DynamicObstacles dynamicObstacles, double timeRemaining);
 protected:
     double m_MaxSpeed, m_MaxTurningRadius;
     Path m_PointsToCover;
 
     Map m_Map;
 
+    std::ostream* m_Output = &std::cerr;
+
     Plan tracePlan(const std::shared_ptr<Vertex>& v, bool smoothing, DynamicObstacles* obstacles);
+
+    double now() const;
+
 };
 
 

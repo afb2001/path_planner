@@ -7,10 +7,12 @@ Path::Path(std::vector<std::pair<double, double>> points) {
     m_Points = std::move(points);
 }
 
-void Path::remove(const std::pair<double, double> &point) {
+bool Path::remove(const std::pair<double, double> &point) {
+    auto l = size();
     m_Points.erase(std::remove_if(m_Points.begin(), m_Points.end(), [&] (std::pair<double, double> p) {
         return p == point;
     }), m_Points.end());
+    return l != size();
 }
 
 void Path::remove(const std::vector<std::pair<double, double>>& points) {

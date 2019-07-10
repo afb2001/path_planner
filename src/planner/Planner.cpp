@@ -22,13 +22,12 @@ void Planner::clearToCover() {
     m_PointsToCover.clear();
 }
 
-std::vector<State> Planner::plan(const vector<pair<double, double>> &newlyCovered, const State &start,
-                                 DynamicObstacles dynamicObstacles) {
+std::vector<State> Planner::plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
+                                 DynamicObstacles dynamicObstacles, double timeRemaining) {
     m_PointsToCover.remove(newlyCovered);
     // point to point plan
-    auto cur = std::make_shared<Vertex>(start); // root
+    auto cur = Vertex::makeRoot(start, m_PointsToCover); // root
     shared_ptr<Vertex> prev(nullptr);
-    cur->setUncovered(m_PointsToCover);
     vector<State> pointsWithHeadings; // points to cover with headings
     for (auto & p : m_PointsToCover.get()) {
         pointsWithHeadings.emplace_back(p.first, p.second, 0, m_MaxSpeed, 0);
@@ -64,4 +63,11 @@ Plan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, DynamicObst
     }
     plan.append(v->state());
     return plan;
+}
+
+double Planner::now() const {
+    // TODO! -- use ROS time
+    struct timespec t{};
+    clock_gettime(CLOCK_REALTIME, &t);
+    return t.tv_sec + t.tv_nsec * 1e-9;
 }

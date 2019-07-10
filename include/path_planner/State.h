@@ -1,5 +1,8 @@
 #ifndef OBJECTPAR_H
 #define OBJECTPAR_H
+
+#include <robust_dubins/RobustDubins_Problem.h>
+#include <robust_dubins/RobustDubins.h>
 #include "string"
 #include "iostream"
 #include "cmath"
@@ -192,7 +195,14 @@ class State
         return x == rhs.x &&
                 y == rhs.y &&
                 heading == rhs.heading &&
+                speed == rhs.speed &&
                 time == rhs.time;
+    }
+
+    bool colocated(const State& rhs) const {
+        return x == rhs.x &&
+               y == rhs.y &&
+               heading == rhs.heading;
     }
 
     double distanceTo(const State& other) const {
@@ -201,6 +211,21 @@ class State
 
     double distanceTo(double x1, double y1) const {
         return sqrt((this->x - x1)*(this->x - x1) + (this->y - y1)*(this->y - y1));
+    }
+
+    double dubinsDistanceTo(double x2, double y2, double yaw2, double turningRadius) const {
+        RobustDubins::Problem problem;
+        problem.set_stateInitial(x, y, yaw());
+        problem.set_stateFinal(x2, y2, yaw2);
+        problem.set_minTurningRadius(turningRadius);
+        RobustDubins::Solver solver;
+        solver.set_problemStatement(problem);
+        solver.solve();
+        return solver.get_optimalPath().get_cost();
+    }
+
+    double dubinsDistanceTo(const State& other, double turningRadius) const {
+        return dubinsDistanceTo(other.x, other.y, other.yaw(), turningRadius);
     }
 };
 

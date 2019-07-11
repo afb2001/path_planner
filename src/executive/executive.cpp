@@ -2,7 +2,7 @@
 #include <thread>
 #include <string.h>
 //#include "State.h"
-#include "communication.h"
+//#include "communication.h"
 #include <fstream>
 #include <wait.h>
 #include <pwd.h>

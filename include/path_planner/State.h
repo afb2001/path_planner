@@ -1,13 +1,13 @@
 #ifndef OBJECTPAR_H
 #define OBJECTPAR_H
 
-#include <robust_dubins/RobustDubins_Problem.h>
-#include <robust_dubins/RobustDubins.h>
+//#include <robust_dubins/RobustDubins_Problem.h>
+//#include <robust_dubins/RobustDubins.h>
 #include "string"
 #include "iostream"
 #include "cmath"
 
-#include "path_planner/StateMsg.h"
+//#include "path_planner/StateMsg.h"
 
 
 struct point{
@@ -70,8 +70,8 @@ class State
         : x(value), y(value), heading(value), speed(value), time(value){};
     State()
         : x(-1), y(-1), heading(-1), speed(-1), time(-1){};
-    State(const path_planner::StateMsg& other)
-        : State(other.x, other.y, other.heading, other.speed, other.time) {};
+//    State(const path_planner::StateMsg& other)
+//        : State(other.x, other.y, other.heading, other.speed, other.time) {};
 
     void set(double &newx, double &newy, double &newheading, double &newspeed, double &newtime)
     {
@@ -91,14 +91,14 @@ class State
         time = other.time;
     }
 
-    void set(path_planner::StateMsg other)
-    {
-        x = other.x;
-        y = other.y;
-        heading = other.heading;
-        speed = other.speed;
-        time = other.time;
-    }
+//    void set(path_planner::StateMsg other)
+//    {
+//        x = other.x;
+//        y = other.y;
+//        heading = other.heading;
+//        speed = other.speed;
+//        time = other.time;
+//    }
 
     void setEstimate(double timeinterval, State &object)
     {
@@ -111,16 +111,16 @@ class State
          
     }
 
-    explicit operator path_planner::StateMsg()
-    {
-        path_planner::StateMsg state;
-        state.x = x;
-        state.y = y;
-        state.heading = heading;
-        state.speed = speed;
-        state.time = time;
-        return state;
-    }
+//    explicit operator path_planner::StateMsg()
+//    {
+//        path_planner::StateMsg state;
+//        state.x = x;
+//        state.y = y;
+//        state.heading = heading;
+//        state.speed = speed;
+//        state.time = time;
+//        return state;
+//    }
 
     /**
      * Get the score of another state.
@@ -213,20 +213,20 @@ class State
         return sqrt((this->x - x1)*(this->x - x1) + (this->y - y1)*(this->y - y1));
     }
 
-    double dubinsDistanceTo(double x2, double y2, double yaw2, double turningRadius) const {
-        RobustDubins::Problem problem;
-        problem.set_stateInitial(x, y, yaw());
-        problem.set_stateFinal(x2, y2, yaw2);
-        problem.set_minTurningRadius(turningRadius);
-        RobustDubins::Solver solver;
-        solver.set_problemStatement(problem);
-        solver.solve();
-        return solver.get_optimalPath().get_cost();
-    }
-
-    double dubinsDistanceTo(const State& other, double turningRadius) const {
-        return dubinsDistanceTo(other.x, other.y, other.yaw(), turningRadius);
-    }
+//    double dubinsDistanceTo(double x2, double y2, double yaw2, double turningRadius) const {
+//        RobustDubins::Problem problem;
+//        problem.set_stateInitial(x, y, yaw());
+//        problem.set_stateFinal(x2, y2, yaw2);
+//        problem.set_minTurningRadius(turningRadius);
+//        RobustDubins::Solver solver;
+//        solver.set_problemStatement(problem);
+//        solver.solve();
+//        return solver.get_optimalPath().get_cost();
+//    }
+//
+//    double dubinsDistanceTo(const State& other, double turningRadius) const {
+//        return dubinsDistanceTo(other.x, other.y, other.yaw(), turningRadius);
+//    }
 };
 
 #endif

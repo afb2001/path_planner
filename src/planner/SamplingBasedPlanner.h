@@ -4,6 +4,7 @@
 
 #include "Planner.h"
 #include "common/StateGenerator.h"
+#include <functional>
 
 class SamplingBasedPlanner : public Planner {
 public:

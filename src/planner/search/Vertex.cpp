@@ -1,3 +1,4 @@
+#include <cfloat>
 #include "Vertex.h"
 
 Vertex::Vertex(State state) {

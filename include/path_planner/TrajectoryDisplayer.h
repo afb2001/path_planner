@@ -70,6 +70,26 @@ protected:
         return response.wgs84.position;
     }
 
+    path_planner::StateMsg getStateMsg(const State& state) {
+        path_planner::StateMsg stateMsg;
+        stateMsg.x = state.x;
+        stateMsg.y = state.y;
+        stateMsg.heading = state.heading;
+        stateMsg.speed = state.speed;
+        stateMsg.time = state.time;
+        return stateMsg;
+    }
+
+    State getState(const path_planner::StateMsg& stateMsg) {
+        State state;
+        state.x = stateMsg.x;
+        state.y = stateMsg.y;
+        state.heading = stateMsg.heading;
+        state.speed = stateMsg.speed;
+        state.time = stateMsg.time;
+        return state;
+    }
+
     ros::NodeHandle m_node_handle;
     ros::Publisher m_display_pub;
     ros::ServiceClient m_map_to_lat_long_client;

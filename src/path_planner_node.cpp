@@ -192,8 +192,8 @@ public:
     {
         path_planner::Trajectory reference;
         for (State s : trajectory) {
-            // explicit conversion to make this cleaner
-            reference.states.push_back((path_planner::StateMsg)s);
+            // explicit conversion to make this cleaner // got rid of it
+            reference.states.push_back(getStateMsg(s));
         }
         m_reference_trajectory_pub.publish(reference);
     }
@@ -211,7 +211,7 @@ public:
         if (m_estimate_state_client.call(req, res)) {
             cerr << "Asking planner to plan from " << res.state.x << ", " << res.state.y << endl;
 //            cerr << "and are currently in state  " <<
-            return State(res.state);
+            return getState(res.state);
         }
         cerr << "EstimateState service call failed" << endl;
         return State(-1);

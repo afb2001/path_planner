@@ -56,7 +56,7 @@ add_library(planner
         src/planner/SamplingBasedPlanner.cpp
         src/planner/AStarPlanner.cpp)
 
-target_link_libraries(planner robust_dubins)
+target_link_libraries(planner robust_dubins dubins)
 
 add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp
         src/executive/executive.cpp
@@ -75,7 +75,7 @@ target_link_libraries(${PROJECT_NAME}_node
 
 catkin_add_gtest(test_planner test/planner/test_planner.cpp)
 
-target_link_libraries(test_planner planner)
+target_link_libraries(test_planner planner dubins)
 
 ## Install project namespaced headers
 install(DIRECTORY include/${PROJECT_NAME}

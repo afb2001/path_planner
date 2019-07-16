@@ -90,10 +90,12 @@ double Vertex::approxToGo() {
 
 int Vertex::getDepth() const {
     if (isRoot()) return 0;
+//    std::cerr << "Getting depth" << std::endl;
     return 1 + parent()->getDepth();
 }
 
 std::pair<double, double> Vertex::getNearestPoint() {
+    if (m_Uncovered.size() == 0) throw std::logic_error("Getting nearest point with empty path");
     std::pair<double, double> nearest;
     auto minDistance = DBL_MAX;
     for (auto p : m_Uncovered.get()) {

@@ -21,6 +21,9 @@ public:
 
     std::vector<std::pair<double, double>> get() const;
 
+    std::vector<std::pair<double, double>> removeNewlyCovered(double x, double y);
+    std::vector<std::pair<double, double>> removeNewlyCovered(const std::pair<double, double>& point);
+
     bool remove(const std::pair<double, double> &point);
 
     void remove(const std::vector<std::pair<double, double>>& points);
@@ -28,6 +31,10 @@ public:
     int size() const;
 
     double maxDistanceFrom(const State& state);
+
+    static bool covers(std::pair<double, double> p1, std::pair<double, double> p2);
+    static bool covers(std::pair<double, double> p, double x, double y);
+    static bool covers(double x1, double y1, double x2, double y2);
 
 private:
     std::vector<std::pair<double, double>> m_Points;

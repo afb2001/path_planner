@@ -9,10 +9,13 @@
 #include "../common/Path.h"
 #include "../common/Plan.h"
 
+extern "C" {
+#include "dubins.h"
+}
+
 #define DUBINS_INCREMENT 0.1
 #define TIME_PENALTY 1
 #define COLLISION_PENALTY 600
-#define COVERAGE_THRESHOLD 3
 
 //int dubins_shortest_path(DubinsPath*, double*, double*, double);
 //int dubins_path_length(DubinsPath*);
@@ -21,7 +24,7 @@ class Vertex;
 
 class Edge {
 public:
-    RobustDubins::Path dubinsPath;
+    DubinsPath dubinsPath;
 
     Edge(std::shared_ptr<Vertex> start);
 
@@ -50,6 +53,10 @@ private:
     std::weak_ptr<Vertex> m_End;
 
     double m_ApproxCost = -1, m_TrueCost = -1;
+public:
+    double approxCost() const;
+
+private:
 
     double netTime();
 };

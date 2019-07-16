@@ -19,7 +19,7 @@ std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double
     StateGenerator generator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7); // lucky seed
     addSamples(generator, 1000);
     std::shared_ptr<Vertex> vertex;
-    for (vertex = std::make_shared<Vertex>(start); !goalCondition(vertex); vertex = popVertexQueue()) {
+    for (vertex = Vertex::makeRoot(start, m_PointsToCover); !goalCondition(vertex); vertex = popVertexQueue()) {
         expand(vertex, &dynamicObstacles);
     }
     return tracePlan(vertex, false, &dynamicObstacles).get();
@@ -31,6 +31,7 @@ void SamplingBasedPlanner::pushVertexQueue(const std::shared_ptr<Vertex>& vertex
 }
 
 std::shared_ptr<Vertex> SamplingBasedPlanner::popVertexQueue() {
+    if (m_VertexQueue.empty()) throw std::out_of_range("Trying to pop an empty vertex queue");
     std::pop_heap(m_VertexQueue.begin(), m_VertexQueue.end(), getVertexComparator());
     auto ret = m_VertexQueue.back();
     m_VertexQueue.pop_back();
@@ -57,29 +58,45 @@ bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) 
 }
 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstacles* obstacles) {
+//    std::cerr << "Expanding vertex " << sourceVertex->state().toString() << std::endl;
     // add nearest point to cover
-    if (m_PointsToCover.size() != 0) {
-        std::pair<double, double> nearest = sourceVertex->getNearestPoint();
-        // TODO! -- which heading for points?
-        auto destinationVertex = Vertex::connect(sourceVertex, State(nearest.first, nearest.second, 0, m_MaxSpeed, 0));
+//    if (sourceVertex->uncovered().size() != 0) {
+//        std::pair<double, double> nearest = sourceVertex->getNearestPoint();
+//        // TODO! -- what heading for points?
+//        auto destinationVertex = Vertex::connect(sourceVertex, State(nearest.first, nearest.second, 0, m_MaxSpeed, 0));
+//        destinationVertex->parentEdge()->computeTrueCost(&m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
+//        pushVertexQueue(destinationVertex);
+//    }
+    auto comp = getStateComparator(sourceVertex->state());
+    auto dubinsComp = getDubinsComparator(sourceVertex->state());
+    // heapify first by Euclidean distance
+    std::make_heap(m_Samples.begin(), m_Samples.end(), comp);
+    // Use another heap to sort by Dubins distance, skipping the samples which are farther away this time.
+    // Making all the vertices adds some allocation overhead but it lets us cache the dubins paths
+    std::vector<std::shared_ptr<Vertex>> bestSamples;
+    for (int i = 0; i < m_Samples.size(); i++) {
+        auto sample = m_Samples.front();
+        std::pop_heap(m_Samples.begin(), m_Samples.end() - i, comp);
+        if (bestSamples.empty() ||
+            bestSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state())) {
+            if (!sourceVertex->state().colocated(sample)) {
+                bestSamples.push_back(Vertex::connect(sourceVertex, sample));
+                bestSamples.back()->parentEdge()->computeApproxCost(m_MaxSpeed, m_MaxTurningRadius);
+                std::push_heap(bestSamples.begin(), bestSamples.end(), dubinsComp);
+            }
+        } else {
+            break;
+        }
+    }
+    // Push the closest K onto the open list
+    for (int i = 0; i < k(); i++) {
+        if (i >= bestSamples.size()) break;
+        auto destinationVertex = bestSamples.front();
+        std::pop_heap(bestSamples.begin(), bestSamples.end() - i, dubinsComp);
         destinationVertex->parentEdge()->computeTrueCost(&m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
         pushVertexQueue(destinationVertex);
     }
-    auto comp = getStateComparator(sourceVertex->state());
-    // TODO! -- heapify first by Euclidean distance then use it to push to second heap on Dubins distance, keeping
-    // only the top K
-    std::make_heap(m_Samples.begin(), m_Samples.end(), comp);
-    for (int i = 0; i < k(); i++) {
-        auto destinationVertex = Vertex::connect(sourceVertex, m_Samples.front());
-        std::pop_heap(m_Samples.begin(), m_Samples.end() - i, comp);
-        if (destinationVertex->state().colocated(sourceVertex->state())) {
-            i--;
-        } else {
-            destinationVertex->parentEdge()->computeTrueCost(&m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
-            pushVertexQueue(destinationVertex);
-        }
-    }
-    m_ExpandedCount += k();
+    m_ExpandedCount++;
 }
 
 int SamplingBasedPlanner::k() const {
@@ -98,4 +115,12 @@ void SamplingBasedPlanner::addSamples(StateGenerator& generator) {
 
 void SamplingBasedPlanner::clearVertexQueue() {
     m_VertexQueue.clear();
+}
+
+std::function<bool(const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vertex>& v2)> SamplingBasedPlanner::getDubinsComparator(
+        const State& origin) {
+    return [&] (const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vertex>& v2) {
+        // backwards from other state comparator because we want a max heap not a min heap
+        return v1->parentEdge()->approxCost() < v2->parentEdge()->approxCost();
+    };
 }

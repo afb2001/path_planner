@@ -1,5 +1,8 @@
 #include <algorithm>
 #include "Path.h"
+#include "../search/Edge.h"
+
+#define COVERAGE_THRESHOLD 3
 
 Path::Path() = default;
 
@@ -52,4 +55,32 @@ double Path::maxDistanceFrom(const State &state) {
         if (max < d) max = d;
     }
     return max;
+}
+
+std::vector<std::pair<double, double>> Path::removeNewlyCovered(double x, double y) {
+    std::vector<std::pair<double, double>> newlyCovered;
+    m_Points.erase(std::remove_if(m_Points.begin(), m_Points.end(), [&] (std::pair<double, double> p) {
+        if (covers(p, x, y)) {
+            newlyCovered.push_back(p);
+            return true;
+        }
+        return false;
+    }), m_Points.end());
+    return newlyCovered;
+}
+
+bool Path::covers(double x1, double y1, double x2, double y2) {
+    return ((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2) < COVERAGE_THRESHOLD * COVERAGE_THRESHOLD);
+}
+
+bool Path::covers(std::pair<double, double> p1, std::pair<double, double> p2) {
+    return covers(p1.first, p1.second, p2.first, p2.second);
+}
+
+bool Path::covers(std::pair<double, double> p, double x, double y) {
+    return covers(x, y, p.first, p.second);
+}
+
+std::vector<std::pair<double, double>> Path::removeNewlyCovered(const std::pair<double, double>& point) {
+    return removeNewlyCovered(point.first, point.second);
 }

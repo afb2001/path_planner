@@ -1,6 +1,6 @@
 #include "AStarPlanner.h"
 
-#define INITIAL_SAMPLES 1000
+#define INITIAL_SAMPLES 32
 
 using std::shared_ptr;
 

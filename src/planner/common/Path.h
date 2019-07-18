@@ -19,7 +19,7 @@ public:
 
     void clear();
 
-    std::vector<std::pair<double, double>> get() const;
+    const std::vector<std::pair<double, double>>& get() const;
 
     std::vector<std::pair<double, double>> removeNewlyCovered(double x, double y);
     std::vector<std::pair<double, double>> removeNewlyCovered(const std::pair<double, double>& point);

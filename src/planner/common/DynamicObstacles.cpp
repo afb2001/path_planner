@@ -1,7 +1,3 @@
-//
-// Created by abrown on 6/24/19.
-//
-
 #include "DynamicObstacles.h"
 
 double DynamicObstacles::collisionExists(const State &s) {

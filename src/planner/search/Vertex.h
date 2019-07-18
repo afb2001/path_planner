@@ -6,8 +6,6 @@
 #include "Edge.h"
 #include "../common/Path.h"
 
-#define HEURISTIC "maxD"
-
 class Edge;
 class Vertex {
 public:
@@ -53,13 +51,8 @@ public:
 
     double computeApproxToGo();
 
-//    void setState(const State& state);
-//
-//    void setParentEdge(const std::shared_ptr<Edge>& parentEdge);
-
-//    void setUncovered(const Path& uncovered);
-
     State& state();
+    const State& state() const;
 
     const std::shared_ptr<Edge>& parentEdge() const;
 
@@ -75,8 +68,11 @@ public:
 
     int getDepth() const;
 
-    std::pair<double, double> getNearestPoint();
+    std::pair<double, double> getNearestPoint() const;
+
 private:
+    static const std::string c_Heuristic; // = "maxD";
+
     State m_State;
     std::shared_ptr<Edge> m_ParentEdge; // vertex owns its parent edge
     Path m_Uncovered;

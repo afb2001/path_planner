@@ -36,7 +36,7 @@ void Path::clear() {
     m_Points.clear();
 }
 
-std::vector<std::pair<double, double>> Path::get() const {
+const std::vector<std::pair<double, double>>& Path::get() const {
     return m_Points;
 }
 

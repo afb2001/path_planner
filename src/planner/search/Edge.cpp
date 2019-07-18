@@ -93,7 +93,7 @@ Edge::Edge(std::shared_ptr<Vertex> start, const State& end) : Edge(std::move(sta
 
 double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
                              double maxSpeed, double maxTurningRadius) {
-    double collisionPenalty;
+    double collisionPenalty = 0;
     if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
     double& penalty = collisionPenalty;
     std::vector<std::pair<double, double>> result;
@@ -142,13 +142,13 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
     // set end's uncovered list
     end()->uncovered().clear();
     for (auto p : start()->uncovered().get()) {
-        if (std::find(newlyCovered.begin(), newlyCovered.end(), p) != newlyCovered.end()) {
+        if (std::find(newlyCovered.begin(), newlyCovered.end(), p) == newlyCovered.end()) {
             end()->uncovered().add(p);
         }
     }
     m_TrueCost = netTime() * TIME_PENALTY + collisionPenalty;
 
-    // maybe update end's true cost?
+    end()->setCurrentCost();
 
     return m_TrueCost;
 }
@@ -172,13 +172,17 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
 //}
 
 double Edge::computeApproxCost(double maxSpeed, double maxTurningRadius) {
-    double q0[3] = {start()->state().x, start()->state().y, start()->state().yaw()};
-    double q1[3] = {end()->state().x, end()->state().y, end()->state().yaw()};
-    int err = dubins_shortest_path(&dubinsPath, q0, q1, maxTurningRadius);
-    if (err != EDUBOK) {
-        std::cerr << "Encountered an error in the Dubins library" << std::endl;
+    if (start()->state().colocated(end()->state())) {
+        m_ApproxCost = 0;
     } else {
-        m_ApproxCost = dubins_path_length(&dubinsPath) / maxSpeed * TIME_PENALTY;
+        double q0[3] = {start()->state().x, start()->state().y, start()->state().yaw()};
+        double q1[3] = {end()->state().x, end()->state().y, end()->state().yaw()};
+        int err = dubins_shortest_path(&dubinsPath, q0, q1, maxTurningRadius);
+        if (err != EDUBOK) {
+            std::cerr << "Encountered an error in the Dubins library" << std::endl;
+        } else {
+            m_ApproxCost = dubins_path_length(&dubinsPath) / maxSpeed * TIME_PENALTY;
+        }
     }
     return m_ApproxCost;
 }

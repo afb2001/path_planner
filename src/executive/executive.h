@@ -60,7 +60,7 @@ private:
 
     void sendAction();
 
-    void print_map(std::string file);
+//    void print_map(std::string file);
 
     /**
      * Clear m_PauseAll and notify threads blocked on it.

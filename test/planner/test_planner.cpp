@@ -167,8 +167,8 @@ TEST(UnitTests, ComputeEdgeCostTest) {
     Path path;
     path.add(0, 10);
     auto c = e->computeTrueCost(&map, &dynamicObstacles, 1, 2);
-    EXPECT_DOUBLE_EQ(c, a);
     EXPECT_DOUBLE_EQ(6, e->end()->state().time);
+    EXPECT_DOUBLE_EQ(c, a);
 }
 
 TEST(UnitTests, RunStateGenerationTest) {
@@ -184,6 +184,23 @@ TEST(UnitTests, RunStateGenerationTest) {
         sleep(1);
         break;
     }
+}
+
+TEST(UnitTests, VertexTests1) {
+    Path path;
+    path.add(50, 50);
+    auto root = Vertex::makeRoot(State(5, 5, M_PI, 2.5, 1), path);
+    auto v1 = Vertex::connect(root, State(5, -20, M_PI, 2.5, 0));
+    auto c = v1->parentEdge()->computeApproxCost(2.5, 8);
+    EXPECT_DOUBLE_EQ(c, 10);
+    Map m;
+    DynamicObstacles obstacles;
+    auto t = v1->parentEdge()->computeTrueCost(&m, &obstacles, 2.5, 8);
+    EXPECT_DOUBLE_EQ(t, c);
+    EXPECT_DOUBLE_EQ(t, v1->currentCost());
+    EXPECT_DOUBLE_EQ(v1->currentCost(), v1->state().time - 1);
+    auto h = v1->computeApproxToGo();
+    EXPECT_DOUBLE_EQ(path.maxDistanceFrom(v1->state()) / 2.5, h);
 }
 
 TEST(PlannerTests, DubinsWalkTest) {
@@ -299,7 +316,8 @@ TEST(PlannerTests, RHRSAStarTest1) {
     AStarPlanner planner(2.5, 8, Map());
     planner.addToCover(points);
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstacles(), 0.1);
+    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstacles(), 0.95);
+    EXPECT_FALSE(plan.empty());
     for (auto s : plan) cerr << s.toString() << endl;
 }
 
@@ -322,6 +340,7 @@ TEST(PlannerTests, RHRSAStarTest2) {
         newlyCovered.clear();
         ASSERT_FALSE(plan.empty());
         start = plan[1];
+        ASSERT_LT(start.time, 60);
         cerr << start.toString() << endl;
     }
 }
@@ -332,7 +351,7 @@ TEST(PlannerTests, RHRSAStarTest3) {
     path.add(20, 10);
     path.add(20, 20);
     path.add(10, 20);
-    AStarPlanner planner(1, 2, Map());
+    AStarPlanner planner(2.5, 8, Map());
     planner.addToCover(path.get());
     State start(0, 0, 0, 1, 1);
     while(path.size() != 0) {
@@ -344,6 +363,7 @@ TEST(PlannerTests, RHRSAStarTest3) {
         auto plan = planner.plan(newlyCovered, start, DynamicObstacles(), 0.95); // quick iterations
         ASSERT_FALSE(plan.empty());
         start = plan[1];
+        ASSERT_LT(start.time, 60);
     }
 }
 

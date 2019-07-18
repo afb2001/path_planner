@@ -9,6 +9,8 @@ Vertex::Vertex(State state, const std::shared_ptr<Edge>& parent) : Vertex(state)
     this->m_ParentEdge = parent;
 }
 
+const std::string Vertex::c_Heuristic = "maxD";
+
 std::shared_ptr<Vertex> Vertex::parent() const {
     return this->m_ParentEdge->start();
 }
@@ -35,19 +37,14 @@ double Vertex::estimateApproxToGo(const State &destination) {
 }
 
 double Vertex::computeApproxToGo() {
-    // NOTE: using the current speed for computing time penalty by distance. This is probably wrong, but with just one
-    // speed it works.
-    if (HEURISTIC == "tsp") {
+    // NOTE: using the current speed for computing time penalty by distance. With just one speed it works.
+    if (c_Heuristic == "tsp") {
         m_ApproxToGo = 0; // TODO! -- tsp solver
-    } else if (HEURISTIC == "greedy"){
+    } else if (c_Heuristic == "greedy") {
         auto nearest = getNearestPoint();
         m_ApproxToGo = state().distanceTo(nearest.first, nearest.second) / state().speed * TIME_PENALTY;
-    } else if (HEURISTIC == "maxD") {
-        double max = 0;
-        for (auto p : m_Uncovered.get()) {
-            double d = state().distanceTo(p.first, p.second);
-            if (d > max) max = d;
-        }
+    } else if (c_Heuristic == "maxD") {
+        double max = m_Uncovered.maxDistanceFrom(state());
         m_ApproxToGo = max / state().speed * TIME_PENALTY;
     } else {
 
@@ -56,6 +53,10 @@ double Vertex::computeApproxToGo() {
 }
 
 State& Vertex::state() {
+    return m_State;
+}
+
+const State& Vertex::state() const {
     return m_State;
 }
 
@@ -94,7 +95,7 @@ int Vertex::getDepth() const {
     return 1 + parent()->getDepth();
 }
 
-std::pair<double, double> Vertex::getNearestPoint() {
+std::pair<double, double> Vertex::getNearestPoint() const {
     if (m_Uncovered.size() == 0) throw std::logic_error("Getting nearest point with empty path");
     std::pair<double, double> nearest;
     auto minDistance = DBL_MAX;

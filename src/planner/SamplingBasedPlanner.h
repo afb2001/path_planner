@@ -11,7 +11,7 @@ public:
     SamplingBasedPlanner(double maxSpeed, double maxTurningRadius, const Map& staticMap);
 
     std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
-                            DynamicObstacles dynamicObstacles, double timeRemaining) override;
+                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
 
     void pushVertexQueue(const std::shared_ptr<Vertex>& vertex);
 
@@ -19,7 +19,7 @@ public:
 
     void clearVertexQueue();
 
-    virtual void expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstacles* obstacles);
+    virtual void expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstaclesManager* obstacles);
 
     void addSamples(StateGenerator& generator);
     void addSamples(StateGenerator& generator, int n);

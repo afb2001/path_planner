@@ -5,7 +5,7 @@
 #include "Vertex.h"
 #include <robust_dubins/RobustDubins.h>
 #include "../common/Map.h"
-#include "../common/DynamicObstacles.h"
+#include "../common/DynamicObstaclesManager.h"
 #include "../common/Path.h"
 #include "../common/Plan.h"
 
@@ -34,13 +34,13 @@ public:
 
     std::shared_ptr<Vertex> setEnd(const State& state);
 
-    double computeTrueCost(Map *map, DynamicObstacles *obstacles, double maxSpeed, double maxTurningRadius);
+    double computeTrueCost(Map *map, DynamicObstaclesManager *obstacles, double maxSpeed, double maxTurningRadius);
 
     double trueCost() const;
 
     double computeApproxCost(double maxSpeed, double maxTurningRadius);
 
-    void smooth(Map* map, DynamicObstacles* obstacles, double maxSpeed, double maxTurningRadius);
+    void smooth(Map* map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius);
 
     Plan getPlan(double maxSpeed);
 

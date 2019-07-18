@@ -7,7 +7,7 @@
 #include <memory>
 #include "Edge.h"
 #include "../common/Map.h"
-#include "../common/DynamicObstacles.h"
+#include "../common/DynamicObstaclesManager.h"
 #include "../common/Path.h"
 #include <robust_dubins/RobustDubins.h>
 
@@ -23,7 +23,7 @@ Edge::Edge(std::shared_ptr<Vertex> start, const State& end) : Edge(std::move(sta
     setEnd(end);
 }
 
-//double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
+//double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
 //                             double maxSpeed, double maxTurningRadius) {
 //    double collisionPenalty;
 //    if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
@@ -91,7 +91,7 @@ Edge::Edge(std::shared_ptr<Vertex> start, const State& end) : Edge(std::move(sta
 //    return m_TrueCost;
 //}
 
-double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
+double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
                              double maxSpeed, double maxTurningRadius) {
     double collisionPenalty = 0;
     if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
@@ -191,7 +191,7 @@ double Edge::netTime() {
     return end()->state().time - start()->state().time;
 }
 
-void Edge::smooth(Map* map, DynamicObstacles* obstacles, double maxSpeed, double maxTurningRadius) {
+void Edge::smooth(Map* map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius) {
     if (start()->isRoot()) return;
     double parentCost = start()->parentEdge()->m_TrueCost; // should be up to date in A*, check for BIT*
     auto smoothed = Vertex::connect(start()->parent(), end()->state());

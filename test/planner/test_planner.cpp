@@ -163,7 +163,7 @@ TEST(UnitTests, ComputeEdgeCostTest) {
     auto e = v2->parentEdge();
     auto a = e->computeApproxCost(1, 2);
     Map map;
-    DynamicObstacles dynamicObstacles;
+    DynamicObstaclesManager dynamicObstacles;
     Path path;
     path.add(0, 10);
     auto c = e->computeTrueCost(&map, &dynamicObstacles, 1, 2);
@@ -194,13 +194,14 @@ TEST(UnitTests, VertexTests1) {
     auto c = v1->parentEdge()->computeApproxCost(2.5, 8);
     EXPECT_DOUBLE_EQ(c, 10);
     Map m;
-    DynamicObstacles obstacles;
+    DynamicObstaclesManager obstacles;
     auto t = v1->parentEdge()->computeTrueCost(&m, &obstacles, 2.5, 8);
     EXPECT_DOUBLE_EQ(t, c);
     EXPECT_DOUBLE_EQ(t, v1->currentCost());
     EXPECT_DOUBLE_EQ(v1->currentCost(), v1->state().time - 1);
     auto h = v1->computeApproxToGo();
     EXPECT_DOUBLE_EQ(path.maxDistanceFrom(v1->state()) / 2.5, h);
+    EXPECT_DOUBLE_EQ(v1->f(), t + h);
 }
 
 TEST(PlannerTests, DubinsWalkTest) {
@@ -220,7 +221,7 @@ TEST(PlannerTests, DubinsWalkTest) {
             newlyCovered.push_back(points.front());
             points.erase(points.begin());
         }
-        auto plan = planner.plan(newlyCovered, start, DynamicObstacles(), 0);
+        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0);
         newlyCovered.clear();
         start = plan[1];
 //        cerr << start.toString() << endl;
@@ -235,7 +236,7 @@ TEST(PlannerTests, PointToPointTest1) {
     Planner planner(2.5, 8, Map());
     planner.addToCover(points);
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstacles(), 0);
+    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0);
     for (auto s : plan) cerr << s.toString() << endl;
 }
 
@@ -247,7 +248,7 @@ TEST(PlannerTests, UCSTest1) {
     SamplingBasedPlanner planner(2.5, 8, Map());
     planner.addToCover(points);
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstacles(), 0);
+    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0);
     for (auto s : plan) cerr << s.toString() << endl;
 }
 
@@ -258,7 +259,7 @@ TEST(PlannerTests, VertexQueueTests) {
     path.add(0, 20);
     path.add(0, 30);
     Map m;
-    DynamicObstacles obstacles;
+    DynamicObstaclesManager obstacles;
     auto root = Vertex::makeRoot(start, path);
     AStarPlanner planner(2.5, 8, m);
     planner.addToCover(path.get());
@@ -290,7 +291,7 @@ TEST(UnitTests, ExpandTest1) {
     path.add(0, 20);
     path.add(0, 30);
     Map m;
-    DynamicObstacles obstacles;
+    DynamicObstaclesManager obstacles;
     auto root = Vertex::makeRoot(start, path);
     AStarPlanner planner(2.5, 8, m);
     planner.addToCover(path.get());
@@ -316,7 +317,7 @@ TEST(PlannerTests, RHRSAStarTest1) {
     AStarPlanner planner(2.5, 8, Map());
     planner.addToCover(points);
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstacles(), 0.95);
+    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0.95);
     EXPECT_FALSE(plan.empty());
     for (auto s : plan) cerr << s.toString() << endl;
 }
@@ -336,7 +337,7 @@ TEST(PlannerTests, RHRSAStarTest2) {
             newlyCovered.push_back(points.front());
             points.erase(points.begin());
         }
-        auto plan = planner.plan(newlyCovered, start, DynamicObstacles(), 0.5); // quick iterations
+        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.5); // quick iterations
         newlyCovered.clear();
         ASSERT_FALSE(plan.empty());
         start = plan[1];
@@ -360,7 +361,7 @@ TEST(PlannerTests, RHRSAStarTest3) {
         if (!newlyCovered.empty()) {
             cerr << "Covered a point near " << start.x << ", " << start.y << endl;
         }
-        auto plan = planner.plan(newlyCovered, start, DynamicObstacles(), 0.95); // quick iterations
+        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.95); // quick iterations
         ASSERT_FALSE(plan.empty());
         start = plan[1];
         ASSERT_LT(start.time, 60);

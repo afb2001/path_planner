@@ -14,7 +14,7 @@ std::function<bool(std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2)> ASta
 }
 
 std::vector<State> AStarPlanner::plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
-                                      DynamicObstacles dynamicObstacles, double timeRemaining) {
+                                      DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
     double endTime = timeRemaining + now();
     m_PointsToCover.remove(newlyCovered);
     m_ExpandedCount = 0;
@@ -47,7 +47,7 @@ std::vector<State> AStarPlanner::plan(const std::vector<std::pair<double, double
     return tracePlan(bestVertex, false, &dynamicObstacles).get();
 }
 
-std::shared_ptr<Vertex> AStarPlanner::aStar(DynamicObstacles* obstacles, double endTime) {
+std::shared_ptr<Vertex> AStarPlanner::aStar(DynamicObstaclesManager* obstacles, double endTime) {
     auto vertex = popVertexQueue();
     while (now() < endTime) {
         if (goalCondition(vertex)) {

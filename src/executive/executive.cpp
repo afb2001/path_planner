@@ -96,8 +96,8 @@ void Executive::requestPath()
         vector<State> plan;
         try {
             // change this line to use controller's starting estimate
-            plan = m_Planner->plan(newlyCovered, m_InternalsManager.getStart(), DynamicObstacles(), 0.95);
-//            plan = m_Planner->plan(newlyCovered, m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1), DynamicObstacles());
+            plan = m_Planner->plan(newlyCovered, m_InternalsManager.getStart(), DynamicObstaclesManager(), 0.95);
+//            plan = m_Planner->plan(newlyCovered, m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1), DynamicObstaclesManager());
         } catch (...) {
             cerr << "Exception thrown while planning; pausing" << endl;
             pause();

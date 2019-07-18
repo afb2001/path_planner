@@ -23,7 +23,7 @@ void Planner::clearToCover() {
 }
 
 std::vector<State> Planner::plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
-                                 DynamicObstacles dynamicObstacles, double timeRemaining) {
+                                 DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
     m_PointsToCover.remove(newlyCovered);
     // point to point plan
     auto cur = Vertex::makeRoot(start, m_PointsToCover); // root
@@ -44,7 +44,7 @@ std::vector<State> Planner::plan(const std::vector<std::pair<double, double>>& n
     return p.get();
 }
 
-Plan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, DynamicObstacles* obstacles) {
+Plan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, DynamicObstaclesManager* obstacles) {
     vector<shared_ptr<Edge>> branch;
     if (!v) {
         return Plan();

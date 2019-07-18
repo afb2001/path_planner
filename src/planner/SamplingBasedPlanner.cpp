@@ -6,7 +6,7 @@ SamplingBasedPlanner::SamplingBasedPlanner(double maxSpeed, double maxTurningRad
 
 std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double, double>>& newlyCovered,
                                               const State& start,
-                                              DynamicObstacles dynamicObstacles, double timeRemaining) {
+                                              DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
     m_StartStateTime = start.time;
     m_Samples.clear();
     m_VertexQueue.clear();
@@ -57,16 +57,16 @@ bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) 
             (vertex->uncovered().size() == 0 && vertex->state().time > m_StartStateTime + TIME_MINIMUM);
 }
 
-void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstacles* obstacles) {
+void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstaclesManager* obstacles) {
 //    std::cerr << "Expanding vertex " << sourceVertex->state().toString() << std::endl;
     // add nearest point to cover
-//    if (sourceVertex->uncovered().size() != 0) {
-//        std::pair<double, double> nearest = sourceVertex->getNearestPoint();
-//        // TODO! -- what heading for points?
-//        auto destinationVertex = Vertex::connect(sourceVertex, State(nearest.first, nearest.second, 0, m_MaxSpeed, 0));
-//        destinationVertex->parentEdge()->computeTrueCost(&m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
-//        pushVertexQueue(destinationVertex);
-//    }
+    if (sourceVertex->uncovered().size() != 0) {
+        std::pair<double, double> nearest = sourceVertex->getNearestPoint();
+        // TODO! -- what heading for points?
+        auto destinationVertex = Vertex::connect(sourceVertex, State(nearest.first, nearest.second, 0, m_MaxSpeed, 0));
+        destinationVertex->parentEdge()->computeTrueCost(&m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
+        pushVertexQueue(destinationVertex);
+    }
     auto comp = getStateComparator(sourceVertex->state());
     auto dubinsComp = getDubinsComparator(sourceVertex->state());
     // heapify first by Euclidean distance

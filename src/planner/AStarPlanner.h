@@ -10,7 +10,7 @@ public:
     AStarPlanner(double maxSpeed, double maxTurningRadius, const Map& staticMap);
 
     std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
-                            DynamicObstacles dynamicObstacles, double timeRemaining) override;
+                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
 
 protected:
 
@@ -20,7 +20,7 @@ protected:
         return 17;
     }
 
-    std::shared_ptr<Vertex> aStar(DynamicObstacles* obstacles, double endTime);
+    std::shared_ptr<Vertex> aStar(DynamicObstaclesManager* obstacles, double endTime);
 
 
 };

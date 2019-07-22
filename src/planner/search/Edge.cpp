@@ -10,6 +10,7 @@
 #include "../common/DynamicObstaclesManager.h"
 #include "../common/Path.h"
 #include <robust_dubins/RobustDubins.h>
+#include <cfloat>
 
 extern "C" {
 #include <dubins.h>
@@ -100,36 +101,47 @@ double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
     double q[3];
     double lengthSoFar = 0;
     double length = dubins_path_length(&dubinsPath);
-    double obstacleDistance = 0;
+    double staticDistance = 0, dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
 
     // collision check along the curve (and watch out for newly covered points, too)
     while (lengthSoFar < length) {
         dubins_path_sample(&dubinsPath, lengthSoFar, q);
-        if (obstacleDistance > DUBINS_INCREMENT) {
-            obstacleDistance -= DUBINS_INCREMENT;
+        if (staticDistance > DUBINS_INCREMENT) {
+            staticDistance -= DUBINS_INCREMENT;
         } else {
-            double staticDistance = map->getUnblockedDistance(q[0], q[1]);
-            if (staticDistance <= 0) {
+            staticDistance = map->getUnblockedDistance(q[0], q[1]);
+            if (staticDistance <= DUBINS_INCREMENT) {
                 penalty += COLLISION_PENALTY;
-                obstacleDistance = 0;
-            } else {
-                double dynamicDistance = obstacles->distanceToNearestPossibleCollision(q);
-                if (dynamicDistance <= 0) {
-                    penalty += obstacles->collisionExists(q[0], q[1], start()->state().time + (lengthSoFar / maxSpeed)) * COLLISION_PENALTY;
-                    obstacleDistance = 0;
+                staticDistance = 0;
+            }
+        }
+        if (dynamicDistance > DUBINS_INCREMENT) {
+            dynamicDistance -= DUBINS_INCREMENT;
+        } else {
+            dynamicDistance = obstacles->distanceToNearestPossibleCollision(q[0], q[1], start()->state().speed,
+                                                                            start()->state().time +
+                                                                            (lengthSoFar / maxSpeed));
+            if (dynamicDistance <= DUBINS_INCREMENT) {
+                penalty += obstacles->collisionExists(q[0], q[1], start()->state().time + (lengthSoFar / maxSpeed)) *
+                           COLLISION_PENALTY;
+                dynamicDistance = 0;
+            }
+        }
+        if (toCoverDistance > DUBINS_INCREMENT) {
+            toCoverDistance -= DUBINS_INCREMENT;
+        } else {
+            toCoverDistance = DBL_MAX;
+            for (auto p : start()->uncovered().get()) {
+                auto d = Path::distance(p, q[0], q[1]);
+                if (Path::covers(d)) {
+                    newlyCovered.push_back(p);
                 } else {
-                    obstacleDistance = fmin(staticDistance, dynamicDistance);
+                    toCoverDistance = fmin(toCoverDistance, d);
                 }
             }
         }
-        for (auto p : start()->uncovered().get()) {
-            if (Path::covers(p, q[0], q[1])) {
-                newlyCovered.push_back(p);
-            }
-        }
         lengthSoFar += DUBINS_INCREMENT;
-
     }
     if (!newlyCovered.empty()) {
         std::sort(newlyCovered.begin(), newlyCovered.end());

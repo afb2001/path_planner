@@ -84,3 +84,15 @@ bool Path::covers(std::pair<double, double> p, double x, double y) {
 std::vector<std::pair<double, double>> Path::removeNewlyCovered(const std::pair<double, double>& point) {
     return removeNewlyCovered(point.first, point.second);
 }
+
+bool Path::covers(double distance) {
+    return distance < c_CoverageThreshold;
+}
+
+double Path::distance(double x1, double y1, double x2, double y2) {
+    return sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2));
+}
+
+double Path::distance(std::pair<double, double> p, double x, double y) {
+    return distance(p.first, p.second, x, y);
+}

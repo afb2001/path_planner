@@ -142,6 +142,13 @@ TEST(UnitTests, DubinsComparison) {
     }
 }
 
+TEST(UnitTests, DynamicObstacleTest1) {
+    DynamicObstaclesManager obstaclesManager;
+    obstaclesManager.update(1, State(10, 10, M_PI, 2, 7), .1, 0);
+    auto p = obstaclesManager.collisionExists(10, 4, 10);
+    EXPECT_DOUBLE_EQ(p, 1);
+}
+
 TEST(UnitTests, MakePlanTest) {
     State s1(0, 0, 0, 1, 1);
     State s2(0, 5, 0, 1, 6);

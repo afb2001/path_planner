@@ -35,9 +35,14 @@ public:
     static bool covers(std::pair<double, double> p1, std::pair<double, double> p2);
     static bool covers(std::pair<double, double> p, double x, double y);
     static bool covers(double x1, double y1, double x2, double y2);
+    static bool covers(double distance);
+
+    static double distance(double x1, double y1, double x2, double y2);
+    static double distance(std::pair<double, double> p, double x, double y);
 
 private:
     std::vector<std::pair<double, double>> m_Points;
+    static constexpr double c_CoverageThreshold = 3;
 };
 
 

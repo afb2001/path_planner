@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
         actionlib
         dubins_curves
         robust_dubins
+        dynamic_reconfigure
         )
 
 add_message_files(
@@ -27,6 +28,10 @@ add_message_files(
 
 add_action_files(DIRECTORY action FILES path_planner.action)
 generate_messages(DEPENDENCIES actionlib_msgs geographic_msgs)
+
+generate_dynamic_reconfigure_options(
+        cfg/path_planner.cfg
+)
 
 catkin_package(
           INCLUDE_DIRS include
@@ -71,6 +76,7 @@ add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp)
+add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_gencfg)
 
 #target_link_libraries(Executive Path Communication)
 

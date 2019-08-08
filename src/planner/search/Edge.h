@@ -5,7 +5,7 @@
 #include "Vertex.h"
 #include <robust_dubins/RobustDubins.h>
 #include "../common/Map.h"
-#include "../common/DynamicObstaclesManager.h"
+#include "../common/dynamic_obstacles/DynamicObstaclesManager.h"
 #include "../common/Path.h"
 #include "../common/Plan.h"
 
@@ -25,6 +25,7 @@ class Vertex;
 class Edge {
 public:
     DubinsPath dubinsPath;
+//    RobustDubins::Path dubinsPath;
 
     Edge(std::shared_ptr<Vertex> start);
 

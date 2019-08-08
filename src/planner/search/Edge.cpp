@@ -7,7 +7,7 @@
 #include <memory>
 #include "Edge.h"
 #include "../common/Map.h"
-#include "../common/DynamicObstaclesManager.h"
+#include "../common/dynamic_obstacles/DynamicObstaclesManager.h"
 #include "../common/Path.h"
 #include <robust_dubins/RobustDubins.h>
 #include <cfloat>
@@ -26,7 +26,7 @@ Edge::Edge(std::shared_ptr<Vertex> start, const State& end) : Edge(std::move(sta
 
 //double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
 //                             double maxSpeed, double maxTurningRadius) {
-//    double collisionPenalty;
+//    double collisionPenalty = 0;
 //    if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
 //    if (m_ApproxCost == 0) {
 //        m_TrueCost = 0; // edge is a point

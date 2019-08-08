@@ -4,10 +4,10 @@
 
 #include <vector>
 #include <path_planner/State.h>
-#include "common/Map.h"
+#include "../common/map/Map.h"
 #include "search/Vertex.h"
-#include "common/Path.h"
-#include "common/Plan.h"
+#include "utilities/Path.h"
+#include "utilities/Plan.h"
 
 class Planner {
 public:
@@ -26,7 +26,7 @@ protected:
     double m_MaxSpeed, m_MaxTurningRadius;
     Path m_PointsToCover;
 
-    Map m_Map;
+    const Map& m_Map;
 
     std::ostream* m_Output = &std::cerr;
 

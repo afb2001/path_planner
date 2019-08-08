@@ -1,25 +1,16 @@
 #ifndef SRC_EDGE_H
 #define SRC_EDGE_H
 
-
 #include "Vertex.h"
 #include <robust_dubins/RobustDubins.h>
-#include "../common/Map.h"
-#include "../common/dynamic_obstacles/DynamicObstaclesManager.h"
-#include "../common/Path.h"
-#include "../common/Plan.h"
+#include "../../common/map/Map.h"
+#include "../../common/dynamic_obstacles/DynamicObstaclesManager.h"
+#include "../utilities/Path.h"
+#include "../utilities/Plan.h"
 
 extern "C" {
 #include "dubins.h"
 }
-
-#define DUBINS_INCREMENT 0.1
-#define TIME_PENALTY 1
-#define COLLISION_PENALTY 600
-
-//int dubins_shortest_path(DubinsPath*, double*, double*, double);
-//int dubins_path_length(DubinsPath*);
-
 class Vertex;
 
 class Edge {
@@ -27,21 +18,23 @@ public:
     DubinsPath dubinsPath;
 //    RobustDubins::Path dubinsPath;
 
-    Edge(std::shared_ptr<Vertex> start);
+    explicit Edge(std::shared_ptr<Vertex> start);
 
     Edge(std::shared_ptr<Vertex> start, const State& end);
 
     ~Edge();
 
+    double approxCost() const;
+
     std::shared_ptr<Vertex> setEnd(const State& state);
 
-    double computeTrueCost(Map *map, DynamicObstaclesManager *obstacles, double maxSpeed, double maxTurningRadius);
+    double computeTrueCost(const Map& map, DynamicObstaclesManager *obstacles, double maxSpeed, double maxTurningRadius);
 
     double trueCost() const;
 
     double computeApproxCost(double maxSpeed, double maxTurningRadius);
 
-    void smooth(Map* map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius);
+    void smooth(const Map& map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius);
 
     Plan getPlan(double maxSpeed);
 
@@ -49,15 +42,19 @@ public:
 
     std::shared_ptr<Vertex> end();
 
+    static double collisionPenalty() { return c_CollisionPenalty; }
+    static double dubinsIncrement() { return c_DubinsIncrement; }
+    static double timePenalty() { return c_TimePenalty; }
+
 private:
     std::shared_ptr<Vertex> m_Start;
     std::weak_ptr<Vertex> m_End;
 
-    double m_ApproxCost = -1, m_TrueCost = -1;
-public:
-    double approxCost() const;
+    static constexpr double c_CollisionPenalty = 600;
+    static constexpr double c_DubinsIncrement = 0.1;
+    static constexpr double c_TimePenalty = 1;
 
-private:
+    double m_ApproxCost = -1, m_TrueCost = -1;
 
     double netTime();
 };

@@ -3,7 +3,7 @@
 #include "../../src/planner/search/Edge.h"
 #include "../../src/planner/SamplingBasedPlanner.h"
 #include "../../src/planner/AStarPlanner.h"
-#include "../../src/planner/common/dynamic_obstacles/Distribution.h"
+#include "../../src/common/dynamic_obstacles/Distribution.h"
 #include <robust_dubins/RobustDubins.h>
 extern "C" {
 #include "dubins.h"
@@ -51,7 +51,7 @@ TEST(UnitTests, UseRobustDubinsTest) {
 
 TEST(Benchmarks, RobustDubinsBenchmark1) {
     double minX, maxX, minY, maxY, minSpeed = 2.5, maxSpeed = 2.5;
-    double magnitude = 2.5 * TIME_HORIZON;
+    double magnitude = 2.5 * Plan::timeHorizon();
     minX = -magnitude;
     maxX = magnitude;
     minY = -magnitude;
@@ -66,7 +66,7 @@ TEST(Benchmarks, RobustDubinsBenchmark1) {
 
 TEST(Benchmarks, RobustDubinsBenchmark2) {
     double minX, maxX, minY, maxY, minSpeed = 2.5, maxSpeed = 2.5;
-    double magnitude = 2.5 * TIME_HORIZON;
+    double magnitude = 2.5 * Plan::timeHorizon();
     minX = -magnitude;
     maxX = magnitude;
     minY = -magnitude;
@@ -93,7 +93,7 @@ TEST(Benchmarks, RobustDubinsBenchmark2) {
 
 TEST(Benchmarks, DubinsBenchmark1) {
     double minX, maxX, minY, maxY, minSpeed = 2.5, maxSpeed = 2.5;
-    double magnitude = 2.5 * TIME_HORIZON;
+    double magnitude = 2.5 * Plan::timeHorizon();
     minX = -magnitude;
     maxX = magnitude;
     minY = -magnitude;
@@ -111,7 +111,7 @@ TEST(Benchmarks, DubinsBenchmark1) {
 
 TEST(UnitTests, DubinsComparison) {
     double minX, maxX, minY, maxY, minSpeed = 2.5, maxSpeed = 2.5;
-    double magnitude = 2.5 * TIME_HORIZON;
+    double magnitude = 2.5 * Plan::timeHorizon();
     minX = -magnitude;
     maxX = magnitude;
     minY = -magnitude;
@@ -229,14 +229,14 @@ TEST(UnitTests, ComputeEdgeCostTest) {
     DynamicObstaclesManager dynamicObstacles;
     Path path;
     path.add(0, 10);
-    auto c = e->computeTrueCost(&map, &dynamicObstacles, 1, 2);
+    auto c = e->computeTrueCost(map, &dynamicObstacles, 1, 2);
     EXPECT_DOUBLE_EQ(6, e->end()->state().time);
     EXPECT_DOUBLE_EQ(c, a);
 }
 
 TEST(UnitTests, RunStateGenerationTest) {
     double minX, maxX, minY, maxY, minSpeed = 2.5, maxSpeed = 2.5;
-    double magnitude = 2.5 * TIME_HORIZON;
+    double magnitude = 2.5 * Plan::timeHorizon();
     minX = -magnitude;
     maxX = magnitude;
     minY = -magnitude;
@@ -258,7 +258,7 @@ TEST(UnitTests, VertexTests1) {
     EXPECT_DOUBLE_EQ(c, 10);
     Map m;
     DynamicObstaclesManager obstacles;
-    auto t = v1->parentEdge()->computeTrueCost(&m, &obstacles, 2.5, 8);
+    auto t = v1->parentEdge()->computeTrueCost(m, &obstacles, 2.5, 8);
     EXPECT_DOUBLE_EQ(t, c);
     EXPECT_DOUBLE_EQ(t, v1->currentCost());
     EXPECT_DOUBLE_EQ(v1->currentCost(), v1->state().time - 1);
@@ -349,10 +349,10 @@ TEST(PlannerTests, VertexQueueTests) {
     EXPECT_EQ(root, popped);
     State s1(0, 10, 0, 2.5, 0), s2(0, -10, M_PI, 2.5, 0);
     auto v1 = Vertex::connect(root, s1);
-    v1->parentEdge()->computeTrueCost(&m, &obstacles, 2.5, 8);
+    v1->parentEdge()->computeTrueCost(m, &obstacles, 2.5, 8);
     v1->setCurrentCost();
     auto v2 = Vertex::connect(root, s2);
-    v2->parentEdge()->computeTrueCost(&m, &obstacles, 2.5, 8);
+    v2->parentEdge()->computeTrueCost(m, &obstacles, 2.5, 8);
     v2->setCurrentCost();
     planner.pushVertexQueue(v1);
     planner.pushVertexQueue(v2);
@@ -442,7 +442,7 @@ TEST(PlannerTests, RHRSAStarTest3) {
         if (!newlyCovered.empty()) {
             cerr << "Covered a point near " << start.x << ", " << start.y << endl;
         }
-        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.95); // quick iterations
+        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.95);
         ASSERT_FALSE(plan.empty());
         start = plan[1];
         ASSERT_LT(start.time, 60);

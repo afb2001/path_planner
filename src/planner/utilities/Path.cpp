@@ -1,8 +1,5 @@
 #include <algorithm>
 #include "Path.h"
-#include "../search/Edge.h"
-
-#define COVERAGE_THRESHOLD 3
 
 Path::Path() = default;
 
@@ -70,7 +67,7 @@ std::vector<std::pair<double, double>> Path::removeNewlyCovered(double x, double
 }
 
 bool Path::covers(double x1, double y1, double x2, double y2) {
-    return ((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2) < COVERAGE_THRESHOLD * COVERAGE_THRESHOLD);
+    return ((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2) < c_CoverageThreshold * c_CoverageThreshold);
 }
 
 bool Path::covers(std::pair<double, double> p1, std::pair<double, double> p2) {

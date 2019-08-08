@@ -2,8 +2,8 @@
 
 void Plan::append(const State &s) {
     if (m_States.empty() ||
-            (m_States.front().timeUntil(m_States.back()) < TIME_HORIZON &&
-            m_States.back().timeUntil(s) >= PLAN_TIME_DENSITY)) {
+            (m_States.front().timeUntil(m_States.back()) < Plan::timeHorizon() &&
+            m_States.back().timeUntil(s) >= Plan::planTimeDensity())) {
         m_States.emplace_back(s);
     }
 }
@@ -17,8 +17,8 @@ std::vector<State> Plan::get() const {
 }
 
 std::string Plan::toString() const {
-    std::string r = "";
-    for (int i = 0; i < m_States.size(); i++) r += m_States[i].toString() + "\n";
+    std::string r;
+    for (const auto & m_State : m_States) r += m_State.toString() + "\n";
     return r;
 }
 

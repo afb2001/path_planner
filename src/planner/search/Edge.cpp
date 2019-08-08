@@ -1,14 +1,8 @@
 #include <utility>
-
-#include <utility>
-
-#include <utility>
 #include <algorithm>
 #include <memory>
 #include "Edge.h"
-#include "../common/Map.h"
-#include "../common/dynamic_obstacles/DynamicObstaclesManager.h"
-#include "../common/Path.h"
+#include "../utilities/Path.h"
 #include <robust_dubins/RobustDubins.h>
 #include <cfloat>
 
@@ -92,7 +86,7 @@ Edge::Edge(std::shared_ptr<Vertex> start, const State& end) : Edge(std::move(sta
 //    return m_TrueCost;
 //}
 
-double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
+double Edge::computeTrueCost(const Map& map, DynamicObstaclesManager *obstacles,
                              double maxSpeed, double maxTurningRadius) {
 //    double collisionPenalty = 0;
     if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
@@ -107,29 +101,29 @@ double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
     // collision check along the curve (and watch out for newly covered points, too)
     while (lengthSoFar <= length) {
         dubins_path_sample(&dubinsPath, lengthSoFar, q);
-        if (staticDistance > DUBINS_INCREMENT) {
-            staticDistance -= DUBINS_INCREMENT;
+        if (staticDistance > Edge::dubinsIncrement()) {
+            staticDistance -= Edge::dubinsIncrement();
         } else {
-            staticDistance = map->getUnblockedDistance(q[0], q[1]);
-            if (staticDistance <= DUBINS_INCREMENT) {
-                penalty += COLLISION_PENALTY;
+            staticDistance = map.getUnblockedDistance(q[0], q[1]);
+            if (staticDistance <= Edge::dubinsIncrement()) {
+                penalty += Edge::collisionPenalty();
                 staticDistance = 0;
             }
         }
-        if (dynamicDistance > DUBINS_INCREMENT) {
-            dynamicDistance -= DUBINS_INCREMENT;
+        if (dynamicDistance > Edge::dubinsIncrement()) {
+            dynamicDistance -= Edge::dubinsIncrement();
         } else {
             dynamicDistance = obstacles->distanceToNearestPossibleCollision(q[0], q[1], start()->state().speed,
                                                                             start()->state().time +
                                                                             (lengthSoFar / maxSpeed));
-            if (dynamicDistance <= DUBINS_INCREMENT) {
+            if (dynamicDistance <= Edge::dubinsIncrement()) {
                 penalty += obstacles->collisionExists(q[0], q[1], start()->state().time + (lengthSoFar / maxSpeed)) *
-                           COLLISION_PENALTY;
+                        Edge::collisionPenalty();
                 dynamicDistance = 0;
             }
         }
-        if (toCoverDistance > DUBINS_INCREMENT) {
-            toCoverDistance -= DUBINS_INCREMENT;
+        if (toCoverDistance > Edge::dubinsIncrement()) {
+            toCoverDistance -= Edge::dubinsIncrement();
         } else {
             toCoverDistance = DBL_MAX;
             for (auto p : start()->uncovered().get()) {
@@ -141,7 +135,7 @@ double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
                 }
             }
         }
-        lengthSoFar += DUBINS_INCREMENT;
+        lengthSoFar += Edge::dubinsIncrement();
     }
 
     // set end's state's time
@@ -158,7 +152,7 @@ double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
             end()->uncovered().add(p);
         }
     }
-    m_TrueCost = netTime() * TIME_PENALTY + penalty;
+    m_TrueCost = netTime() * Edge::timePenalty() + penalty;
 
     end()->setCurrentCost();
 
@@ -193,7 +187,7 @@ double Edge::computeApproxCost(double maxSpeed, double maxTurningRadius) {
         if (err != EDUBOK) {
             std::cerr << "Encountered an error in the Dubins library" << std::endl;
         } else {
-            m_ApproxCost = dubins_path_length(&dubinsPath) / maxSpeed * TIME_PENALTY;
+            m_ApproxCost = dubins_path_length(&dubinsPath) / maxSpeed * Edge::timePenalty();
         }
     }
     return m_ApproxCost;
@@ -203,7 +197,7 @@ double Edge::netTime() {
     return end()->state().time - start()->state().time;
 }
 
-void Edge::smooth(Map* map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius) {
+void Edge::smooth(const Map& map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius) {
     if (start()->isRoot()) return;
     double parentCost = start()->parentEdge()->m_TrueCost; // should be up to date in A*, check for BIT*
     auto smoothed = Vertex::connect(start()->parent(), end()->state());
@@ -239,7 +233,7 @@ Plan Edge::getPlan(double maxSpeed) {
     while (lengthSoFar < length) {
         dubins_path_sample(&dubinsPath, lengthSoFar, q);
         plan1.append(State(q[0], q[1], M_PI_2 - q[2], maxSpeed, lengthSoFar / maxSpeed + start()->state().time));
-        lengthSoFar += DUBINS_INCREMENT;
+        lengthSoFar += Edge::dubinsIncrement();
     }
     return plan1;
 }

@@ -4,7 +4,7 @@
 
 class Map {
 public:
-    double getUnblockedDistance(double x, double y) const;
+    virtual double getUnblockedDistance(double x, double y) const;
 };
 
 

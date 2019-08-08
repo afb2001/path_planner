@@ -1,13 +1,8 @@
 #include <utility>
 #include "ros/ros.h"
-#include "geographic_msgs/GeoPointStamped.h"
 #include "geographic_msgs/GeoPath.h"
 #include "geometry_msgs/TwistStamped.h"
-#include "std_msgs/Bool.h"
 #include "std_msgs/String.h"
-#include "std_msgs/Float32.h"
-#include "std_msgs/Float64.h"
-#include "marine_msgs/Helm.h"
 #include "marine_msgs/Contact.h"
 #include "marine_msgs/NavEulerStamped.h"
 #include <vector>
@@ -15,14 +10,8 @@
 #include "path_planner/path_plannerAction.h"
 #include "actionlib/server/simple_action_server.h"
 #include "path_planner/Trajectory.h"
-#include <sys/types.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <fstream>
 #include <project11_transformations/LatLongToMap.h>
-#include <thread>
-#include <signal.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <mpc/EstimateStateRequest.h>
 #include <mpc/EstimateStateResponse.h>
@@ -30,7 +19,6 @@
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
 #include "path_planner/TrajectoryDisplayer.h"
-
 
 /**
  * Node to act as interface between ROS and path planning system.

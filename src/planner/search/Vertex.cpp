@@ -42,10 +42,10 @@ double Vertex::computeApproxToGo() {
         m_ApproxToGo = 0; // TODO! -- tsp solver
     } else if (c_Heuristic == "greedy") {
         auto nearest = getNearestPoint();
-        m_ApproxToGo = state().distanceTo(nearest.first, nearest.second) / state().speed * TIME_PENALTY;
+        m_ApproxToGo = state().distanceTo(nearest.first, nearest.second) / state().speed * Edge::timePenalty();
     } else if (c_Heuristic == "maxD") {
         double max = m_Uncovered.maxDistanceFrom(state());
-        m_ApproxToGo = max / state().speed * TIME_PENALTY;
+        m_ApproxToGo = max / state().speed * Edge::timePenalty();
     } else {
 
     }
@@ -72,18 +72,6 @@ double Vertex::currentCost() const {
     return m_CurrentCost;
 }
 
-//void Vertex::setState(const State& state) {
-//    m_State = state;
-//}
-//
-//void Vertex::setParentEdge(const std::shared_ptr<Edge>& parentEdge) {
-//    m_ParentEdge = parentEdge;
-//}
-
-//void Vertex::setUncovered(const Path& uncovered) {
-//    m_Uncovered = uncovered;
-//}
-
 double Vertex::approxToGo() {
     if (m_ApproxToGo == -1) computeApproxToGo();
     return m_ApproxToGo;
@@ -91,7 +79,6 @@ double Vertex::approxToGo() {
 
 int Vertex::getDepth() const {
     if (isRoot()) return 0;
-//    std::cerr << "Getting depth" << std::endl;
     return 1 + parent()->getDepth();
 }
 

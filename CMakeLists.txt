@@ -49,12 +49,12 @@ add_library(planner
         src/planner/common/Map.cpp
         src/planner/search/Vertex.cpp
         src/planner/search/Edge.cpp
-        src/planner/common/DynamicObstaclesManager.cpp
+        src/planner/common/dynamic_obstacles/DynamicObstaclesManager.cpp
         src/planner/common/Path.cpp
         src/planner/common/Plan.cpp
         src/planner/common/StateGenerator.cpp
         src/planner/SamplingBasedPlanner.cpp
-        src/planner/AStarPlanner.cpp src/planner/common/DynamicObstacle.cpp src/planner/common/DynamicObstacle.h)
+        src/planner/AStarPlanner.cpp src/planner/common/dynamic_obstacles/DynamicObstacle.cpp src/planner/common/dynamic_obstacles/DynamicObstacle.h src/planner/common/dynamic_obstacles/Distribution.cpp src/planner/common/dynamic_obstacles/Distribution.h)
 
 target_link_libraries(planner robust_dubins dubins)
 

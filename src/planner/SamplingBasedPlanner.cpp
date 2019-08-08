@@ -58,7 +58,7 @@ bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) 
 }
 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstaclesManager* obstacles) {
-    std::cerr << "Expanding vertex " << sourceVertex->state().toString() << std::endl;
+//    std::cerr << "Expanding vertex " << sourceVertex->state().toString() << std::endl;
     // add nearest point to cover
     if (sourceVertex->uncovered().size() != 0) {
         std::pair<double, double> nearest = sourceVertex->getNearestPoint();

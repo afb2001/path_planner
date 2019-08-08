@@ -3,6 +3,7 @@
 #include "../../src/planner/search/Edge.h"
 #include "../../src/planner/SamplingBasedPlanner.h"
 #include "../../src/planner/AStarPlanner.h"
+#include "../../src/planner/common/dynamic_obstacles/Distribution.h"
 #include <robust_dubins/RobustDubins.h>
 extern "C" {
 #include "dubins.h"
@@ -142,11 +143,66 @@ TEST(UnitTests, DubinsComparison) {
     }
 }
 
+TEST(UnitTests, GaussianDensityTest) {
+    double sigma[2][2] = {1, 0.1, 0.1, 1};
+    double mean[2] = {0, 0};
+    Distribution distribution(mean, sigma, 0, 2);
+    EXPECT_NEAR(distribution.density(distribution, 2, 0, 0), 0.16, 1e-4);
+    EXPECT_NEAR(distribution.density(distribution, 2, 0.6, 0.6), 0.1153, 1e-4);
+}
+
+TEST(UnitTests, GaussianInterpolationTest) {
+    double sigma1[2][2] = {1, 0.1, 0.1, 1};
+    double mean1[2] = {-1, -1};
+    double sigma2[2][2] = {1, 0.1, 0.1, 1};
+    double mean2[2] = {1, 1};
+    Distribution distribution1(mean1, sigma1, 0, 2);
+    Distribution distribution2(mean2, sigma2, 0, 4);
+    EXPECT_NEAR(distribution1.density(distribution2, 3, 0, 0), 0.16, 1e-4);
+    EXPECT_NEAR(distribution1.density(distribution2, 3, 0.6, 0.6), 0.1153, 1e-4);
+}
+
+TEST(UnitTests, GaussianTruncateTest) {
+    double sigma[2][2] = {{1, 0}, {0, 1}};
+    double mean[2] = {0, 0};
+    Distribution distribution(mean, sigma, 0, 2);
+    // When sigma is the identity matrix, Mahalanobis distance is Euclidean distance, so we should get
+    // a zero (truncated) density value for (1.5, 2) (distance to (0, 0) is 2.5)
+    EXPECT_DOUBLE_EQ(0, distribution.density(1.5, 2));
+    // and a non-zero (non-truncated) density value for (1, 1) (distance to (0, 0) is ~1.414
+    EXPECT_LT(0, distribution.density(1, 1));
+}
+
 TEST(UnitTests, DynamicObstacleTest1) {
+    // This test shouldn't pass right now
     DynamicObstaclesManager obstaclesManager;
-    obstaclesManager.update(1, State(10, 10, M_PI, 2, 7), .1, 0);
-    auto p = obstaclesManager.collisionExists(10, 4, 10);
-    EXPECT_DOUBLE_EQ(p, 1);
+    double sigma[2][2] = {{1, 0}, {0, 1}};
+    double mean[2] = {0, 0};
+    std::vector<Distribution> distributions;
+    distributions.emplace_back(mean, sigma, 0, 2);
+    distributions.emplace_back(mean, sigma, 0, 3);
+    obstaclesManager.update(1, distributions);
+    auto p = obstaclesManager.collisionExists(3, 4.5, 10);
+    EXPECT_DOUBLE_EQ(p, 0);
+    p = obstaclesManager.collisionExists(2.5, 2.5, 10);
+    EXPECT_LT(0, p);
+    p = obstaclesManager.collisionExists(0, 3.6, 10);
+    EXPECT_DOUBLE_EQ(p, 0);
+    distributions.clear();
+    distributions.emplace_back(mean, sigma, M_PI / 4, 2);
+    distributions.emplace_back(mean, sigma, M_PI / 4, 3);
+    obstaclesManager.update(1, distributions);
+    p = obstaclesManager.collisionExists(0, 3.6, 10);
+    EXPECT_LT(0, p);
+    distributions.clear();
+    // shift and interpolate headings
+    double mean1[2] = {1, 1};
+    double sigma1[2][2] = {{1, 0}, {0, 1}};
+    distributions.emplace_back(mean1, sigma1, M_PI / 6, 2);
+    distributions.emplace_back(mean1, sigma1, M_PI / 3, 4);
+    obstaclesManager.update(1, distributions);
+    auto p1 = obstaclesManager.collisionExists(1, 4.6, 3);
+    EXPECT_NEAR(p1, p, 0.00001);
 }
 
 TEST(UnitTests, MakePlanTest) {
@@ -212,26 +268,44 @@ TEST(UnitTests, VertexTests1) {
 }
 
 TEST(PlannerTests, DubinsWalkTest) {
-    // runs forever
+    // runs forever // doesn't run forever anymore but fails with new EXPECTs // and fails with the even newer one too
+    // basically all the dubins code is bad
     vector<pair<double, double>> points;
-    points.emplace_back(10, 10);
-    points.emplace_back(20, 10);
-    points.emplace_back(20, 20);
-    points.emplace_back(10, 20);
-    Planner planner(1, 8, Map());
+    points.emplace_back(100, 100);
+    points.emplace_back(200, 100);
+    points.emplace_back(200, 200);
+    points.emplace_back(100, 200);
+    Planner planner(2.5, 8, Map());
     planner.addToCover(points);
-    State start(0,0,M_PI_2,1,1);
+    State start(0,0,M_PI_2,2.5,1);
     vector<pair<double , double>> newlyCovered;
+    vector<State> pastStarts;
+    double lastPlanEndTime = -1;
     while(!points.empty()) {
+//        for (const auto& s : pastStarts) {
+//            auto d = s.distanceTo(start);
+//            EXPECT_LE(0.5, d);
+//            if (d < 0.5) {
+//                cerr << "Circled back to " << s.time << " from " << start.time << endl;
+//            }
+//
+//        }
+//        EXPECT_LE(start.x, 216);
+//        EXPECT_LE(start.y, 216);
+        pastStarts.push_back(start);
+        cerr << start.toString() << endl;
         if (Path::covers(points.front(), start.x, start.y)) {
             cerr << "Covered a point near " << start.x << ", " << start.y << endl;
             newlyCovered.push_back(points.front());
             points.erase(points.begin());
         }
         auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0);
+        if (lastPlanEndTime != -1) {
+            EXPECT_LE(plan.back().time, lastPlanEndTime + 0.5); // 0.5 added for small fluctuations
+        }
+        lastPlanEndTime = plan.back().time;
         newlyCovered.clear();
         start = plan[1];
-//        cerr << start.toString() << endl;
     }
 }
 

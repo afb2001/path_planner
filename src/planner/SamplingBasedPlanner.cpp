@@ -74,10 +74,10 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
     // Use another heap to sort by Dubins distance, skipping the samples which are farther away this time.
     // Making all the vertices adds some allocation overhead but it lets us cache the dubins paths
     std::vector<std::shared_ptr<Vertex>> bestSamples;
-    for (int i = 0; i < m_Samples.size(); i++) {
+    for (uint64_t i = 0; i < m_Samples.size(); i++) {
         auto sample = m_Samples.front();
         std::pop_heap(m_Samples.begin(), m_Samples.end() - i, comp);
-        if (bestSamples.empty() ||
+        if (bestSamples.size() < k() ||
             bestSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state())) {
             if (!sourceVertex->state().colocated(sample)) {
                 bestSamples.push_back(Vertex::connect(sourceVertex, sample));

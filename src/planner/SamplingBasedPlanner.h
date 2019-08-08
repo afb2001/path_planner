@@ -1,9 +1,8 @@
 #ifndef SRC_SAMPLINGBASEDPLANNER_H
 #define SRC_SAMPLINGBASEDPLANNER_H
 
-
 #include "Planner.h"
-#include "common/StateGenerator.h"
+#include "utilities/StateGenerator.h"
 #include <functional>
 
 class SamplingBasedPlanner : public Planner {

@@ -1,14 +1,12 @@
 #include "AStarPlanner.h"
 
-#define INITIAL_SAMPLES 32
-
 using std::shared_ptr;
 
 AStarPlanner::AStarPlanner(double maxSpeed, double maxTurningRadius, const Map& staticMap) : SamplingBasedPlanner(
         maxSpeed, maxTurningRadius, staticMap) {}
 
 std::function<bool(std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2)> AStarPlanner::getVertexComparator() {
-    return [] (std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2) {
+    return [] (const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vertex>& v2) {
         return v1->f() > v2->f();
     };
 }
@@ -21,7 +19,7 @@ std::vector<State> AStarPlanner::plan(const std::vector<std::pair<double, double
     m_StartStateTime = start.time;
     m_Samples.clear();
     double minX, maxX, minY, maxY, minSpeed = m_MaxSpeed, maxSpeed = m_MaxSpeed;
-    double magnitude = m_MaxSpeed * TIME_HORIZON;
+    double magnitude = m_MaxSpeed * Plan::timeHorizon();
     minX = start.x - magnitude;
     maxX = start.x + magnitude;
     minY = start.y - magnitude;
@@ -33,7 +31,7 @@ std::vector<State> AStarPlanner::plan(const std::vector<std::pair<double, double
         clearVertexQueue();
         pushVertexQueue(startV);
         // On the first iteration add INITIAL_SAMPLES samples, otherwise just double them
-        if (m_Samples.empty()) addSamples(generator, INITIAL_SAMPLES);
+        if (m_Samples.empty()) addSamples(generator, c_InitialSamples);
         else addSamples(generator);
         auto v = aStar(&dynamicObstacles, endTime);
         if (!bestVertex || (v && v->f() < bestVertex->f())) {

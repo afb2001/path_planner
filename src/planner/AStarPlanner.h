@@ -1,7 +1,6 @@
 #ifndef SRC_ASTARPLANNER_H
 #define SRC_ASTARPLANNER_H
 
-
 #include "SamplingBasedPlanner.h"
 
 class AStarPlanner : public SamplingBasedPlanner {
@@ -16,13 +15,11 @@ protected:
 
     std::function<bool(std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2)> getVertexComparator() override;
 
-    int k() const override {
-        return 17;
-    }
+    int k() const override { return 17; }
 
     std::shared_ptr<Vertex> aStar(DynamicObstaclesManager* obstacles, double endTime);
 
-
+    static constexpr double c_InitialSamples = 32;
 };
 
 

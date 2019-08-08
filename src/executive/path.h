@@ -4,7 +4,7 @@
 #define __PATH_H__
 
 #include "path_planner/State.h"
-#include "../planner/common/Path.h"
+#include "../planner/utilities/Path.h"
 
 #include <cmath>
 #include <vector>

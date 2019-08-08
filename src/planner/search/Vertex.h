@@ -4,7 +4,7 @@
 #include <memory>
 #include <path_planner/State.h>
 #include "Edge.h"
-#include "../common/Path.h"
+#include "../utilities/Path.h"
 
 class Edge;
 class Vertex {

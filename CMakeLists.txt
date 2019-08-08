@@ -44,19 +44,25 @@ include_directories(
         include
 )
 
+add_library(path_planner_common
+        src/common/map/Map.cpp
+        src/common/dynamic_obstacles/Distribution.cpp
+        src/common/dynamic_obstacles/DynamicObstacle.cpp
+        src/common/dynamic_obstacles/DynamicObstaclesManager.cpp
+        )
+
 add_library(planner
         src/planner/Planner.cpp
-        src/planner/common/Map.cpp
         src/planner/search/Vertex.cpp
         src/planner/search/Edge.cpp
-        src/planner/common/dynamic_obstacles/DynamicObstaclesManager.cpp
-        src/planner/common/Path.cpp
-        src/planner/common/Plan.cpp
-        src/planner/common/StateGenerator.cpp
+        src/planner/utilities/Path.cpp
+        src/planner/utilities/Plan.cpp
+        src/planner/utilities/StateGenerator.cpp
         src/planner/SamplingBasedPlanner.cpp
-        src/planner/AStarPlanner.cpp src/planner/common/dynamic_obstacles/DynamicObstacle.cpp src/planner/common/dynamic_obstacles/DynamicObstacle.h src/planner/common/dynamic_obstacles/Distribution.cpp src/planner/common/dynamic_obstacles/Distribution.h)
+        src/planner/AStarPlanner.cpp
+        )
 
-target_link_libraries(planner robust_dubins dubins)
+target_link_libraries(planner path_planner_common robust_dubins dubins)
 
 add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp
         src/executive/executive.cpp
@@ -71,6 +77,7 @@ add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp)
 target_link_libraries(${PROJECT_NAME}_node
         ${catkin_LIBRARIES}
         planner
+        path_planner_common
         )
 
 catkin_add_gtest(test_planner test/planner/test_planner.cpp)

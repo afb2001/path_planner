@@ -11,7 +11,7 @@ std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double
     m_Samples.clear();
     m_VertexQueue.clear();
     double minX, maxX, minY, maxY, minSpeed = m_MaxSpeed, maxSpeed = m_MaxSpeed;
-    double magnitude = m_MaxSpeed * TIME_HORIZON;
+    double magnitude = m_MaxSpeed * Plan::timeHorizon();
     minX = start.x - magnitude;
     maxX = start.x + magnitude;
     minY = start.y - magnitude;
@@ -40,7 +40,7 @@ std::shared_ptr<Vertex> SamplingBasedPlanner::popVertexQueue() {
 
 std::function<bool(std::shared_ptr<Vertex> v1,
                    std::shared_ptr<Vertex> v2)> SamplingBasedPlanner::getVertexComparator() {
-    return [](std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2){
+    return [](const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vertex>& v2){
         return v1->getDepth() < v2->getDepth();
     };
 }
@@ -53,8 +53,8 @@ std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getS
 }
 
 bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) {
-    return vertex->state().time > m_StartStateTime + TIME_HORIZON ||
-            (vertex->uncovered().size() == 0 && vertex->state().time > m_StartStateTime + TIME_MINIMUM);
+    return vertex->state().time > m_StartStateTime + Plan::timeHorizon() ||
+            (vertex->uncovered().size() == 0 && vertex->state().time > m_StartStateTime + Plan::timeHorizon());
 }
 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstaclesManager* obstacles) {
@@ -64,7 +64,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
         std::pair<double, double> nearest = sourceVertex->getNearestPoint();
         // TODO! -- what heading for points?
         auto destinationVertex = Vertex::connect(sourceVertex, State(nearest.first, nearest.second, 0, m_MaxSpeed, 0));
-        destinationVertex->parentEdge()->computeTrueCost(&m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
+        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
         pushVertexQueue(destinationVertex);
     }
     auto comp = getStateComparator(sourceVertex->state());
@@ -93,7 +93,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
         if (i >= bestSamples.size()) break;
         auto destinationVertex = bestSamples.front();
         std::pop_heap(bestSamples.begin(), bestSamples.end() - i, dubinsComp);
-        destinationVertex->parentEdge()->computeTrueCost(&m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
+        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
         pushVertexQueue(destinationVertex);
     }
     m_ExpandedCount++;

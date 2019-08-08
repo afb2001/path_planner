@@ -8,10 +8,9 @@ using std::vector;
 using std::pair;
 using std::shared_ptr;
 
-Planner::Planner(double maxSpeed, double maxTurningRadius, const Map& staticMap) {
+Planner::Planner(double maxSpeed, double maxTurningRadius, const Map& staticMap) : m_Map(staticMap) {
     m_MaxSpeed = maxSpeed;
     m_MaxTurningRadius = maxTurningRadius;
-    m_Map = staticMap;
 }
 
 void Planner::addToCover(const vector<pair<double, double>>& points) {
@@ -38,7 +37,7 @@ std::vector<State> Planner::plan(const std::vector<std::pair<double, double>>& n
     for (auto p : pointsWithHeadings) {
         prev = cur;
         cur = Vertex::connect(cur, p);
-        cur->parentEdge()->computeTrueCost(&m_Map, &dynamicObstacles, m_MaxSpeed, m_MaxTurningRadius);
+        cur->parentEdge()->computeTrueCost(m_Map, &dynamicObstacles, m_MaxSpeed, m_MaxTurningRadius);
     }
     auto p = tracePlan(cur, false, &dynamicObstacles);
     return p.get();
@@ -50,7 +49,7 @@ Plan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, DynamicObst
         return Plan();
     }
     if (smoothing) {
-        v->parentEdge()->smooth(&m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
+        v->parentEdge()->smooth(m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
     }
     for (auto cur = v; !cur->isRoot(); cur = cur->parent()) {
         branch.push_back(cur->parentEdge());

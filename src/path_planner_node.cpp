@@ -19,6 +19,8 @@
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
 #include "path_planner/TrajectoryDisplayer.h"
+#include <path_planner/path_plannerConfig.h>
+#include <dynamic_reconfigure/server.h>
 
 /**
  * Node to act as interface between ROS and path planning system.
@@ -46,6 +48,11 @@ public:
     m_action_server.registerGoalCallback(boost::bind(&PathPlanner::goalCallback, this));
     m_action_server.registerPreemptCallback(boost::bind(&PathPlanner::preemptCallback, this));
     m_action_server.start();
+
+    dynamic_reconfigure::Server<path_planner::path_plannerConfig>::CallbackType f;
+    f = boost::bind(&PathPlanner::reconfigureCallback, this, _1, _2);
+
+    m_Server.setCallback(f);
 
     m_Executive = new Executive(this);
 }
@@ -221,6 +228,10 @@ public:
         m_controller_msgs_pub.publish(msg);
     }
 
+    void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
+        cerr << "Reconfigure request: planner_geotiff_map <- " << config.planner_geotiff_map << endl;
+    }
+
 private:
     ros::NodeHandle m_node_handle;
     actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
@@ -241,6 +252,8 @@ private:
 
     ros::ServiceClient m_lat_long_to_map_client;
     ros::ServiceClient m_estimate_state_client;
+
+    dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Server;
 
     // handle on Executive
     Executive* m_Executive;

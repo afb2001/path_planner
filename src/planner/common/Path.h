@@ -40,6 +40,7 @@ public:
     static double distance(double x1, double y1, double x2, double y2);
     static double distance(std::pair<double, double> p, double x, double y);
 
+    static double coverageThreshold() { return c_CoverageThreshold; };
 private:
     std::vector<std::pair<double, double>> m_Points;
     static constexpr double c_CoverageThreshold = 3;

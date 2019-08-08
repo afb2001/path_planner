@@ -94,9 +94,9 @@ Edge::Edge(std::shared_ptr<Vertex> start, const State& end) : Edge(std::move(sta
 
 double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
                              double maxSpeed, double maxTurningRadius) {
-    double collisionPenalty = 0;
+//    double collisionPenalty = 0;
     if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
-    double& penalty = collisionPenalty;
+    double penalty = 0;
     std::vector<std::pair<double, double>> result;
     double q[3];
     double lengthSoFar = 0;
@@ -105,7 +105,7 @@ double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
     std::vector<std::pair<double, double>> newlyCovered;
 
     // collision check along the curve (and watch out for newly covered points, too)
-    while (lengthSoFar < length) {
+    while (lengthSoFar <= length) {
         dubins_path_sample(&dubinsPath, lengthSoFar, q);
         if (staticDistance > DUBINS_INCREMENT) {
             staticDistance -= DUBINS_INCREMENT;
@@ -137,19 +137,19 @@ double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
                 if (Path::covers(d)) {
                     newlyCovered.push_back(p);
                 } else {
-                    toCoverDistance = fmin(toCoverDistance, d);
+                    toCoverDistance = fmin(toCoverDistance, d - Path::coverageThreshold());
                 }
             }
         }
         lengthSoFar += DUBINS_INCREMENT;
     }
-    if (!newlyCovered.empty()) {
-        std::sort(newlyCovered.begin(), newlyCovered.end());
-        newlyCovered.erase(std::unique(newlyCovered.begin(), newlyCovered.end()), newlyCovered.end());
-    }
 
     // set end's state's time
     end()->state().time = start()->state().time + dubins_path_length(&dubinsPath) / maxSpeed;
+
+    // remove duplicates for efficiency for the next bit
+    std::sort(newlyCovered.begin(), newlyCovered.end());
+    newlyCovered.erase(std::unique(newlyCovered.begin(), newlyCovered.end()), newlyCovered.end());
 
     // set end's uncovered list
     end()->uncovered().clear();
@@ -158,7 +158,7 @@ double Edge::computeTrueCost(Map *map, DynamicObstaclesManager *obstacles,
             end()->uncovered().add(p);
         }
     }
-    m_TrueCost = netTime() * TIME_PENALTY + collisionPenalty;
+    m_TrueCost = netTime() * TIME_PENALTY + penalty;
 
     end()->setCurrentCost();
 

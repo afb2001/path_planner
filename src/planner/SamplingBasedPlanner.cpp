@@ -1,8 +1,9 @@
 #include "SamplingBasedPlanner.h"
 #include <algorithm>
+#include <utility>
 
-SamplingBasedPlanner::SamplingBasedPlanner(double maxSpeed, double maxTurningRadius, const Map& staticMap) : Planner(
-        maxSpeed, maxTurningRadius, staticMap) {}
+SamplingBasedPlanner::SamplingBasedPlanner(double maxSpeed, double maxTurningRadius, std::shared_ptr<Map> staticMap) : Planner(
+        maxSpeed, maxTurningRadius, std::move(staticMap)) {}
 
 std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double, double>>& newlyCovered,
                                               const State& start,

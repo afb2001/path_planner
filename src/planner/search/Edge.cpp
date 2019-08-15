@@ -86,7 +86,7 @@ Edge::Edge(std::shared_ptr<Vertex> start, const State& end) : Edge(std::move(sta
 //    return m_TrueCost;
 //}
 
-double Edge::computeTrueCost(const Map& map, DynamicObstaclesManager *obstacles,
+double Edge::computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager *obstacles,
                              double maxSpeed, double maxTurningRadius) {
 //    double collisionPenalty = 0;
     if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
@@ -104,7 +104,7 @@ double Edge::computeTrueCost(const Map& map, DynamicObstaclesManager *obstacles,
         if (staticDistance > Edge::dubinsIncrement()) {
             staticDistance -= Edge::dubinsIncrement();
         } else {
-            staticDistance = map.getUnblockedDistance(q[0], q[1]);
+            staticDistance = map->getUnblockedDistance(q[0], q[1]);
             if (staticDistance <= Edge::dubinsIncrement()) {
                 penalty += Edge::collisionPenalty();
                 staticDistance = 0;
@@ -197,7 +197,7 @@ double Edge::netTime() {
     return end()->state().time - start()->state().time;
 }
 
-void Edge::smooth(const Map& map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius) {
+void Edge::smooth(Map::SharedPtr map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius) {
     if (start()->isRoot()) return;
     double parentCost = start()->parentEdge()->m_TrueCost; // should be up to date in A*, check for BIT*
     auto smoothed = Vertex::connect(start()->parent(), end()->state());

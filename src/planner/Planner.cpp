@@ -3,12 +3,13 @@
 #include "Planner.h"
 #include "search/Vertex.h"
 #include <algorithm>    // std::remove_if, std::reverse
+#include <utility>
 
 using std::vector;
 using std::pair;
 using std::shared_ptr;
 
-Planner::Planner(double maxSpeed, double maxTurningRadius, const Map& staticMap) : m_Map(staticMap) {
+Planner::Planner(double maxSpeed, double maxTurningRadius, Map::SharedPtr staticMap) : m_Map(std::move(staticMap)) {
     m_MaxSpeed = maxSpeed;
     m_MaxTurningRadius = maxTurningRadius;
 }

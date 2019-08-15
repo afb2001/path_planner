@@ -10,6 +10,8 @@ class Edge;
 class Vertex {
 public:
 
+    typedef std::shared_ptr<Vertex> SharedPtr;
+
     /**
      * Construct the root vertex (no parent edge).
      * Use Vertex::makeRoot for full root construction.

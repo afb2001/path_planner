@@ -11,7 +11,7 @@
 
 class Planner {
 public:
-    Planner(double maxSpeed, double maxTurningRadius, const Map& staticMap);
+    Planner(double maxSpeed, double maxTurningRadius, Map::SharedPtr staticMap);
 
     void addToCover(const std::vector<std::pair<double, double>>& points);
 
@@ -26,7 +26,7 @@ protected:
     double m_MaxSpeed, m_MaxTurningRadius;
     Path m_PointsToCover;
 
-    const Map& m_Map;
+    const Map::SharedPtr m_Map;
 
     std::ostream* m_Output = &std::cerr;
 

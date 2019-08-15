@@ -15,6 +15,8 @@ class Vertex;
 
 class Edge {
 public:
+    typedef std::shared_ptr<Edge> SharedPtr;
+
     DubinsPath dubinsPath;
 //    RobustDubins::Path dubinsPath;
 
@@ -28,13 +30,13 @@ public:
 
     std::shared_ptr<Vertex> setEnd(const State& state);
 
-    double computeTrueCost(const Map& map, DynamicObstaclesManager *obstacles, double maxSpeed, double maxTurningRadius);
+    double computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager *obstacles, double maxSpeed, double maxTurningRadius);
 
     double trueCost() const;
 
     double computeApproxCost(double maxSpeed, double maxTurningRadius);
 
-    void smooth(const Map& map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius);
+    void smooth(Map::SharedPtr map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius);
 
     Plan getPlan(double maxSpeed);
 

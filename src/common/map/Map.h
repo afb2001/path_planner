@@ -2,8 +2,11 @@
 #define SRC_MAP_H
 
 
+#include <memory>
+
 class Map {
 public:
+    typedef std::shared_ptr<Map> SharedPtr;
     virtual double getUnblockedDistance(double x, double y) const;
 };
 

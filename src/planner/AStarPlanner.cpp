@@ -1,12 +1,14 @@
 #include "AStarPlanner.h"
 
+#include <utility>
+
 using std::shared_ptr;
 
-AStarPlanner::AStarPlanner(double maxSpeed, double maxTurningRadius, const Map& staticMap) : SamplingBasedPlanner(
-        maxSpeed, maxTurningRadius, staticMap) {}
+AStarPlanner::AStarPlanner(double maxSpeed, double maxTurningRadius, shared_ptr<Map> staticMap) : SamplingBasedPlanner(
+        maxSpeed, maxTurningRadius, std::move(staticMap)) {}
 
-std::function<bool(std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2)> AStarPlanner::getVertexComparator() {
-    return [] (const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vertex>& v2) {
+std::function<bool(shared_ptr<Vertex> v1, shared_ptr<Vertex> v2)> AStarPlanner::getVertexComparator() {
+    return [] (const shared_ptr<Vertex>& v1, const shared_ptr<Vertex>& v2) {
         return v1->f() > v2->f();
     };
 }
@@ -45,7 +47,7 @@ std::vector<State> AStarPlanner::plan(const std::vector<std::pair<double, double
     return tracePlan(bestVertex, false, &dynamicObstacles).get();
 }
 
-std::shared_ptr<Vertex> AStarPlanner::aStar(DynamicObstaclesManager* obstacles, double endTime) {
+shared_ptr<Vertex> AStarPlanner::aStar(DynamicObstaclesManager* obstacles, double endTime) {
     auto vertex = popVertexQueue();
     while (now() < endTime) {
         if (goalCondition(vertex)) {
@@ -58,5 +60,5 @@ std::shared_ptr<Vertex> AStarPlanner::aStar(DynamicObstaclesManager* obstacles, 
 
         vertex = popVertexQueue();
     }
-    return std::shared_ptr<Vertex>(nullptr);
+    return shared_ptr<Vertex>(nullptr);
 }

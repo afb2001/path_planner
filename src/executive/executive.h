@@ -21,13 +21,17 @@ public:
 
     void addToCover(int x, int y);
 
-    void updateDyamicObstacle(uint32_t mmsi, State obstacle);
+    void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
-    void startPlanner(std::string mapFile);
+    void startPlanner(const std::string& mapFile);
+
+    void refreshMap(std::string pathToMapFile);
 
     bool plannerIsRunning();
 
     void pause();
+
+    static double getCurrentTime();
 
 private:
 
@@ -44,13 +48,13 @@ private:
     condition_variable m_PauseCV;
 
     std::unique_ptr<Planner> m_Planner;
-//    Communication communication_With_Planner;
+
+    std::shared_ptr<Map> m_NewMap = nullptr;
+    mutex m_MapMutex;
 
     TrajectoryPublisher* m_TrajectoryPublisher;
 
 //    bool plannerIsDead();
-
-    static double getCurrentTime();
 
     void requestPath();
 

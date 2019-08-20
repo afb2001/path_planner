@@ -26,7 +26,7 @@ std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double
     return tracePlan(vertex, false, &dynamicObstacles).get();
 }
 
-void SamplingBasedPlanner::pushVertexQueue(const std::shared_ptr<Vertex>& vertex) {
+void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     m_VertexQueue.push_back(vertex);
     std::push_heap(m_VertexQueue.begin(), m_VertexQueue.end(), getVertexComparator());
 }
@@ -55,7 +55,7 @@ std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getS
 
 bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) {
     return vertex->state().time > m_StartStateTime + Plan::timeHorizon() ||
-            (vertex->uncovered().size() == 0 && vertex->state().time > m_StartStateTime + Plan::timeHorizon());
+            (vertex->uncovered().size() == 0 && vertex->state().time > m_StartStateTime + Plan::timeMinimum());
 }
 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstaclesManager* obstacles) {
@@ -106,7 +106,8 @@ int SamplingBasedPlanner::k() const {
 
 void SamplingBasedPlanner::addSamples(StateGenerator& generator, int n) {
     for (int i = 0; i < n; i++) {
-        m_Samples.push_back(generator.generate());
+        const auto s = generator.generate();
+        m_Samples.push_back(s);
     }
 }
 

@@ -180,7 +180,7 @@ public:
 
         obstacle.time = inmsg->header.stamp.toNSec() / 1.0e9;
 
-        m_Executive->updateDyamicObstacle(inmsg->mmsi, obstacle);
+        m_Executive->updateDynamicObstacle(inmsg->mmsi, obstacle);
     }
 
     void publishTrajectory(vector<State> trajectory) final
@@ -230,6 +230,7 @@ public:
 
     void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
         cerr << "Reconfigure request: planner_geotiff_map <- " << config.planner_geotiff_map << endl;
+        m_Executive->refreshMap(config.planner_geotiff_map);
     }
 
 private:

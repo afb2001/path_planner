@@ -71,3 +71,7 @@ double Planner::now() const {
     clock_gettime(CLOCK_REALTIME, &t);
     return t.tv_sec + t.tv_nsec * 1e-9;
 }
+
+void Planner::updateMap(Map::SharedPtr map) {
+    m_Map = map;
+}

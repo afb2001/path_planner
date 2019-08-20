@@ -6,6 +6,7 @@
 #include "../../src/common/dynamic_obstacles/Distribution.h"
 #include "../../src/common/map/GeoTiffMap.h"
 #include <robust_dubins/RobustDubins.h>
+#include <thread>
 extern "C" {
 #include "dubins.h"
 }
@@ -207,6 +208,16 @@ TEST(UnitTests, DynamicObstacleTest1) {
     EXPECT_NEAR(p1, p, 0.00001);
 }
 
+TEST(UnitTests, GeoTiffMapTest1) {
+    GeoTiffMap map("/home/abrown/src/depth_map/US5NH02M.tiff");
+}
+
+TEST(UnitTests, GeoTiffMapTest2) {
+    GeoTiffMap map("/home/abrown/src/depth_map/US5NH02M.tiff");
+    EXPECT_DOUBLE_EQ(map.getDepth(0, 0), 0);
+    EXPECT_NEAR(map.getDepth(365000, 4770000), 14.87, 0.001);
+}
+
 TEST(UnitTests, MakePlanTest) {
     State s1(0, 0, 0, 1, 1);
     State s2(0, 5, 0, 1, 6);
@@ -244,11 +255,8 @@ TEST(UnitTests, RunStateGenerationTest) {
     minY = -magnitude;
     maxY = magnitude;
     StateGenerator generator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7); // lucky seed
-    while (true) {
-        cerr << generator.generate().toString() << endl;
-        sleep(1);
-        break;
-    }
+    cerr << generator.generate().toString() << endl;
+    sleep(1);
 }
 
 TEST(UnitTests, VertexTests1) {
@@ -321,6 +329,7 @@ TEST(PlannerTests, PointToPointTest1) {
     State start(0, 0, 0, 2.5, 1);
     auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0);
     for (auto s : plan) cerr << s.toString() << endl;
+    EXPECT_DOUBLE_EQ(plan.back().time, 12.64);
 }
 
 TEST(PlannerTests, UCSTest1) {
@@ -430,6 +439,7 @@ TEST(PlannerTests, RHRSAStarTest2) {
 }
 
 TEST(PlannerTests, RHRSAStarTest3) {
+    // no memory leak with Valgrind
     Path path;
     path.add(10, 10);
     path.add(20, 10);
@@ -449,6 +459,30 @@ TEST(PlannerTests, RHRSAStarTest3) {
         start = plan[1];
         ASSERT_LT(start.time, 60);
     }
+}
+
+TEST(PlannerTests, RHRSAStarSeparateThreadTest) {
+    // has memory leak with Valgrind despite being the same as RHRSAStarTest3 but in a spawned thread
+    // and with the planner as a smart pointer
+    auto planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, make_shared<Map>()));
+    Path path;
+    path.add(10, 10);path.add(20, 10);path.add(20, 20);path.add(10, 20);
+    planner->addToCover(path.get());
+    State start(0, 0, 0, 1, 1);
+    std::thread t ([&]{
+        while(path.size()) {
+            cerr << start.toString() << endl;
+            auto newlyCovered = path.removeNewlyCovered(start.x, start.y);
+            if (!newlyCovered.empty()) {
+                cerr << "Covered a point near " << start.x << ", " << start.y << endl;
+            }
+            auto plan = planner->plan(newlyCovered, start, DynamicObstaclesManager(), 10.95);
+            ASSERT_FALSE(plan.empty());
+            start = plan[1];
+            ASSERT_LT(start.time, 60);
+        }
+    });
+    t.join();
 }
 
 

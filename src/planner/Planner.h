@@ -22,11 +22,13 @@ public:
 
     Plan tracePlan(const std::shared_ptr<Vertex>& v, bool smoothing, DynamicObstaclesManager* obstacles);
 
+    void updateMap(Map::SharedPtr map);
+
 protected:
     double m_MaxSpeed, m_MaxTurningRadius;
     Path m_PointsToCover;
 
-    const Map::SharedPtr m_Map;
+    Map::SharedPtr m_Map;
 
     std::ostream* m_Output = &std::cerr;
 

@@ -3,11 +3,10 @@
 
 #include <string.h>
 #include <condition_variable>
-#include "communication.h"
 #include "path.h"
 #include "../trajectory_publisher.h"
 #include "../planner/Planner.h"
-
+#include <future>
 
 class Executive
 {
@@ -36,13 +35,9 @@ public:
 private:
 
     bool m_Running = false;
-    bool request_start = false;
     ExecutiveInternalsManager m_InternalsManager;
 
-    bool debug = true;
-
     bool m_Pause = true;
-    bool m_PlannerPipeStale = true;
 
     mutex m_PauseMutex;
     condition_variable m_PauseCV;
@@ -52,9 +47,9 @@ private:
     std::shared_ptr<Map> m_NewMap = nullptr;
     mutex m_MapMutex;
 
-    TrajectoryPublisher* m_TrajectoryPublisher;
+    std::future<void> m_TrajectoryPublishingFuture, m_PlanningFuture;
 
-//    bool plannerIsDead();
+    TrajectoryPublisher* m_TrajectoryPublisher;
 
     void requestPath();
 
@@ -63,8 +58,6 @@ private:
 //    void requestWorldInformation();
 
     void sendAction();
-
-//    void print_map(std::string file);
 
     /**
      * Clear m_PauseAll and notify threads blocked on it.
@@ -80,8 +73,6 @@ private:
      * Make sure the threads can exit and kill the planner (if it's running).
      */
     void terminate();
-
-//    void read_goal(std::string goal);
 };
 
 #endif //SRC_EXECUTIVE_H

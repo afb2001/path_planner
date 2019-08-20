@@ -1,11 +1,8 @@
 #include <utility>
 #include <thread>
-#include <string.h>
-//#include "State.h"
-//#include "communication.h"
 #include <fstream>
 #include <wait.h>
-#include <pwd.h>
+#include <future>
 #include "path.h"
 // #include "xtiffio.h"
 // #include "geotiffio.h"
@@ -26,6 +23,8 @@ Executive::Executive(TrajectoryPublisher *controlReceiver)
 
 Executive::~Executive() {
     terminate();
+    m_PlanningFuture.wait_for(chrono::seconds(1));
+    m_TrajectoryPublishingFuture.wait_for(chrono::seconds(1));
 }
 
 double Executive::getCurrentTime()
@@ -37,7 +36,6 @@ double Executive::getCurrentTime()
 
 void Executive::updateCovered(double x, double y, double speed, double heading, double t)
 {
-    request_start = true;
     m_InternalsManager.update_current(x,y,speed,heading,t);
     m_InternalsManager.update_covered();
 }
@@ -136,12 +134,12 @@ void Executive::startPlanner(const string& mapFile)
     cerr << "Starting planner" << endl;
 
     shared_ptr<Map> map;
-    try {
-        map = make_shared<GeoTiffMap>(mapFile);
-    }
-    catch (...) {
+//    try {
+//        map = make_shared<GeoTiffMap>(mapFile);
+//    }
+//    catch (...) {
         map = make_shared<Map>();
-    }
+//    }
 //    m_Planner = std::unique_ptr<Planner>(new Planner(2.3, 8, Map()));
     m_Planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, map));
 
@@ -161,11 +159,9 @@ void Executive::startThreads()
 {
     m_Running = true;
     cerr << "Starting thread to publish to controller" << endl;
-    thread thread_for_controller(thread([=] { sendAction(); }));
-    thread_for_controller.detach();
+    m_TrajectoryPublishingFuture = async(launch::async, &Executive::sendAction, this);
     cerr << "Starting thread to listen to planner" << endl;
-    thread thread_for_planner(thread([=] { requestPath(); }));
-    thread_for_planner.detach();
+    m_PlanningFuture = async(launch::async, &Executive::requestPath, this);
 }
 
 void Executive::terminate()
@@ -210,7 +206,7 @@ void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
 }
 
 void Executive::refreshMap(std::string pathToMapFile) {
-    thread worker([this, pathToMapFile] {
+    thread([this, pathToMapFile] {
         std::lock_guard<std::mutex> lock(m_MapMutex);
         try {
             m_NewMap = make_shared<GeoTiffMap>(pathToMapFile); // could take some time for I/O, Dijkstra on entire map
@@ -220,6 +216,5 @@ void Executive::refreshMap(std::string pathToMapFile) {
             cerr << "Encountered an error loading map at path " << pathToMapFile << endl;
             m_NewMap = nullptr;
         }
-    });
-    worker.detach();
+    }).detach();
 }

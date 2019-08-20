@@ -20,6 +20,8 @@ find_package(catkin REQUIRED COMPONENTS
         dynamic_reconfigure
         )
 
+find_package(GDAL REQUIRED)
+
 add_message_files(
         FILES
         StateMsg.msg
@@ -46,6 +48,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}/src/planner/*
         ${dubinscurves_INCLUDE_DIRS}
         ${robustdubins_INCLUDE_DIRS}
+        ${GDAL_INCLUDE_DIRS}
         include
 )
 
@@ -54,7 +57,10 @@ add_library(path_planner_common
         src/common/dynamic_obstacles/Distribution.cpp
         src/common/dynamic_obstacles/DynamicObstacle.cpp
         src/common/dynamic_obstacles/DynamicObstaclesManager.cpp
+        src/common/map/GeoTiffMap.cpp
         )
+
+target_link_libraries(path_planner_common ${GDAL_LIBRARIES})
 
 add_library(planner
         src/planner/Planner.cpp
@@ -69,10 +75,16 @@ add_library(planner
 
 target_link_libraries(planner path_planner_common robust_dubins dubins)
 
-add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp
+add_library(executive
         src/executive/executive.cpp
         src/executive/path.cpp
-        src/executive/communication.cpp)
+        )
+
+target_link_libraries(executive planner path_planner_common)
+
+add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp)
+
+
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp)
@@ -82,13 +94,16 @@ add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_gencfg)
 
 target_link_libraries(${PROJECT_NAME}_node
         ${catkin_LIBRARIES}
-        planner
-        path_planner_common
+        executive
         )
 
 catkin_add_gtest(test_planner test/planner/test_planner.cpp)
 
 target_link_libraries(test_planner planner dubins)
+
+catkin_add_gtest(test_system test/system/test_executive.cpp test/system/NodeStub.cpp)
+
+target_link_libraries(test_system executive)
 
 ## Install project namespaced headers
 install(DIRECTORY include/${PROJECT_NAME}

@@ -13,6 +13,7 @@
 #include "executive.h"
 #include "../planner/SamplingBasedPlanner.h"
 #include "../planner/AStarPlanner.h"
+#include "../common/map/GeoTiffMap.h"
 
 using namespace std;
 
@@ -163,6 +164,14 @@ void Executive::requestPath()
             pause();
         }
 
+        if (m_MapMutex.try_lock()) {
+            if (m_NewMap) {
+                m_Planner->updateMap(m_NewMap);
+            }
+            m_NewMap = nullptr;
+            m_MapMutex.unlock();
+        }
+
         start = getCurrentTime();
         auto newlyCoveredList = path.getNewlyCovered();
         vector<pair<double, double>> newlyCovered;
@@ -200,12 +209,19 @@ void Executive::addToCover(int x, int y)
     path.add_covered(x, y);
 }
 
-void Executive::startPlanner(string mapFile)
+void Executive::startPlanner(const string& mapFile)
 {
     cerr << "Starting planner" << endl;
 
+    shared_ptr<Map> map;
+    try {
+        map = make_shared<GeoTiffMap>(mapFile);
+    }
+    catch (...) {
+        map = make_shared<Map>();
+    }
 //    m_Planner = std::unique_ptr<Planner>(new Planner(2.3, 8, Map()));
-    m_Planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, Map()));
+    m_Planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, map));
 
     // assume you've already set up path to cover
     vector<pair<double, double>> toCover;
@@ -267,6 +283,21 @@ void Executive::unPause() {
     m_PauseCV.notify_all();
 }
 
-void Executive::updateDyamicObstacle(uint32_t mmsi, State obstacle) {
+void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
     path.updateDynamicObstacle(mmsi, obstacle);
+}
+
+void Executive::refreshMap(std::string pathToMapFile) {
+    thread worker([this, pathToMapFile] {
+        std::lock_guard<std::mutex> lock(m_MapMutex);
+        try {
+            m_NewMap = make_shared<GeoTiffMap>(pathToMapFile); // could take some time for I/O, Dijkstra on entire map
+        }
+        catch (...) {
+            // swallow all errors in this thread
+            cerr << "Encountered an error loading map at path " << pathToMapFile << endl;
+            m_NewMap = nullptr;
+        }
+    });
+    worker.detach();
 }

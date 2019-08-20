@@ -12,7 +12,7 @@ public:
     std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
                             DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
 
-    void pushVertexQueue(const std::shared_ptr<Vertex>& vertex);
+    void pushVertexQueue(Vertex::SharedPtr vertex);
 
     std::shared_ptr<Vertex> popVertexQueue();
 

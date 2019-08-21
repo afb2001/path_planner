@@ -5,10 +5,11 @@
 #include <string>
 #include "Map.h"
 
-
 class GeoTiffMap : public Map {
 public:
     explicit GeoTiffMap(std::string path);
+
+    ~GeoTiffMap() override = default;
 
     float getDepth(double x, double y);
 

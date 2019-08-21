@@ -6,6 +6,7 @@
 
 class Map {
 public:
+    virtual ~Map() = default;
     typedef std::shared_ptr<Map> SharedPtr;
     virtual double getUnblockedDistance(double x, double y) const;
 };

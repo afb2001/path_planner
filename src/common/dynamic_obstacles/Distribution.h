@@ -1,12 +1,13 @@
 #ifndef SRC_DISTRIBUTION_H
 #define SRC_DISTRIBUTION_H
 
-
 #include <cmath>
 
 class Distribution {
 public:
     Distribution(const double (&mean)[2], const double (&covariance)[2][2], double heading, double time);
+
+    virtual ~Distribution() = default;
 
     /**
      * Linearly interpolate between (or extrapolate with) this distribution and next, to desiredTime.

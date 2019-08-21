@@ -25,10 +25,16 @@ public:
     void addSamples(StateGenerator& generator);
     void addSamples(StateGenerator& generator, int n);
 
+    // TODO! -- add as parameter to plan function
+    void setRibbonManager(const RibbonManager& ribbonManager);
+
 protected:
     double m_StartStateTime;
     std::vector<State> m_Samples;
     int m_ExpandedCount = 0;
+
+    bool m_UseRibbons = false;
+    RibbonManager m_RibbonManager;
 
     virtual std::function<bool(std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2)> getVertexComparator();
 

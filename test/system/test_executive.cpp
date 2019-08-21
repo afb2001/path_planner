@@ -1,3 +1,6 @@
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma ide diagnostic ignored "cert-err58-cpp"
 #include <gtest/gtest.h>
 #include "NodeStub.h"
 #include "../../src/executive/executive.h"
@@ -8,15 +11,16 @@ using std::cerr;
 using std::endl;
 
 TEST(SystemTests, LoadMapTest) {
+    auto startTime = Executive::getCurrentTime();
     std::stringstream buffer;
     std::streambuf* sbuf = std::cerr.rdbuf();
     std::cerr.rdbuf(buffer.rdbuf());
     NodeStub stub;
     auto executive = new Executive(&stub);
     executive->addToCover(20, 20);
-    executive->updateCovered(0, 0, 2.3, M_PI / 4, Executive::getCurrentTime());
-    executive->startPlanner("");
-    executive->refreshMap("/home/abrown/Downloads/depth_map/US5NH02M.tiff");
+    executive->updateCovered(0, 0, Executive::DefaultMaxSpeed, M_PI / 4, Executive::getCurrentTime());
+    executive->startPlanner("", 43.073397415457535, -70.71054174878898);
+    executive->refreshMap("/home/abrown/Downloads/depth_map/US5NH02M.tiff", 43.073397415457535, -70.71054174878898);
     for (int i = 0; i <= 60; i++) {
         auto found = buffer.str().find("Done loading map") != -1;
         EXPECT_TRUE(found || i < 60);
@@ -28,10 +32,30 @@ TEST(SystemTests, LoadMapTest) {
     executive->pause();
     std::cerr.rdbuf(sbuf);
     std::cerr << buffer.str() << endl;
+    cerr << "Total time elapsed: " << Executive::getCurrentTime() - startTime << "s" << endl;
     delete executive;
+}
+
+TEST(SystemTests, SimpleBoxPatternTest) {
+    NodeStub stub;
+    auto executive = new Executive(&stub);
+    executive->addToCover(10, 10);executive->addToCover(20, 10);executive->addToCover(20, 20);executive->addToCover(10, 20);
+    executive->updateCovered(0, 0, Executive::DefaultMaxSpeed, 0, Executive::getCurrentTime());
+    executive->startPlanner("", 0, 0);
+    for (int i = 0; i < 120; i++) {
+        if (stub.allDoneCalled()) break;
+        if (!stub.lastTrajectory().empty()) {
+            auto start = stub.lastTrajectory()[1];
+            executive->updateCovered(start.x, start.y, start.speed, start.heading,
+                                     Executive::getCurrentTime()); // maybe use start's time here?
+        }
+        std::this_thread::sleep_for(chrono::milliseconds(500));
+    }
+    EXPECT_TRUE(stub.allDoneCalled());
 }
 
 int main(int argc, char **argv){
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+#pragma clang diagnostic pop

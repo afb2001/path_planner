@@ -20,9 +20,7 @@ public:
     DubinsPath dubinsPath;
 //    RobustDubins::Path dubinsPath;
 
-    explicit Edge(std::shared_ptr<Vertex> start);
-
-    Edge(std::shared_ptr<Vertex> start, const State& end);
+    Edge(std::shared_ptr<Vertex> start, bool useRibbons);
 
     ~Edge();
 
@@ -57,6 +55,8 @@ private:
     static constexpr double c_TimePenalty = 1;
 
     double m_ApproxCost = -1, m_TrueCost = -1;
+
+    bool m_UseRibbons;
 
     double netTime();
 };

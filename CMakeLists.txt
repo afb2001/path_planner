@@ -71,13 +71,13 @@ add_library(planner
         src/planner/utilities/StateGenerator.cpp
         src/planner/SamplingBasedPlanner.cpp
         src/planner/AStarPlanner.cpp
-        )
+        src/planner/utilities/Ribbon.cpp src/planner/utilities/Ribbon.h src/planner/utilities/RibbonManager.cpp src/planner/utilities/RibbonManager.h)
 
 target_link_libraries(planner path_planner_common robust_dubins dubins)
 
 add_library(executive
         src/executive/executive.cpp
-        src/executive/path.cpp
+        src/executive/ExecutiveInternalsManager.cpp
         )
 
 target_link_libraries(executive planner path_planner_common)

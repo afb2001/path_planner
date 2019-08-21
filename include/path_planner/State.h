@@ -164,9 +164,17 @@ class State
 
     // from the Go version of State:
 
-    double headingTo(const State& other) {
-        double dx = other.x - x;
-        double dy = other.y - y;
+    double headingTo(const State& other) const {
+        return headingTo(other.x, other.y);
+    }
+
+    double headingTo(const std::pair<double, double> p) const {
+        return headingTo(p.first, p.second);
+    }
+
+    double headingTo(double x1, double y1) const {
+        double dx = x1 - this->x;
+        double dy = y1 - this->y;
         double h = M_PI_2 - atan2(dy, dx); // TODO! -- is this correct?
         if (h < 0) h += 2 * M_PI;
         return h;
@@ -174,6 +182,11 @@ class State
 
     void setHeadingTowards(const State& other) {
         heading = headingTo(other);
+        if (heading < 0) heading += 2 * M_PI;
+    }
+
+    void setHeadingTowards(double x1, double y1) {
+        heading = headingTo(x1, y1);
         if (heading < 0) heading += 2 * M_PI;
     }
 

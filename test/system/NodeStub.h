@@ -18,6 +18,12 @@ public:
 
     State getEstimatedState(double desiredTime) override;
 
+    std::vector<State> lastTrajectory() const;
+    
+    bool allDoneCalled() const;
+private:
+    std::vector<State> m_LastTrajectory;
+    bool m_AllDoneCalled = false;
 };
 
 

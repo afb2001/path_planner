@@ -1,9 +1,11 @@
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma ide diagnostic ignored "cert-err58-cpp"
 #include <gtest/gtest.h>
 #include "../../src/planner/Planner.h"
 #include "../../src/planner/search/Edge.h"
 #include "../../src/planner/SamplingBasedPlanner.h"
 #include "../../src/planner/AStarPlanner.h"
-#include "../../src/common/dynamic_obstacles/Distribution.h"
 #include "../../src/common/map/GeoTiffMap.h"
 #include <robust_dubins/RobustDubins.h>
 #include <thread>
@@ -41,7 +43,7 @@ TEST(UnitTests, UseRobustDubinsTest) {
 //    rds.get_optimalWaypoints(x,y,h);
 
     std::cout << '\n';
-    for (int i = 0; i < x.size(); i++){
+    for (unsigned long i = 0; i < x.size(); i++){
         std::cout << x[i] << ", " << y[i] << ", " << h[i] << '\n';
     }
     std::cout << endl;
@@ -490,3 +492,4 @@ int main(int argc, char **argv){
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+#pragma clang diagnostic pop

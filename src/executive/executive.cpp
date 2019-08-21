@@ -3,7 +3,7 @@
 #include <fstream>
 #include <wait.h>
 #include <future>
-#include "path.h"
+#include "ExecutiveInternalsManager.h"
 // #include "xtiffio.h"
 // #include "geotiffio.h"
 
@@ -36,8 +36,8 @@ double Executive::getCurrentTime()
 
 void Executive::updateCovered(double x, double y, double speed, double heading, double t)
 {
-    m_InternalsManager.update_current(x,y,speed,heading,t);
-    m_InternalsManager.update_covered();
+    m_InternalsManager.updateCurrent(x, y, speed, heading, t);
+    m_InternalsManager.updateCovered();
 }
 
 void Executive::sendAction() {
@@ -46,7 +46,7 @@ void Executive::sendAction() {
     {
         // if m_Pause, block until !m_Pause
         unique_lock<mutex> lk(m_PauseMutex);
-        m_PauseCV.wait(lk, [=]{return !m_Pause;});
+        m_PauseCv.wait(lk, [=]{return !m_Pause;});
 //        cerr << "sendAction unblocked (with the lock)" << endl;
         lk.unlock();
 //        cerr << "sendAction released the lock" << endl;
@@ -76,7 +76,7 @@ void Executive::requestPath()
     {
         // if m_Pause, block until !m_Pause
         unique_lock<mutex> lk(m_PauseMutex);
-        m_PauseCV.wait(lk, [=]{return !m_Pause;});
+        m_PauseCv.wait(lk, [=]{return !m_Pause;});
 //        cerr << "requestPath unblocked (with the lock)" << endl;
         lk.unlock();
 //        cerr << "requestPath released the lock" << endl;
@@ -126,7 +126,7 @@ void Executive::requestPath()
 
 void Executive::addToCover(int x, int y)
 {
-    m_InternalsManager.add_covered(x, y);
+    m_InternalsManager.addCovered(x, y);
 }
 
 void Executive::startPlanner(const string& mapFile)
@@ -134,18 +134,18 @@ void Executive::startPlanner(const string& mapFile)
     cerr << "Starting planner" << endl;
 
     shared_ptr<Map> map;
-//    try {
-//        map = make_shared<GeoTiffMap>(mapFile);
-//    }
-//    catch (...) {
+    try {
+        map = make_shared<GeoTiffMap>(mapFile);
+    }
+    catch (...) {
         map = make_shared<Map>();
-//    }
+    }
 //    m_Planner = std::unique_ptr<Planner>(new Planner(2.3, 8, Map()));
-    m_Planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, map));
+    m_Planner = std::unique_ptr<Planner>(new AStarPlanner(DefaultMaxSpeed, DefaultTurningRadius, map));
 
     // assume you've already set up path to cover
     vector<pair<double, double>> toCover;
-    for (point p : m_InternalsManager.get_covered())
+    for (point p : m_InternalsManager.getCovered())
         toCover.emplace_back(p.x, p.y);
     m_Planner->addToCover(toCover);
 
@@ -198,7 +198,7 @@ void Executive::unPause() {
     m_PauseMutex.lock();
     m_Pause = false;
     m_PauseMutex.unlock();
-    m_PauseCV.notify_all();
+    m_PauseCv.notify_all();
 }
 
 void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {

@@ -1,9 +1,8 @@
 #ifndef SRC_EXECUTIVE_H
 #define SRC_EXECUTIVE_H
 
-#include <string.h>
 #include <condition_variable>
-#include "path.h"
+#include "ExecutiveInternalsManager.h"
 #include "../trajectory_publisher.h"
 #include "../planner/Planner.h"
 #include <future>
@@ -32,6 +31,9 @@ public:
 
     static double getCurrentTime();
 
+    static constexpr double DefaultMaxSpeed = 2.3;
+    static constexpr double DefaultTurningRadius = 8;
+
 private:
 
     bool m_Running = false;
@@ -40,7 +42,7 @@ private:
     bool m_Pause = true;
 
     mutex m_PauseMutex;
-    condition_variable m_PauseCV;
+    condition_variable m_PauseCv;
 
     std::unique_ptr<Planner> m_Planner;
 
@@ -52,10 +54,6 @@ private:
     TrajectoryPublisher* m_TrajectoryPublisher;
 
     void requestPath();
-
-// TODO! -- Add a way to update obstacles
-
-//    void requestWorldInformation();
 
     void sendAction();
 

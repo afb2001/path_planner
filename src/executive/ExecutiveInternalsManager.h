@@ -1,11 +1,9 @@
-#include <utility>
-
-#ifndef __PATH_H__
-#define __PATH_H__
+#ifndef SRC_EXECUTIVEINTERNALSMANAGER_H
+#define SRC_EXECUTIVEINTERNALSMANAGER_H
 
 #include "path_planner/State.h"
+#include <utility>
 #include "../planner/utilities/Path.h"
-
 #include <cmath>
 #include <vector>
 #include <list>
@@ -26,8 +24,8 @@ class ExecutiveInternalsManager
     // Default constructor
     ExecutiveInternalsManager()
     {
-        current = next_start = State(0);
-        actions.emplace_back(-1);
+        m_Current = m_NextStart = State(0);
+        m_Actions.emplace_back(-1);
     };
 
     ~ExecutiveInternalsManager() = default;
@@ -41,12 +39,12 @@ class ExecutiveInternalsManager
     //below for dynamic obs update
     void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
-    void update_current(double x, double y, double speed, double heading, double otime);
+    void updateCurrent(double x, double y, double speed, double heading, double otime);
 
     //below for coverd path update
-    void update_covered();
+    void updateCovered();
 
-    void add_covered(int x, int y);
+    void addCovered(int x, int y);
 
     std::vector<State> getActions();
 
@@ -56,31 +54,27 @@ class ExecutiveInternalsManager
 
     bool checkCollision(double cx, double cy, double ex, double ey);
 
-    const list<point> &get_covered() const;
+    const list<point> &getCovered() const;
 
     //below condition check or lock access
     bool finish();
 
     void initialize();
 
-    bool debug;
-    
 
-  private:
-    std::deque<State> path;
-    vector<State> newpath;
+private:
+    std::deque<State> m_Path;
+    vector<State> m_Newpath;
 
-    map<uint32_t,State> dynamic_obstacles;
+    map<uint32_t,State> m_DynamicObstacles;
 
-    list<point> cover, newcover;
+    list<point> m_Cover, m_Newcover;
 
-    mutex mtx_path, mtx_cover;
+    mutex m_PathMutex, m_ToCoverMutex;
 
-    State current, next_start;
+    State m_Current, m_NextStart;
 
-    int dummy;
-
-    std::vector<State> actions;
+    std::vector<State> m_Actions;
 };
 
 #endif

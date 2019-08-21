@@ -7,7 +7,7 @@
 
 class GeoTiffMap : public Map {
 public:
-    explicit GeoTiffMap(std::string path);
+    explicit GeoTiffMap(const std::string& path);
 
     ~GeoTiffMap() override = default;
 

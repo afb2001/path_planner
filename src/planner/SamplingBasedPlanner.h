@@ -9,6 +9,8 @@ class SamplingBasedPlanner : public Planner {
 public:
     SamplingBasedPlanner(double maxSpeed, double maxTurningRadius, std::shared_ptr<Map> staticMap);
 
+    ~SamplingBasedPlanner() override = default;
+
     std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
                             DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
 

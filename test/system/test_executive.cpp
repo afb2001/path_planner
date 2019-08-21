@@ -17,9 +17,9 @@ TEST(SystemTests, LoadMapTest) {
     executive->updateCovered(0, 0, 2.3, M_PI / 4, Executive::getCurrentTime());
     executive->startPlanner("");
     executive->refreshMap("/home/abrown/Downloads/depth_map/US5NH02M.tiff");
-    for (int i = 0; i <= 25; i++) {
+    for (int i = 0; i <= 60; i++) {
         auto found = buffer.str().find("Done loading map") != -1;
-        EXPECT_TRUE(found || i < 25);
+        EXPECT_TRUE(found || i < 60);
         if (found) break;
         ASSERT_FALSE(buffer.str().find("Encountered an error loading map at path ") != -1);
         sleep(1);

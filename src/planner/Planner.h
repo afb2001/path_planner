@@ -13,6 +13,8 @@ class Planner {
 public:
     Planner(double maxSpeed, double maxTurningRadius, Map::SharedPtr staticMap);
 
+    virtual ~Planner() = default;
+
     void addToCover(const std::vector<std::pair<double, double>>& points);
 
     void clearToCover();

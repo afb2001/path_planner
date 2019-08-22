@@ -11,6 +11,7 @@ using std::cerr;
 using std::endl;
 
 TEST(SystemTests, LoadMapTest) {
+    auto startTime = Executive::getCurrentTime();
     std::stringstream buffer;
     std::streambuf* sbuf = std::cerr.rdbuf();
     std::cerr.rdbuf(buffer.rdbuf());
@@ -18,8 +19,8 @@ TEST(SystemTests, LoadMapTest) {
     auto executive = new Executive(&stub);
     executive->addToCover(20, 20);
     executive->updateCovered(0, 0, Executive::DefaultMaxSpeed, M_PI / 4, Executive::getCurrentTime());
-    executive->startPlanner("");
-    executive->refreshMap("/home/abrown/Downloads/depth_map/US5NH02M.tiff");
+    executive->startPlanner("", 43.073397415457535, -70.71054174878898);
+    executive->refreshMap("/home/abrown/Downloads/depth_map/US5NH02M.tiff", 43.073397415457535, -70.71054174878898);
     for (int i = 0; i <= 60; i++) {
         auto found = buffer.str().find("Done loading map") != -1;
         EXPECT_TRUE(found || i < 60);
@@ -31,6 +32,7 @@ TEST(SystemTests, LoadMapTest) {
     executive->pause();
     std::cerr.rdbuf(sbuf);
     std::cerr << buffer.str() << endl;
+    cerr << "Total time elapsed: " << Executive::getCurrentTime() - startTime << "s" << endl;
     delete executive;
 }
 
@@ -39,7 +41,7 @@ TEST(SystemTests, SimpleBoxPatternTest) {
     auto executive = new Executive(&stub);
     executive->addToCover(10, 10);executive->addToCover(20, 10);executive->addToCover(20, 20);executive->addToCover(10, 20);
     executive->updateCovered(0, 0, Executive::DefaultMaxSpeed, 0, Executive::getCurrentTime());
-    executive->startPlanner("");
+    executive->startPlanner("", 0, 0);
     for (int i = 0; i < 120; i++) {
         if (stub.allDoneCalled()) break;
         if (!stub.lastTrajectory().empty()) {

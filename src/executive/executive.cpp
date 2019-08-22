@@ -129,13 +129,13 @@ void Executive::addToCover(int x, int y)
     m_InternalsManager.addCovered(x, y);
 }
 
-void Executive::startPlanner(const string& mapFile)
+void Executive::startPlanner(const string& mapFile, double latitude, double longitude)
 {
     cerr << "Starting planner" << endl;
 
     shared_ptr<Map> map;
     try {
-        map = make_shared<GeoTiffMap>(mapFile);
+        map = make_shared<GeoTiffMap>(mapFile, longitude, latitude);
     }
     catch (...) {
         map = make_shared<Map>();
@@ -205,11 +205,11 @@ void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
     m_InternalsManager.updateDynamicObstacle(mmsi, obstacle);
 }
 
-void Executive::refreshMap(std::string pathToMapFile) {
-    thread([this, pathToMapFile] {
+void Executive::refreshMap(std::string pathToMapFile, double latitude, double longitude) {
+    thread([this, pathToMapFile, latitude, longitude] {
         std::lock_guard<std::mutex> lock(m_MapMutex);
         try {
-            m_NewMap = make_shared<GeoTiffMap>(pathToMapFile); // could take some time for I/O, Dijkstra on entire map
+            m_NewMap = make_shared<GeoTiffMap>(pathToMapFile, longitude, latitude); // could take some time for I/O, Dijkstra on entire map
         }
         catch (...) {
             // swallow all errors in this thread

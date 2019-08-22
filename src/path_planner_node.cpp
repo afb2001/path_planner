@@ -48,6 +48,7 @@ public:
     m_heading_sub = m_node_handle.subscribe("/heading", 10, &PathPlanner::headingCallback, this);
     m_speed_sub = m_node_handle.subscribe("/sog", 10, &PathPlanner::speedCallback, this);
     m_contact_sub = m_node_handle.subscribe("/contact", 10, &PathPlanner::contactCallback, this);
+    m_origin_sub = m_node_handle.subscribe("/origin", 1, &PathPlanner::originCallback, this);
 
     m_action_server.registerGoalCallback(boost::bind(&PathPlanner::goalCallback, this));
     m_action_server.registerPreemptCallback(boost::bind(&PathPlanner::preemptCallback, this));
@@ -132,7 +133,7 @@ public:
         }
 
         // start planner
-        m_Executive->startPlanner("NOFILE");
+        m_Executive->startPlanner("NOFILE", 0, 0);
     }
 
     void preemptCallback()
@@ -234,7 +235,11 @@ public:
 
     void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
         cerr << "Reconfigure request: planner_geotiff_map <- " << config.planner_geotiff_map << endl;
-        m_Executive->refreshMap(config.planner_geotiff_map);
+        m_Executive->refreshMap(config.planner_geotiff_map, m_origin.latitude, m_origin.longitude);
+    }
+
+    void originCallback(const geographic_msgs::GeoPointConstPtr& inmsg) {
+        m_origin = *inmsg;
     }
 
 private:
@@ -247,6 +252,8 @@ private:
     double m_current_speed;
     double m_current_heading;
 
+    geographic_msgs::GeoPoint m_origin;
+
     ros::Publisher m_controller_msgs_pub;
     ros::Publisher m_reference_trajectory_pub;
 
@@ -254,6 +261,7 @@ private:
     ros::Subscriber m_heading_sub;
     ros::Subscriber m_speed_sub;
     ros::Subscriber m_contact_sub;
+    ros::Subscriber m_origin_sub;
 
     ros::ServiceClient m_lat_long_to_map_client;
     ros::ServiceClient m_estimate_state_client;
@@ -262,7 +270,6 @@ private:
 
     // handle on Executive
     Executive* m_Executive;
-
     // constant for linear interpolation of points to cover
     const double c_max_goal_distance = 10;
 };

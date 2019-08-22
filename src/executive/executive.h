@@ -21,9 +21,9 @@ public:
 
     void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
-    void startPlanner(const std::string& mapFile);
+    void startPlanner(const string& mapFile, double latitude, double longitude);
 
-    void refreshMap(std::string pathToMapFile);
+    void refreshMap(std::string pathToMapFile, double latitude, double longitude);
 
     bool plannerIsRunning();
 

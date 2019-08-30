@@ -20,7 +20,8 @@ std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double
     StateGenerator generator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7); // lucky seed
     addSamples(generator, 1000);
     std::shared_ptr<Vertex> vertex;
-    for (vertex = Vertex::makeRoot(start, m_PointsToCover); !goalCondition(vertex); vertex = popVertexQueue()) {
+    for (vertex = (m_UseRibbons? Vertex::makeRoot(start, m_RibbonManager) : Vertex::makeRoot(start, m_PointsToCover));
+            !goalCondition(vertex); vertex = popVertexQueue()) {
         expand(vertex, &dynamicObstacles);
     }
     return tracePlan(vertex, false, &dynamicObstacles).get();
@@ -48,24 +49,25 @@ std::function<bool(std::shared_ptr<Vertex> v1,
 
 std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getStateComparator(const State& origin) {
     return [&](const State& s1, const State& s2) {
-//        return s1.dubinsDistanceTo(origin, m_MaxTurningRadius) > s2.dubinsDistanceTo(origin, m_MaxTurningRadius);
+//        return s1.dubinsDistanceTo(origin, m_TurningRadius) > s2.dubinsDistanceTo(origin, m_TurningRadius);
         return s1.distanceTo(origin) > s2.distanceTo(origin);
     };
 }
 
 bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) {
     return vertex->state().time > m_StartStateTime + Plan::timeHorizon() ||
-            (vertex->uncovered().size() == 0 && vertex->state().time > m_StartStateTime + Plan::timeMinimum());
+            (vertex->allCovered() && vertex->state().time > m_StartStateTime + Plan::timeMinimum());
 }
 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstaclesManager* obstacles) {
-//    std::cerr << "Expanding vertex " << sourceVertex->state().toString() << std::endl;
+//    std::cerr << "Expanding vertex " << sourceVertex->toString() << std::endl;
     // add nearest point to cover
-    if (sourceVertex->uncovered().size() != 0) {
-        std::pair<double, double> nearest = sourceVertex->getNearestPoint();
+    if (!sourceVertex->allCovered()) {
+        auto s = sourceVertex->getNearestPointAsState();
+        s.speed = m_MaxSpeed;
         // TODO! -- what heading for points?
-        auto destinationVertex = Vertex::connect(sourceVertex, State(nearest.first, nearest.second, 0, m_MaxSpeed, 0));
-        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
+        auto destinationVertex = Vertex::connect(sourceVertex, s);
+        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles, m_MaxSpeed, m_TurningRadius);
         pushVertexQueue(destinationVertex);
     }
     auto comp = getStateComparator(sourceVertex->state());
@@ -82,7 +84,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
             bestSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state())) {
             if (!sourceVertex->state().colocated(sample)) {
                 bestSamples.push_back(Vertex::connect(sourceVertex, sample));
-                bestSamples.back()->parentEdge()->computeApproxCost(m_MaxSpeed, m_MaxTurningRadius);
+                bestSamples.back()->parentEdge()->computeApproxCost(m_MaxSpeed, m_TurningRadius);
                 std::push_heap(bestSamples.begin(), bestSamples.end(), dubinsComp);
             }
         } else {
@@ -94,7 +96,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
         if (i >= bestSamples.size()) break;
         auto destinationVertex = bestSamples.front();
         std::pop_heap(bestSamples.begin(), bestSamples.end() - i, dubinsComp);
-        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles, m_MaxSpeed, m_MaxTurningRadius);
+        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles, m_MaxSpeed, m_TurningRadius);
         pushVertexQueue(destinationVertex);
     }
     m_ExpandedCount++;
@@ -125,4 +127,9 @@ std::function<bool(const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vert
         // backwards from other state comparator because we want a max heap not a min heap
         return v1->parentEdge()->approxCost() < v2->parentEdge()->approxCost();
     };
+}
+
+void SamplingBasedPlanner::setRibbonManager(const RibbonManager& ribbonManager) {
+    m_RibbonManager = ribbonManager;
+    m_UseRibbons = true;
 }

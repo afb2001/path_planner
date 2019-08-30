@@ -5,6 +5,7 @@
 #include <path_planner/State.h>
 #include "Edge.h"
 #include "../utilities/Path.h"
+#include "../utilities/RibbonManager.h"
 
 class Edge;
 class Vertex {
@@ -16,15 +17,17 @@ public:
      * Construct the root vertex (no parent edge).
      * Use Vertex::makeRoot for full root construction.
      * @param state the starting state
+     * @param useRibbons whether to use the ribbon representation (decided by parameters to makeRoot)
      */
-    Vertex(State state);
+    Vertex(State state, bool useRibbons);
 
     /**
      * Construct a non-root vertex. Use Vertex::connect for full non-root construction.
      * @param state the underlying state
      * @param parent the parent edge
+     * @param useRibbons whether to use the ribbon representation (inherited from parent)
      */
-    Vertex(State state, const std::shared_ptr<Edge>& parent);
+    Vertex(State state, const std::shared_ptr<Edge>& parent, bool useRibbons);
 
     /**
      * Create a new vertex with underlying state @next, and an edge between @start and the new vertex.
@@ -36,6 +39,8 @@ public:
     static std::shared_ptr<Vertex> connect(const std::shared_ptr<Vertex>& start, const State& next);
 
     static std::shared_ptr<Vertex> makeRoot(const State& start, const Path& uncovered);
+
+    static Vertex::SharedPtr makeRoot(const State& start, const RibbonManager& ribbons);
 
     ~Vertex();
 
@@ -70,17 +75,24 @@ public:
 
     int getDepth() const;
 
-    std::pair<double, double> getNearestPoint() const;
+    State getNearestPointAsState() const;
 
+    bool allCovered() const;
+
+    RibbonManager& ribbonManager();
+
+    std::string toString() const;
 private:
     static const std::string c_Heuristic; // = "maxD";
 
     State m_State;
     std::shared_ptr<Edge> m_ParentEdge; // vertex owns its parent edge
     Path m_Uncovered;
+    RibbonManager m_RibbonManager;
     double m_CurrentCost = -1;
     double m_ApproxCost = -1;
     double m_ApproxToGo = -1;
+    bool m_UseRibbons;
 };
 
 

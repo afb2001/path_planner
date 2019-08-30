@@ -27,7 +27,8 @@ std::vector<State> AStarPlanner::plan(const std::vector<std::pair<double, double
     minY = start.y - magnitude;
     maxY = start.y + magnitude;
     StateGenerator generator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7); // lucky seed
-    auto startV = Vertex::makeRoot(start, m_PointsToCover);
+    auto startV = m_UseRibbons? Vertex::makeRoot(start, m_RibbonManager) : Vertex::makeRoot(start, m_PointsToCover);
+    startV->computeApproxToGo();
     shared_ptr<Vertex> bestVertex(nullptr);
     while (now() < endTime) {
         clearVertexQueue();
@@ -44,13 +45,20 @@ std::vector<State> AStarPlanner::plan(const std::vector<std::pair<double, double
         }
     }
     *m_Output << m_Samples.size() << " total samples, " << m_ExpandedCount << " expanded" << std::endl;
-    return tracePlan(bestVertex, false, &dynamicObstacles).get();
+    if (!bestVertex) {
+        *m_Output << "Failed to find a plan" << std::endl;
+        return std::vector<State>();
+    } else {
+//        *m_Output << "Best Plan " << bestVertex->ribbonManager().dumpRibbons() << std::endl; // "Best Plan Ribbons: "
+        return tracePlan(bestVertex, false, &dynamicObstacles).get();
+    }
 }
 
 shared_ptr<Vertex> AStarPlanner::aStar(DynamicObstaclesManager* obstacles, double endTime) {
     auto vertex = popVertexQueue();
     while (now() < endTime) {
         if (goalCondition(vertex)) {
+//            *m_Output << "Found goal: " << vertex->toString() << std::endl;
             return vertex;
         }
 //        *m_Output << "Expanding vertex at " << vertex->state().toString() << std::endl;

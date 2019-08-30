@@ -94,7 +94,7 @@ GeoTiffMap::GeoTiffMap(const std::string& path, double originLongitude, double o
         auto& cell = brushFireQueue.front();
         if (m_Distances[cell.y][cell.x] > cell.DistanceToBlocked) { // cell has not been set yet (or found shorter distance?)
             m_Distances[cell.y][cell.x] = cell.DistanceToBlocked;
-            cell.pushNeighbors(brushFireQueue, rasterCols, rasterRows, m_InverseGeoTransform.data());
+            cell.pushNeighbors(brushFireQueue, rasterCols, rasterRows, geoTransform);
         }
         brushFireQueue.pop();
     }

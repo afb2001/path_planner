@@ -313,6 +313,22 @@ TEST(UnitTests, RibbonsTest6) {
     EXPECT_GE(ribbonManager.approximateDistanceUntilDone(100, 120, 0), 2020 + sqrt(2)*100);
 }
 
+TEST(UnitTests, RibbonTest7) {
+    RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitKRibbons, 8, 2);
+    ribbonManager.add(0, 0, 1000, 0);
+    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(0, 0, 0), 1000);
+    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(-100, 0, 0), 1100);
+    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(0, 1000, 0), 2000);
+    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(1000, 1000, 0), 2000);
+    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(100, 100, 0), 1000 + sqrt(2)*100);
+    ribbonManager.add(0, 20, 1000, 20);
+    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(0, 0, 0), 2020);
+    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(-100, 0, 0), 2120);
+    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(0, 1000, 0), 3000);
+    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(1000, 1000, 0), 3000);
+    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(100, 120, 0), 2020 + sqrt(2)*100);
+}
+
 TEST(UnitTests, RibbonManagerGetNearestEndpointTest) {
     RibbonManager ribbonManager;
     ribbonManager.add(10, 10, 20, 10);
@@ -828,7 +844,7 @@ TEST(PlannerTests, RHRSAStarSingleRibbonTSP) {
 }
 
 TEST(PlannerTests, RHRSAStarTest5TspRibbons) {
-    RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitAllRibbons, 8);
+    RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitKRibbons, 8, 2);
     ribbonManager.add(0, 20, 20, 20);
     ribbonManager.add(0, 40, 20, 40);
     ribbonManager.add(0, 60, 20, 60);
@@ -853,12 +869,12 @@ TEST(PlannerTests, RHRSAStarTest5TspRibbons) {
 }
 
 TEST(PlannerTests, RHRSAStarTest6DubinsRibbons) {
-    RibbonManager ribbonManager(RibbonManager::TspDubinsNoSplitAllRibbons, 8);
+    RibbonManager ribbonManager(RibbonManager::TspDubinsNoSplitKRibbons, 8, 2);
     ribbonManager.add(0, 20, 20, 20);
     ribbonManager.add(0, 40, 20, 40);
     ribbonManager.add(0, 60, 20, 60);
-//    ribbonManager.add(0, 80, 20, 80);
-//    ribbonManager.add(0, 100, 20, 100);
+    ribbonManager.add(0, 80, 20, 80);
+    ribbonManager.add(0, 100, 20, 100);
     AStarPlanner planner(2.5, 8, make_shared<Map>());
     planner.setRibbonManager(ribbonManager);
     State start(0, 0, 0, 2.5, 1);

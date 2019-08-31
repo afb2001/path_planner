@@ -1,6 +1,7 @@
 #include <cfloat>
 #include <algorithm>
 #include <sstream>
+#include <vector>
 #include "RibbonManager.h"
 
 void RibbonManager::add(double x1, double y1, double x2, double y2) {
@@ -81,18 +82,23 @@ double RibbonManager::tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft
     auto comp = [&] (const Ribbon& r1, const Ribbon& r2) {
         double min1 = fmin(distance(point, r1.start()), distance(point, r1.end()));
         double min2 = fmin(distance(point, r2.start()), distance(point, r2.end()));
-        return fmin(min1, min2);
+        return min1 > min2; // should be lt except that make_heap makes a max heap
     };
-    std::make_heap(ribbonsLeft.begin(), ribbonsLeft.end(), comp);
-    for (auto i = 0; i < m_K; i++) {
-        const Ribbon r = ribbonsLeft.front();
-        std::pop_heap(ribbonsLeft.begin(), ribbonsLeft.end(), comp);
-        ribbonsLeft.pop_back();
-        min = fmin(min, tspPointRobotNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+    // Just sort the list because it's easier than trying to make it a heap.
+    // I'm not even sure it would be advantageous to use a heap because we need the constant time insert/delete,
+    // of which the heap-supporting containers are incapable, so we'd need to make a copy
+    ribbonsLeft.sort(comp);
+    int i = 0;
+    for (auto it = ribbonsLeft.begin(); it != ribbonsLeft.end(); it++) {
+        if (i++ >= m_K) break;
+        // TODO! -- this one and the other K-based one don't work because pop_back()
+        const Ribbon r = *it;
+        it = ribbonsLeft.erase(it);
+        min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
                                                                     distance(point, r.start()), r.end()));
-        min = fmin(min, tspPointRobotNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
                                                                     distance(point, r.end()), r.start()));
-        ribbonsLeft.push_back(r);
+        it = ribbonsLeft.insert(it, r);
     }
     return min;
 }
@@ -125,20 +131,22 @@ double RibbonManager::tspDubinsNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, do
     auto comp = [&] (const Ribbon& r1, const Ribbon& r2) {
         double min1 = fmin(dubinsDistance(x, y, yaw, r1.startAsState()), dubinsDistance(x, y, yaw, r1.endAsState()));
         double min2 = fmin(dubinsDistance(x, y, yaw, r1.startAsState()), dubinsDistance(x, y, yaw, r1.endAsState()));
-        return fmin(min1, min2);
+        return min1 > min2;
     };
-    std::make_heap(ribbonsLeft.begin(), ribbonsLeft.end(), comp);
-    for (auto i = 0; i < m_K; i++) {
-        const auto r = ribbonsLeft.front();
-        std::pop_heap(ribbonsLeft.begin(), ribbonsLeft.end(), comp);
-        ribbonsLeft.pop_back();
+    int i = 0;
+    ribbonsLeft.sort(comp);
+//    std::sort(ribbonsLeft.begin(), ribbonsLeft.end(), comp);
+    for (auto it = ribbonsLeft.begin(); it != ribbonsLeft.end(); it++) {
+        if (i >= m_K) break;
+        const auto r = *it;
+        it = ribbonsLeft.erase(it);
         auto start = r.startAsState();
         auto end = r.endAsState();
-        min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
                                                                  dubinsDistance(x, y, yaw, start), end.x, end.y, end.yaw()));
-        min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
                                                                  dubinsDistance(x, y, yaw, end), start.x, start.y, start.yaw()));
-        ribbonsLeft.push_back(r);
+        it = ribbonsLeft.insert(it, r);
     }
     return min;
 }
@@ -214,4 +222,18 @@ RibbonManager::RibbonManager(RibbonManager::Heuristic heuristic, double turningR
 RibbonManager::RibbonManager(RibbonManager::Heuristic heuristic, double turningRadius, int k)
     : RibbonManager(heuristic, turningRadius) {
     m_K = k;
+}
+
+void RibbonManager::projectOntoNearestRibbon(State& state) const {
+    if (m_Ribbons.empty()) return;
+    auto min = DBL_MAX;
+    auto ribbon = Ribbon::empty();
+    for (const auto& r : m_Ribbons) {
+        auto d = r.distance(state.x, state.y);
+        if (d < min) {
+            min = d;
+            ribbon = r;
+        }
+    }
+    state = ribbon.getProjectionAsState(state.x, state.y);
 }

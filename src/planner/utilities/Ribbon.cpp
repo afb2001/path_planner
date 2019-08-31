@@ -74,5 +74,15 @@ std::pair<double, double> Ribbon::getProjection(double x, double y) const {
     return std::make_pair(projectedX + m_StartX, projectedY + m_StartY);
 }
 
+State Ribbon::getProjectionAsState(double x, double y) const {
+    auto squaredL = squaredLength();
+    auto dot = (x - m_StartX) * (m_EndX - m_StartX) + (y - m_StartY) * (m_EndY - m_StartY);
+    auto projectedX = (m_EndX - m_StartX) * dot / squaredL;
+    auto projectedY = (m_EndY - m_StartY) * dot / squaredL;
+    State s(projectedX + m_StartX, projectedY + m_StartY, 0, 0, 0);
+    s.setHeadingTowards(m_EndX, m_EndY);
+    return s;
+}
+
 
 

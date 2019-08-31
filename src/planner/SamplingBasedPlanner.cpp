@@ -17,7 +17,9 @@ std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double
     maxX = start.x + magnitude;
     minY = start.y - magnitude;
     maxY = start.y + magnitude;
-    StateGenerator generator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7); // lucky seed
+
+    StateGenerator generator = m_UseRibbons? StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager)
+            : StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7); // lucky seed
     addSamples(generator, 1000);
     std::shared_ptr<Vertex> vertex;
     for (vertex = (m_UseRibbons? Vertex::makeRoot(start, m_RibbonManager) : Vertex::makeRoot(start, m_PointsToCover));

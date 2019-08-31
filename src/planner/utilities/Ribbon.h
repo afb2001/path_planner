@@ -34,24 +34,28 @@ public:
 
     std::pair<double, double> getProjection(double x, double y) const;
 
-private:
-    double m_StartX, m_StartY, m_EndX, m_EndY;
-
-    static constexpr double c_RibbonWidth = 3;
-    // It might be a good idea for this to be the same as ribbon width. If it's smaller, you'll need to take another
-    // look at the edge cost toCoverDistance calculation (should subtract ribbon width).
-    // Intuitively, I think they should be the same, since you can cover a line going along it or across it.
-    static constexpr double c_MinLength = 3;
-    static constexpr double c_MinSquaredLength = c_MinLength * c_MinLength;
-
-    // use a tolerance to compensate for floating point errors that were happening
-    static constexpr double c_Tolerance = 1e-5;
+    State getProjectionAsState(double x, double y) const;
 
     // perpendicular distance to line through (startX, startY), (endX, endY)
     double distance(double x, double y) const {
         return (fabs((m_EndY - m_StartY) * x - (m_EndX - m_StartX) * y + m_EndX*m_StartY - m_EndY*m_StartX)) /
                sqrt(squaredLength());
     }
+
+private:
+    double m_StartX, m_StartY, m_EndX, m_EndY;
+
+    static constexpr double c_RibbonWidth = 5;
+    // It might be a good idea for this to be the same as ribbon width. If it's smaller, you'll need to take another
+    // look at the edge cost toCoverDistance calculation (should subtract ribbon width).
+    // Intuitively, I think they should be the same, since you can cover a line going along it or across it.
+    static constexpr double c_MinLength = 5;
+    static constexpr double c_MinSquaredLength = c_MinLength * c_MinLength;
+
+    // use a tolerance to compensate for floating point errors that were happening
+    static constexpr double c_Tolerance = 1e-5;
+
+
 
     double squaredLength() const {
         return (m_EndX - m_StartX) * (m_EndX - m_StartX) + (m_EndY - m_StartY) * (m_EndY - m_StartY);

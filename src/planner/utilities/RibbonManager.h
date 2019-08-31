@@ -38,6 +38,8 @@ public:
 //    RibbonManager& operator=(const RibbonManager& other);
 
     std::string dumpRibbons() const;
+
+    void projectOntoNearestRibbon(State& state) const;
 private:
     Heuristic m_Heuristic;
     double m_TurningRadius = -1;

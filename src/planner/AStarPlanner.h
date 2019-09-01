@@ -13,6 +13,9 @@ public:
     std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
                             DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
 
+    std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
+                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
+
 protected:
 
     std::function<bool(std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2)> getVertexComparator() override;
@@ -22,6 +25,9 @@ protected:
     std::shared_ptr<Vertex> aStar(DynamicObstaclesManager* obstacles, double endTime);
 
     static constexpr double c_InitialSamples = 32;
+
+private:
+    std::vector<State> plan(const State& start, DynamicObstaclesManager dynamicObstacles, double timeRemaining);
 };
 
 

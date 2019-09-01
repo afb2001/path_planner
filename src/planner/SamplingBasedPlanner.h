@@ -14,6 +14,9 @@ public:
     std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
                             DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
 
+    std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
+                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
+
     void pushVertexQueue(Vertex::SharedPtr vertex);
 
     std::shared_ptr<Vertex> popVertexQueue();
@@ -25,7 +28,6 @@ public:
     void addSamples(StateGenerator& generator);
     void addSamples(StateGenerator& generator, int n);
 
-    // TODO! -- add as parameter to plan function
     void setRibbonManager(const RibbonManager& ribbonManager);
 
 protected:
@@ -49,6 +51,8 @@ private:
 
     std::function<bool(const std::shared_ptr<Vertex>&, const std::shared_ptr<Vertex>&)> getDubinsComparator(
             const State& origin);
+
+    std::vector<State> plan(const State& start, DynamicObstaclesManager dynamicObstacles, double timeRemaining);
 };
 
 

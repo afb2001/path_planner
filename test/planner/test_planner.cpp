@@ -708,9 +708,8 @@ TEST(PlannerTests, RHRSAStarTest1Ribbons) {
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 0, 30);
     AStarPlanner planner(2.5, 8, make_shared<Map>());
-    planner.setRibbonManager(ribbonManager);
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
     EXPECT_FALSE(plan.empty());
     for (auto s : plan) cerr << s.toString() << endl;
 }
@@ -743,13 +742,10 @@ TEST(PlannerTests, RHRSAStarTest2Ribbons) {
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 0, 30);
     AStarPlanner planner(2.5, 8, make_shared<Map>());
-    planner.setRibbonManager(ribbonManager);
     State start(0, 0, 0, 2.5, 1);
-    vector<pair<double , double>> newlyCovered;
     while(!ribbonManager.done()) {
         ribbonManager.cover(start.x, start.y);
-        planner.setRibbonManager(ribbonManager);
-        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.5); // quick iterations
+        auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.5); // quick iterations
         ASSERT_FALSE(plan.empty());
         start = plan[1];
         ASSERT_LT(start.time, 30);
@@ -788,14 +784,11 @@ TEST(PlannerTests, RHRSAStarTest4Ribbons) {
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
     AStarPlanner planner(2.5, 8, make_shared<Map>());
-    planner.setRibbonManager(ribbonManager);
     State start(0, 0, 0, 2.5, 1);
-    vector<pair<double , double>> newlyCovered;
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x, start.y);
-        planner.setRibbonManager(ribbonManager);
-        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan[1].heading == start.heading;
         start = plan[1];
@@ -813,10 +806,8 @@ TEST(PlannerTests, RHRSAStarTest4aRibbons) {
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
     AStarPlanner planner(2.5, 8, make_shared<Map>());
-    planner.setRibbonManager(ribbonManager);
     State start(0, 0, 0, 2.5, 1);
-    vector<pair<double , double>> newlyCovered;
-    auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
     EXPECT_FALSE(plan.empty());
     for (auto s : plan) cerr << s.toString() << endl;
 }
@@ -826,14 +817,11 @@ TEST(PlannerTests, RHRSAStarSingleRibbonTSP) {
     ribbonManager.add(0, 20, 50, 20);
     ribbonManager.add(0, 40, 50, 40);
     AStarPlanner planner(2.5, 8, make_shared<Map>());
-    planner.setRibbonManager(ribbonManager);
     State start(0, 0, 0, 2.5, 1);
-    vector<pair<double , double>> newlyCovered;
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x, start.y);
-        planner.setRibbonManager(ribbonManager);
-        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan[1].heading == start.heading;
         start = plan[1];
@@ -851,14 +839,11 @@ TEST(PlannerTests, RHRSAStarTest5TspRibbons) {
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
     AStarPlanner planner(2.5, 8, make_shared<Map>());
-    planner.setRibbonManager(ribbonManager);
     State start(0, 0, 0, 2.5, 1);
-    vector<pair<double , double>> newlyCovered;
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x, start.y);
-        planner.setRibbonManager(ribbonManager);
-        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan[1].heading == start.heading;
         start = plan[1];
@@ -876,14 +861,11 @@ TEST(PlannerTests, RHRSAStarTest6DubinsRibbons) {
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
     AStarPlanner planner(2.5, 8, make_shared<Map>());
-    planner.setRibbonManager(ribbonManager);
     State start(0, 0, 0, 2.5, 1);
-    vector<pair<double , double>> newlyCovered;
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x, start.y);
-        planner.setRibbonManager(ribbonManager);
-        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan[1].heading == start.heading;
         start = plan[1];

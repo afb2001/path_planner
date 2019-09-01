@@ -40,14 +40,14 @@ TEST(SystemTests, SimpleBoxPatternTest) {
     NodeStub stub;
     auto executive = new Executive(&stub);
     executive->addToCover(10, 10);executive->addToCover(20, 10);executive->addToCover(20, 20);executive->addToCover(10, 20);
-    executive->updateCovered(0, 0, Executive::DefaultMaxSpeed, 0, Executive::getCurrentTime());
+    executive->updateCovered(0, 0, Executive::DefaultMaxSpeed, 0, 1);
     executive->startPlanner("", 0, 0);
     for (int i = 0; i < 120; i++) {
         if (stub.allDoneCalled()) break;
         if (!stub.lastTrajectory().empty()) {
             auto start = stub.lastTrajectory()[1];
             executive->updateCovered(start.x, start.y, start.speed, start.heading,
-                                     Executive::getCurrentTime()); // maybe use start's time here?
+                                     i + 1); // maybe use start's time here?
         }
         std::this_thread::sleep_for(chrono::milliseconds(500));
     }

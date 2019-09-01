@@ -15,8 +15,19 @@ std::function<bool(shared_ptr<Vertex> v1, shared_ptr<Vertex> v2)> AStarPlanner::
 
 std::vector<State> AStarPlanner::plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
                                       DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
-    double endTime = timeRemaining + now();
     m_PointsToCover.remove(newlyCovered);
+    return plan(start, dynamicObstacles, timeRemaining);
+}
+
+std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const State& start,
+                                      DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
+    setRibbonManager(ribbonManager);
+    return plan(start, dynamicObstacles, timeRemaining);
+}
+
+std::vector<State> AStarPlanner::plan(const State& start, DynamicObstaclesManager dynamicObstacles,
+                                      double timeRemaining) {
+    double endTime = timeRemaining + now();
     m_ExpandedCount = 0;
     m_StartStateTime = start.time;
     m_Samples.clear();
@@ -71,3 +82,4 @@ shared_ptr<Vertex> AStarPlanner::aStar(DynamicObstaclesManager* obstacles, doubl
     }
     return shared_ptr<Vertex>(nullptr);
 }
+

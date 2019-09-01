@@ -8,6 +8,18 @@ SamplingBasedPlanner::SamplingBasedPlanner(double maxSpeed, double maxTurningRad
 std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double, double>>& newlyCovered,
                                               const State& start,
                                               DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
+    m_PointsToCover.remove(newlyCovered);
+    return plan(start, dynamicObstacles, timeRemaining);
+}
+
+std::vector<State> SamplingBasedPlanner::plan(const RibbonManager& ribbonManager, const State& start,
+                                              DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
+    setRibbonManager(ribbonManager);
+    return plan(start, dynamicObstacles, timeRemaining);
+}
+
+std::vector<State> SamplingBasedPlanner::plan(const State& start, DynamicObstaclesManager dynamicObstacles,
+                                              double timeRemaining) {
     m_StartStateTime = start.time;
     m_Samples.clear();
     m_VertexQueue.clear();
@@ -19,11 +31,11 @@ std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double
     maxY = start.y + magnitude;
 
     StateGenerator generator = m_UseRibbons? StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager)
-            : StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7); // lucky seed
+                                           : StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7); // lucky seed
     addSamples(generator, 1000);
     std::shared_ptr<Vertex> vertex;
     for (vertex = (m_UseRibbons? Vertex::makeRoot(start, m_RibbonManager) : Vertex::makeRoot(start, m_PointsToCover));
-            !goalCondition(vertex); vertex = popVertexQueue()) {
+         !goalCondition(vertex); vertex = popVertexQueue()) {
         expand(vertex, &dynamicObstacles);
     }
     return tracePlan(vertex, false, &dynamicObstacles).get();
@@ -135,3 +147,5 @@ void SamplingBasedPlanner::setRibbonManager(const RibbonManager& ribbonManager) 
     m_RibbonManager = ribbonManager;
     m_UseRibbons = true;
 }
+
+

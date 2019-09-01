@@ -75,3 +75,8 @@ double Planner::now() const {
 void Planner::updateMap(Map::SharedPtr map) {
     m_Map = map;
 }
+
+std::vector<State> Planner::plan(const RibbonManager& ribbonManager, const State& start,
+                                 DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
+    throw std::runtime_error("Ribbon point-to-point planner is not yet implemented");
+}

@@ -22,8 +22,8 @@ public:
     virtual std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
                                     DynamicObstaclesManager dynamicObstacles, double timeRemaining);
 
-//    virtual std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
-//            DynamicObstaclesManager dynamicObstacles, double timeRemaining);
+    virtual std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
+            DynamicObstaclesManager dynamicObstacles, double timeRemaining);
 
     Plan tracePlan(const std::shared_ptr<Vertex>& v, bool smoothing, DynamicObstaclesManager* obstacles);
 

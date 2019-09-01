@@ -58,6 +58,7 @@ add_library(path_planner_common
         src/common/dynamic_obstacles/DynamicObstacle.cpp
         src/common/dynamic_obstacles/DynamicObstaclesManager.cpp
         src/common/map/GeoTiffMap.cpp
+        src/common/map/GridWorldMap.cpp
         )
 
 target_link_libraries(path_planner_common ${GDAL_LIBRARIES})
@@ -71,7 +72,9 @@ add_library(planner
         src/planner/utilities/StateGenerator.cpp
         src/planner/SamplingBasedPlanner.cpp
         src/planner/AStarPlanner.cpp
-        src/planner/utilities/Ribbon.cpp src/planner/utilities/Ribbon.h src/planner/utilities/RibbonManager.cpp src/planner/utilities/RibbonManager.h)
+        src/planner/utilities/Ribbon.cpp
+        src/planner/utilities/RibbonManager.cpp
+        )
 
 target_link_libraries(planner path_planner_common robust_dubins dubins)
 

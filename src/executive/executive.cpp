@@ -14,6 +14,7 @@
 #include "../planner/SamplingBasedPlanner.h"
 #include "../planner/AStarPlanner.h"
 #include "../common/map/GeoTiffMap.h"
+#include "../common/map/GridWorldMap.h"
 
 using namespace std;
 
@@ -290,8 +291,14 @@ void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
 void Executive::refreshMap(std::string pathToMapFile, double latitude, double longitude) {
     thread worker([this, pathToMapFile, latitude, longitude] {
         std::lock_guard<std::mutex> lock(m_MapMutex);
+        // could take some time for I/O, Dijkstra on entire map
         try {
-            m_NewMap = make_shared<GeoTiffMap>(pathToMapFile, longitude, latitude); // could take some time for I/O, Dijkstra on entire map
+            // If the name looks like it's one of our gridworld maps, load it in that format, otherwise assume GeoTIFF
+            if (pathToMapFile.find(".map") == -1) {
+                m_NewMap = make_shared<GeoTiffMap>(pathToMapFile, longitude, latitude);
+            } else {
+                m_NewMap = make_shared<GridWorldMap>(pathToMapFile);
+            }
         }
         catch (...) {
             // swallow all errors in this thread

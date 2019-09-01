@@ -7,6 +7,7 @@
 #include "../../src/planner/SamplingBasedPlanner.h"
 #include "../../src/planner/AStarPlanner.h"
 #include "../../src/common/map/GeoTiffMap.h"
+#include "../../src/common/map/GridWorldMap.h"
 #include <robust_dubins/RobustDubins.h>
 #include <thread>
 extern "C" {
@@ -219,6 +220,13 @@ TEST(UnitTests, GeoTiffMapTest2) {
 //    EXPECT_DOUBLE_EQ(map.getDepth(0, 0), 0);
 //    EXPECT_NEAR(map.getDepth(365000, 4770000), 14.87, 0.001);
     EXPECT_FALSE(map.getUnblockedDistance(0, 0) == -1); // TODO! -- find out what this actually should be somehow
+}
+
+TEST(UnitTests, GridWorldMapTest1) {
+    GridWorldMap map("/home/alex/Documents/planner_test_suites/test1.map");
+//    map.getUnblockedDistance(0, 0);
+    EXPECT_DOUBLE_EQ(-1, map.getUnblockedDistance(450, 50));
+    EXPECT_DOUBLE_EQ(10, map.getUnblockedDistance(495, 50));
 }
 
 TEST(UnitTests, RibbonsTest1) {

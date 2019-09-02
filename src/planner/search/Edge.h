@@ -42,6 +42,8 @@ public:
 
     std::shared_ptr<Vertex> end();
 
+    bool infeasible() const;
+
     static double collisionPenalty() { return c_CollisionPenalty; }
     static double dubinsIncrement() { return c_DubinsIncrement; }
     static double timePenalty() { return c_TimePenalty; }
@@ -49,6 +51,8 @@ public:
 private:
     std::shared_ptr<Vertex> m_Start;
     std::weak_ptr<Vertex> m_End;
+
+    bool m_Infeasible = false;
 
     static constexpr double c_CollisionPenalty = 600;
     static constexpr double c_DubinsIncrement = 0.1;

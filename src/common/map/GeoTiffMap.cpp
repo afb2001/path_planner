@@ -63,8 +63,8 @@ GeoTiffMap::GeoTiffMap(const std::string& path, double originLongitude, double o
                 for (int j = y - 1; j <= y + 1; j++){
                     if (i == x && j == y) continue;
                     // This should fix the fact that the distance is in pixels...
-                    auto d = sqrt((i*geoTransform[1] + j*geoTransform[2])*(i*geoTransform[1] + j*geoTransform[2]) +
-                                     (i*geoTransform[4] + j*geoTransform[5])*(i*geoTransform[4] + j*geoTransform[5]));
+                    auto d = sqrt(((i - x)*geoTransform[1] + (j - y)*geoTransform[2])*((i - x)*geoTransform[1] + (j - y)*geoTransform[2]) +
+                                     ((i - x)*geoTransform[4] + (j - y)*geoTransform[5])*((i - x)*geoTransform[4] + (j - y)*geoTransform[5]));
                     if (DistanceToBlocked == -1) d = 1;
                     BrushFireCell cell(i, j, DistanceToBlocked + d);
                     if (cell.valid(xMax, yMax)) queue.push(cell);

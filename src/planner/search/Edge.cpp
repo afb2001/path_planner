@@ -40,6 +40,8 @@ double Edge::computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager 
             if (staticDistance <= Edge::dubinsIncrement()) {
                 collisionPenalty += Edge::collisionPenalty();
                 staticDistance = 0;
+                m_Infeasible = true;
+                break;
             }
         }
         if (dynamicDistance > Edge::dubinsIncrement()) {
@@ -172,6 +174,10 @@ double Edge::trueCost() const {
 double Edge::approxCost() const {
     if (m_ApproxCost == -1) throw std::logic_error("Fetching unset cached approximate edge cost");
     return m_ApproxCost;
+}
+
+bool Edge::infeasible() const {
+    return m_Infeasible;
 }
 
 Edge::~Edge() = default;

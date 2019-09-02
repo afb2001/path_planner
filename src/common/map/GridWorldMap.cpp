@@ -7,7 +7,12 @@
 #include <algorithm>
 
 double GridWorldMap::getUnblockedDistance(double x, double y) const {
-    return m_Distances.at(y / m_Resolution).at(x / m_Resolution);
+    try {
+        return m_Distances.at(y / m_Resolution).at(x / m_Resolution);
+    }
+    catch (std::out_of_range&) {
+        return -1;
+    }
 }
 
 GridWorldMap::GridWorldMap(const std::string& path) {

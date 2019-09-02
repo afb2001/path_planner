@@ -100,14 +100,14 @@ class State
 //        time = other.time;
 //    }
 
-    void setEstimate(double timeinterval, State &object)
+    void setEstimate(double timeInterval, const State& object)
     {
-        double displacement = timeinterval * object.speed;
+        double displacement = timeInterval * object.speed;
         x = object.x + sin(object.heading) * displacement;
         y = object.y + cos(object.heading) * displacement;
         heading = object.heading;
         speed = object.speed;
-        time = object.time + 1;
+        time = object.time + timeInterval;
          
     }
 

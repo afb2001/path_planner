@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cfloat>
 #include "GridWorldMap.h"
+#include <algorithm>
 
 double GridWorldMap::getUnblockedDistance(double x, double y) const {
     return m_Distances.at(y / m_Resolution).at(x / m_Resolution);
@@ -24,6 +25,7 @@ GridWorldMap::GridWorldMap(const std::string& path) {
         rows++;
         lines.push_back(line);
     }
+    std::reverse(lines.begin(), lines.end());
 
     class BrushFireCell {
     public:

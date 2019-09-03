@@ -3,6 +3,7 @@
 
 #include <condition_variable>
 #include "ExecutiveInternalsManager.h"
+#include "../planner/utilities/RibbonManager.h"
 #include "../trajectory_publisher.h"
 #include "../planner/Planner.h"
 #include <future>
@@ -18,6 +19,8 @@ public:
     void updateCovered(double x, double y, double speed, double heading, double t);
 
     void addToCover(int x, int y);
+    void addRibbon(double x1, double y1, double x2, double y2);
+    void clearRibbons();
 
     void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
@@ -38,6 +41,11 @@ private:
 
     bool m_Running = false;
     ExecutiveInternalsManager m_InternalsManager;
+    RibbonManager m_RibbonManager;
+    double m_LastUpdateTime = 1;
+    double m_LastHeading = 0; // TODO! -- use moving average or something
+
+    DynamicObstaclesManager m_DynamicObstaclesManager;
 
     bool m_Pause = true;
 
@@ -52,6 +60,8 @@ private:
     std::future<void> m_TrajectoryPublishingFuture, m_PlanningFuture;
 
     TrajectoryPublisher* m_TrajectoryPublisher;
+
+    static constexpr double c_CoverageHeadingRateMax = 0.1; // (in radians/sec)
 
     void requestPath();
 
@@ -71,6 +81,8 @@ private:
      * Make sure the threads can exit and kill the planner (if it's running).
      */
     void terminate();
+
+    static std::vector<Distribution> inventDistributions(State obstacle);
 };
 
 #endif //SRC_EXECUTIVE_H

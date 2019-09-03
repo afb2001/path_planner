@@ -44,7 +44,7 @@ class ExecutiveInternalsManager
     //below for coverd path update
     void updateCovered();
 
-    void addCovered(int x, int y);
+    void addToCover(int x, int y);
 
     std::vector<State> getActions();
 
@@ -68,7 +68,7 @@ private:
 
     map<uint32_t,State> m_DynamicObstacles;
 
-    list<point> m_Cover, m_Newcover;
+    list<point> m_ToCover, m_Newcover;
 
     mutex m_PathMutex, m_ToCoverMutex;
 

@@ -115,8 +115,8 @@ void ExecutiveInternalsManager::updateCurrent(double x, double y, double speed, 
 void ExecutiveInternalsManager::updateCovered()
 {
     m_ToCoverMutex.lock();
-    auto it = m_Cover.begin();
-    while (it != m_Cover.end())
+    auto it = m_ToCover.begin();
+    while (it != m_ToCover.end())
     {
         auto x = it->x - m_Current.x;
         auto y = it->y - m_Current.y;
@@ -125,7 +125,7 @@ void ExecutiveInternalsManager::updateCovered()
             auto it1 = it;
             m_Newcover.push_back(*it);
             ++it;
-            m_Cover.erase(it1);
+            m_ToCover.erase(it1);
         }
         else
             ++it;
@@ -133,9 +133,9 @@ void ExecutiveInternalsManager::updateCovered()
     m_ToCoverMutex.unlock();
 }
 
-void ExecutiveInternalsManager::addCovered(int x, int y)
+void ExecutiveInternalsManager::addToCover(int x, int y)
 {
-    m_Cover.emplace_back(x, y);
+    m_ToCover.emplace_back(x, y);
 }
 
 vector<State> ExecutiveInternalsManager::getActions()
@@ -161,7 +161,7 @@ vector<State> ExecutiveInternalsManager::getActions()
     else
     {
         if (m_Actions.empty()) cerr << "actions is empty" << endl;
-        ret.push_back ((!m_Cover.empty()) ? State(-1) : State(-2));
+        ret.push_back ((!m_ToCover.empty()) ? State(-1) : State(-2));
     }
     m_PathMutex.unlock();
     return ret;
@@ -169,13 +169,13 @@ vector<State> ExecutiveInternalsManager::getActions()
 
 const list<point> &ExecutiveInternalsManager::getCovered() const
 {
-    return m_Cover;
+    return m_ToCover;
 }
 
 //below condition check or lock access
 bool ExecutiveInternalsManager::finish()
 {
-    if (m_Cover.empty())
+    if (m_ToCover.empty())
     {
         m_Actions[0] = State(-2);
         return true;

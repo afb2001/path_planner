@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
         actionlib_msgs
         actionlib
         dubins_curves
+        robust_dubins
         )
 
 add_message_files(
@@ -39,6 +40,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}/src/executive
         ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}/src/planner/*
         ${dubinscurves_INCLUDE_DIRS}
+        ${robustdubins_INCLUDE_DIRS}
         include
 )
 
@@ -51,9 +53,10 @@ add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp
         src/planner/search/Vertex.cpp src/planner/search/Vertex.h
         src/planner/search/Edge.cpp src/planner/search/Edge.h
         src/planner/common/DynamicObstacles.cpp src/planner/common/DynamicObstacles.h
-        src/planner/search/DubinsIntegration.cpp src/planner/search/DubinsIntegration.h
         src/planner/common/Path.cpp src/planner/common/Path.h
-        src/planner/common/Plan.cpp src/planner/common/Plan.h)
+        src/planner/common/Plan.cpp src/planner/common/Plan.h
+        src/planner/common/StateGenerator.cpp src/planner/common/StateGenerator.h
+        src/planner/SamplingBasedPlanner.cpp src/planner/SamplingBasedPlanner.h)
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp)
@@ -63,6 +66,7 @@ add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp)
 target_link_libraries(${PROJECT_NAME}_node
         ${catkin_LIBRARIES}
         dubins
+        robust_dubins
         )
 
 catkin_add_gtest(test_planner test/planner/test_planner.cpp src/planner/Planner.cpp
@@ -70,11 +74,12 @@ catkin_add_gtest(test_planner test/planner/test_planner.cpp src/planner/Planner.
         src/planner/search/Vertex.cpp src/planner/search/Vertex.h
         src/planner/search/Edge.cpp src/planner/search/Edge.h
         src/planner/common/DynamicObstacles.cpp src/planner/common/DynamicObstacles.h
-        src/planner/search/DubinsIntegration.cpp src/planner/search/DubinsIntegration.h
         src/planner/common/Path.cpp src/planner/common/Path.h
-        src/planner/common/Plan.cpp src/planner/common/Plan.h)
+        src/planner/common/Plan.cpp src/planner/common/Plan.h
+        src/planner/common/StateGenerator.cpp src/planner/common/StateGenerator.h
+        src/planner/SamplingBasedPlanner.cpp src/planner/SamplingBasedPlanner.h)
 
-target_link_libraries(test_planner dubins)
+target_link_libraries(test_planner dubins robust_dubins)
 
 ## Install project namespaced headers
 install(DIRECTORY include/${PROJECT_NAME}

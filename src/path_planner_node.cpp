@@ -72,22 +72,17 @@ public:
     // This is really only designed to work once right now
     void goalCallback()
     {
-        std::cerr << "Grabbing goal...";
         auto goal = m_action_server.acceptNewGoal();
-        std::cerr << " done." << std::endl;
 
         // make sure controller is up
         publishControllerMessage("start running");
-
 
         // if executive is already running, shut it down
         m_Executive->pause();
 //        return;
         publishControllerMessage("start sending controls");
 
-        std::cerr << "Touching goal for the first time...";
         m_current_speed = goal->speed;
-        std::cerr << " done." << std::endl;
 
         std::vector<std::pair<double, double>> currentPath;
 

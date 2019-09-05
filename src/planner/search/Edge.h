@@ -2,26 +2,26 @@
 #define SRC_EDGE_H
 
 
-#include <boost/exception/detail/shared_ptr.hpp>
 #include "Vertex.h"
-extern "C" {
-#include "dubins.h"
-}
+#include <robust_dubins/RobustDubins.h>
 #include "../common/Map.h"
 #include "../common/DynamicObstacles.h"
 #include "../common/Path.h"
 #include "../common/Plan.h"
 
+#define DUBINS_INCREMENT 0.1
 #define TIME_PENALTY 1
+#define COLLISION_PENALTY 600
+#define COVERAGE_THRESHOLD 3
 
 //int dubins_shortest_path(DubinsPath*, double*, double*, double);
 //int dubins_path_length(DubinsPath*);
 
 class Vertex;
+
 class Edge {
 public:
-    DubinsPath dubinsPath;
-    std::vector<State> plan;
+    RobustDubins::Path dubinsPath;
 
     Edge(std::shared_ptr<Vertex> start);
 
@@ -32,7 +32,7 @@ public:
     std::shared_ptr<Vertex> setEnd(const State& state);
 
     double
-    computeTrueCost(Map *map, DynamicObstacles *obstacles, const Path &toCover, double maxSpeed, double maxTurningRadius);
+    computeTrueCost(Map *map, DynamicObstacles *obstacles, double maxSpeed, double maxTurningRadius);
 
     double computeApproxCost(double maxSpeed, double maxTurningRadius);
 

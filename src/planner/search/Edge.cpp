@@ -8,8 +8,12 @@
 #include "Edge.h"
 #include "../common/Map.h"
 #include "../common/DynamicObstacles.h"
-#include "DubinsIntegration.h"
 #include "../common/Path.h"
+#include <robust_dubins/RobustDubins.h>
+
+//extern "C" {
+//#include <dubins.h>
+//}
 
 Edge::Edge(std::shared_ptr<Vertex> start) {
     this->m_Start = std::move(start);
@@ -19,15 +23,56 @@ Edge::Edge(std::shared_ptr<Vertex> start, const State& end) : Edge(std::move(sta
     setEnd(end);
 }
 
-double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles, const Path& toCover,
+double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles,
                              double maxSpeed, double maxTurningRadius) {
     double collisionPenalty;
-    DubinsIntegration d;
     if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
-    auto newlyCovered = d.computeEdgeCollisionPenaltyAndNewlyCovered(dubinsPath, map, obstacles, toCover,
-                                                                     collisionPenalty);
-    end()->state().time = start()->state().time + dubins_path_length(&dubinsPath) / maxSpeed;
+    double& penalty = collisionPenalty;
+    std::vector<std::pair<double, double>> result;
+    std::vector<double> x,y,h; //
+    dubinsPath.computePathHistory();
+    x = dubinsPath.get_xHistory();
+    y = dubinsPath.get_yHistory();
+    double obstacleDistance = 0, lengthSoFar = 0;
+    std::vector<std::pair<double, double>> newlyCovered;
+    for (int i = 0; i < x.size(); i++) {
+        if (obstacleDistance > DUBINS_INCREMENT) {
+            obstacleDistance -= DUBINS_INCREMENT;
+        } else {
+            double staticDistance = map->getUnblockedDistance(x[i], y[i]);
+            if (staticDistance <= 0) {
+                penalty += COLLISION_PENALTY;
+                obstacleDistance = 0;
+            } else {
+                // TODO! -- the new Dubins library doesn't make promises about spacing so the times could be off here
+                double dynamicDistance = obstacles->distanceToNearestPossibleCollision(x[i], y[i], maxSpeed,
+                                                                                       start()->state().time +
+                                                                                       lengthSoFar / maxSpeed);
+                if (dynamicDistance <= 0) {
+                    penalty += obstacles->collisionExists(x[i], y[i], start()->state().time + lengthSoFar / maxSpeed) * COLLISION_PENALTY;
+                    obstacleDistance = 0;
+                } else {
+                    obstacleDistance = fmin(staticDistance, dynamicDistance);
+                }
+            }
+        }
+        for (auto p : start()->uncovered().get()) {
+            if ((p.first - x[i]) * (p.first - x[i]) + (p.second - y[i]) * (p.second - y[i]) < COVERAGE_THRESHOLD * COVERAGE_THRESHOLD) {
+                newlyCovered.push_back(p);
+            }
+        }
+        lengthSoFar += DUBINS_INCREMENT;
+    }
 
+    if (!newlyCovered.empty()) {
+        std::sort(newlyCovered.begin(), newlyCovered.end());
+        newlyCovered.erase(std::unique(newlyCovered.begin(), newlyCovered.end()), newlyCovered.end());
+    }
+
+    // set end's state's time
+    end()->state().time = start()->state().time + dubinsPath.get_cost() / maxSpeed;
+
+    // set end's uncovered list
     end()->uncovered().clear();
     for (auto p : start()->uncovered().get()) {
         if (std::find(newlyCovered.begin(), newlyCovered.end(), p) != newlyCovered.end()) {
@@ -42,14 +87,16 @@ double Edge::computeTrueCost(Map *map, DynamicObstacles *obstacles, const Path& 
 }
 
 double Edge::computeApproxCost(double maxSpeed, double maxTurningRadius) {
-    double q0[3] = {start()->state().x, start()->state().y, start()->state().yaw()};
-    double q1[3] = {end()->state().x, end()->state().y, end()->state().yaw()};
-    int err = dubins_shortest_path(&dubinsPath, q0, q1, maxTurningRadius);
-    if (err != EDUBOK) {
-        std::cerr << "Encountered an error in the Dubins library" << std::endl;
-    } else {
-        m_ApproxCost = dubins_path_length(&dubinsPath) / maxSpeed * TIME_PENALTY;
-    }
+    RobustDubins::Problem problem;
+    problem.set_stateInitial(start()->state().x, start()->state().y, start()->state().yaw());
+    problem.set_stateFinal(end()->state().x, end()->state().y, end()->state().yaw());
+    problem.set_minTurningRadius(maxTurningRadius);
+    RobustDubins::Solver solver;
+    solver.set_problemStatement(problem);
+    solver.solve();
+    dubinsPath = solver.get_optimalPath();
+    dubinsPath.set_spacing(DUBINS_INCREMENT); // do this now for computing true cost and getting a plan
+    m_ApproxCost = dubinsPath.get_cost() / maxSpeed * TIME_PENALTY;
     return m_ApproxCost;
 }
 
@@ -61,18 +108,28 @@ void Edge::smooth(Map* map, DynamicObstacles* obstacles, double maxSpeed, double
     if (start()->isRoot()) return;
     double parentCost = start()->parentEdge()->m_TrueCost; // should be up to date in A*, check for BIT*
     auto smoothed = Vertex::connect(start()->parent(), end()->state());
-    double smoothedCost = smoothed->parentEdge()->computeTrueCost(map, obstacles, start()->uncovered(), maxSpeed, maxTurningRadius);
+    double smoothedCost = smoothed->parentEdge()->computeTrueCost(map, obstacles, maxSpeed, maxTurningRadius);
     if (smoothedCost < parentCost + m_TrueCost && smoothed->approxToGo() <= end()->approxToGo()) {
         // Should be memory-safe, as smoothed will delete the old vertex when it goes out of scope, and all pointers
         // to *end() will still be valid
-        // TODO! -- apparently this is actually broken (something throws std::bar_weak_ptr when smoothing runs)
+        // TODO! -- apparently this is actually broken (something throws std::bad_weak_ptr when smoothing runs)
         std::swap(*(smoothed.get()), *(end().get()));
     }
 }
 
 Plan Edge::getPlan(double maxSpeed) {
-    DubinsIntegration d;
-    return d.getPlan(start()->state(), dubinsPath, maxSpeed);
+    double lengthSoFar = 0;
+    Plan plan;
+    std::vector<double> x,y,h; //
+    dubinsPath.computePathHistory();
+    x = dubinsPath.get_xHistory();
+    y = dubinsPath.get_yHistory();
+    h = dubinsPath.get_hHistory();
+    for (int i = 0; i < x.size(); i++) {
+        plan.append(State(x[i], y[i], M_PI_2 - h[i], maxSpeed, lengthSoFar / maxSpeed + start()->state().time));
+        lengthSoFar += DUBINS_INCREMENT;
+    }
+    return plan;
 }
 
 std::shared_ptr<Vertex> Edge::setEnd(const State &state) {

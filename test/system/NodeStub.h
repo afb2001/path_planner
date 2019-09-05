@@ -4,7 +4,7 @@
 
 #include <vector>
 #include <path_planner/State.h>
-#include "../../src/executive/controller.h"
+#include "../../src/trajectory_publisher.h"
 
 class NodeStub : public TrajectoryPublisher {
 public:

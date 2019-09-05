@@ -209,11 +209,11 @@ TEST(UnitTests, DynamicObstacleTest1) {
 }
 
 TEST(UnitTests, GeoTiffMapTest1) {
-    GeoTiffMap map("/home/abrown/src/depth_map/US5NH02M.tiff");
+    GeoTiffMap map("/home/abrown/Downloads/depth_map/US5NH02M.tiff");
 }
 
 TEST(UnitTests, GeoTiffMapTest2) {
-    GeoTiffMap map("/home/abrown/src/depth_map/US5NH02M.tiff");
+    GeoTiffMap map("/home/abrown/Downloads/depth_map/US5NH02M.tiff");
     EXPECT_DOUBLE_EQ(map.getDepth(0, 0), 0);
     EXPECT_NEAR(map.getDepth(365000, 4770000), 14.87, 0.001);
 }

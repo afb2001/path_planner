@@ -22,6 +22,10 @@
 #include <path_planner/path_plannerConfig.h>
 #include <dynamic_reconfigure/server.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+
 /**
  * Node to act as interface between ROS and path planning system.
  */
@@ -272,3 +276,5 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+#pragma clang diagnostic pop

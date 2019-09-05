@@ -16,11 +16,12 @@ TEST(SystemTests, LoadMapTest) {
     executive->addToCover(20, 20);
     executive->updateCovered(0, 0, 2.3, M_PI / 4, Executive::getCurrentTime());
     executive->startPlanner("");
-    executive->refreshMap("/home/abrown/src/depth_map/US5NH02M.tiff");
-    for (int i = 0; i <= 5; i++) {
+    executive->refreshMap("/home/abrown/Downloads/depth_map/US5NH02M.tiff");
+    for (int i = 0; i <= 25; i++) {
         auto found = buffer.str().find("Done loading map") != -1;
-        EXPECT_TRUE(found || i < 5);
+        EXPECT_TRUE(found || i < 25);
         if (found) break;
+        ASSERT_FALSE(buffer.str().find("Encountered an error loading map at path ") != -1);
         sleep(1);
         executive->updateCovered(1.6263455967290593 * (i+1), 1.6263455967290593 * (i+1), M_PI / 4, 2.3, Executive::getCurrentTime());
     }

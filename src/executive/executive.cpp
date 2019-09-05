@@ -111,6 +111,10 @@ void Executive::updateCovered(double x, double y, double speed, double heading, 
     request_start = true;
     path.update_current(x,y,speed,heading,t);
     path.update_covered();
+    if ((m_LastHeading - heading) / m_LastUpdateTime <= c_CoverageHeadingRateMax) {
+        m_RibbonManager.cover(x, y);
+    }
+    m_LastUpdateTime = t; m_LastHeading = heading;
 }
 
 void Executive::sendAction() {
@@ -158,11 +162,13 @@ void Executive::requestPath()
         lk.unlock();
 //        cerr << "requestPath released the lock" << endl;
 
-        if (path.finish())
+        if (m_RibbonManager.done())
+//        if (m_InternalsManager.finish())
         {
             this_thread::sleep_for(chrono::milliseconds(1000));
             cerr << "Finished path; pausing" << endl;
             pause();
+            continue;
         }
 
         if (m_MapMutex.try_lock()) {
@@ -178,10 +184,13 @@ void Executive::requestPath()
         vector<pair<double, double>> newlyCovered;
         for (auto p : newlyCoveredList) newlyCovered.emplace_back(p.x, p.y);
         vector<State> plan;
+        auto startState = path.getStart(); // m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1);
         try {
             // change this line to use controller's starting estimate
-            plan = m_Planner->plan(newlyCovered, path.getStart(), DynamicObstaclesManager(), 0.95);
-//            plan = m_Planner->plan(newlyCovered, m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1), DynamicObstaclesManager());
+            //            plan = m_Planner->plan(newlyCovered, m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1), DynamicObstaclesManager());
+//            plan = m_Planner->plan(newlyCovered, m_InternalsManager.getStart(), DynamicObstaclesManager(), 0.95);
+            // TODO! -- low-key race condition with the ribbon manager here but it might be fine
+            plan = m_Planner->plan(m_RibbonManager, startState, DynamicObstaclesManager(), 0.95);
         } catch (...) {
             cerr << "Exception thrown while planning; pausing" << endl;
             pause();
@@ -225,10 +234,10 @@ void Executive::startPlanner(const string& mapFile, double latitude, double long
     m_Planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, map));
 
     // assume you've already set up path to cover
-    vector<pair<double, double>> toCover;
-    for (point p : path.get_covered())
-        toCover.emplace_back(p.x, p.y);
-    m_Planner->addToCover(toCover);
+//    vector<pair<double, double>> toCover;
+//    for (point p : path.get_covered())
+//        toCover.emplace_back(p.x, p.y);
+//    m_Planner->addToCover(toCover);
 
     cerr << "Planner is up and running" << endl;
 
@@ -285,7 +294,7 @@ void Executive::unPause() {
 }
 
 void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
-    path.updateDynamicObstacle(mmsi, obstacle);
+    m_DynamicObstaclesManager.update(mmsi, inventDistributions(obstacle));
 }
 
 void Executive::refreshMap(std::string pathToMapFile, double latitude, double longitude) {
@@ -307,4 +316,24 @@ void Executive::refreshMap(std::string pathToMapFile, double latitude, double lo
         }
     });
     worker.detach();
+}
+
+
+void Executive::addRibbon(double x1, double y1, double x2, double y2) {
+    m_RibbonManager.add(x1, y1, x2, y2);
+}
+
+std::vector<Distribution> Executive::inventDistributions(State obstacle) {
+    std::vector<Distribution> distributions;
+    double mean[2] = {obstacle.x, obstacle.y};
+    double covariance[2][2] = {{0, 5},{5, 0}};
+    distributions.emplace_back(mean, covariance, obstacle.heading, obstacle.time);
+    obstacle.setEstimate(1, obstacle);
+    mean[0] = obstacle.x; mean[1] = obstacle.y;
+    distributions.emplace_back(mean, covariance, obstacle.heading, obstacle.time);
+    return distributions;
+}
+
+void Executive::clearRibbons() {
+    m_RibbonManager = RibbonManager(RibbonManager::TspPointRobotNoSplitAllRibbons);
 }

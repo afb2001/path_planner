@@ -37,6 +37,7 @@ public:
 {
     m_current_speed = 3.0;
     m_current_heading = 0;
+    m_Executive = new Executive(this);
 
     m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
     m_estimate_state_client = m_node_handle.serviceClient<mpc::EstimateState>("/mpc/estimate_state");
@@ -58,8 +59,6 @@ public:
     f = boost::bind(&PathPlanner::reconfigureCallback, this, _1, _2);
 
     m_Server.setCallback(f);
-
-    m_Executive = new Executive(this);
 }
 
     ~PathPlanner() final

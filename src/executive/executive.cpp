@@ -1,12 +1,8 @@
-#include <utility>
 #include <thread>
 #include <fstream>
 #include <wait.h>
 #include <future>
 #include "ExecutiveInternalsManager.h"
-// #include "xtiffio.h"
-// #include "geotiffio.h"
-
 #include "executive.h"
 #include "../planner/SamplingBasedPlanner.h"
 #include "../planner/AStarPlanner.h"
@@ -43,6 +39,7 @@ void Executive::updateCovered(double x, double y, double speed, double heading, 
         m_RibbonManager.cover(x, y);
     }
     m_LastUpdateTime = t; m_LastHeading = heading;
+    m_LastState = State(x, y, heading, speed, t);
 }
 
 void Executive::sendAction() {
@@ -103,17 +100,24 @@ void Executive::requestPath()
             m_MapMutex.unlock();
         }
 
-        start = getCurrentTime();
+        start = m_TrajectoryPublisher->getTime();
 //        auto newlyCoveredList = m_InternalsManager.getNewlyCovered();
 //        vector<pair<double, double>> newlyCovered;
 //        for (auto p : newlyCoveredList) newlyCovered.emplace_back(p.x, p.y);
         vector<State> plan;
-        auto startState = m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1);
+        cerr << "ROS time is now " << m_TrajectoryPublisher->getTime() << endl;
+        auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
+        if (startState.time == -1) { // if the state estimator returns an error naively do it ourselves
+            startState.setEstimate(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds - m_LastState.time, m_LastState);
+        }
+        cerr << "Calling planner with state " << startState.toString() << endl;
         try {
             // change this line to use controller's starting estimate
 //            plan = m_Planner->plan(newlyCovered, m_InternalsManager.getStart(), DynamicObstaclesManager(), 0.95);
             // TODO! -- low-key race condition with the ribbon manager here but it might be fine
-            plan = m_Planner->plan(m_RibbonManager, startState, DynamicObstaclesManager(), 0.95);
+            // NOTE: changed the time remaining from 0.95 to 0.7 to hopefully allow the controller to update
+            // its estimates of our trajectory
+            plan = m_Planner->plan(m_RibbonManager, startState, DynamicObstaclesManager(), c_PlanningTimeSeconds - 0.3);
         } catch (...) {
             cerr << "Exception thrown while planning; pausing" << endl;
             pause();
@@ -124,8 +128,8 @@ void Executive::requestPath()
 //        m_InternalsManager.setNewPath(plan);
         m_TrajectoryPublisher->publishTrajectory(plan);
         m_TrajectoryPublisher->displayTrajectory(plan, true);
-        end = getCurrentTime();
-        sleeptime = (end - start <= 1) ? ((int)((1 - (end - start)) * 1000)) : 0;
+        end = m_TrajectoryPublisher->getTime();
+        sleeptime = (end - start <= c_PlanningTimeSeconds) ? ((int)((c_PlanningTimeSeconds - (end - start)) * 1000)) : 0;
 
         this_thread::sleep_for(chrono::milliseconds(sleeptime));
 

@@ -44,6 +44,7 @@ private:
     RibbonManager m_RibbonManager;
     double m_LastUpdateTime = 1;
     double m_LastHeading = 0; // TODO! -- use moving average or something
+    State m_LastState;
 
     DynamicObstaclesManager m_DynamicObstaclesManager;
 
@@ -62,6 +63,7 @@ private:
     TrajectoryPublisher* m_TrajectoryPublisher;
 
     static constexpr double c_CoverageHeadingRateMax = 0.1; // (in radians/sec)
+    static constexpr double c_PlanningTimeSeconds = 1;
 
     void requestPath();
 

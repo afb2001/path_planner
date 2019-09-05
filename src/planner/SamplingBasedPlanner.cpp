@@ -42,7 +42,7 @@ std::vector<State> SamplingBasedPlanner::plan(const State& start, DynamicObstacl
 }
 
 void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
-    if (vertex->parentEdge()->infeasible()) return;
+    if (!vertex->isRoot() && vertex->parentEdge()->infeasible()) return;
     m_VertexQueue.push_back(vertex);
     std::push_heap(m_VertexQueue.begin(), m_VertexQueue.end(), getVertexComparator());
 }

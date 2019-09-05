@@ -23,6 +23,7 @@
 #include <dynamic_reconfigure/server.h>
 
 #pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCInconsistentNamingInspection"
 #pragma clang diagnostic ignored "-Wunknown-pragmas"
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 
@@ -35,6 +36,7 @@ public:
     explicit PathPlanner(std::string name):
     m_action_server(m_node_handle, std::move(name), false)
 {
+    m_Executive = new Executive(this);
     m_current_speed = 3.0;
     m_current_heading = 0;
 
@@ -58,8 +60,6 @@ public:
     f = boost::bind(&PathPlanner::reconfigureCallback, this, _1, _2);
 
     m_Server.setCallback(f);
-
-    m_Executive = new Executive(this);
 }
 
     ~PathPlanner() final
@@ -156,7 +156,8 @@ public:
                 inmsg->pose.position.y,
                 m_current_speed,
                 m_current_heading,
-                inmsg->header.stamp.toNSec() / 1.0e9);
+                getTime());
+//                inmsg->header.stamp.toNSec() / 1.0e9);
     }
 
     void headingCallback(const marine_msgs::NavEulerStamped::ConstPtr& inmsg)
@@ -213,9 +214,10 @@ public:
         mpc::EstimateStateResponse res;
         req.desiredTime = desiredTime;
         if (m_estimate_state_client.call(req, res)) {
-//            cerr << "Asking planner to plan from " << res.state.x << ", " << res.state.y << endl;
-//            cerr << "and are currently in state  " <<
-            return getState(res.state);
+            auto s = getState(res.state);
+//            cerr << "Asking planner to plan from " << s.toString() << endl;
+//            cerr << "The difference between that heading and the current on is " << fabs(m_current_heading - s.heading) << endl;
+            return s;
         }
         cerr << "EstimateState service call failed" << endl;
         return State(-1);
@@ -244,6 +246,10 @@ public:
 
     void originCallback(const geographic_msgs::GeoPointConstPtr& inmsg) {
         m_origin = *inmsg;
+    }
+
+    double getTime() const override {
+        return ((double)ros::Time::now().toNSec()) / 1e9;
     }
 
 private:

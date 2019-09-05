@@ -84,6 +84,8 @@ public:
 
         m_current_speed = goal->speed;
 
+        m_Executive->clearRibbons();
+
         std::vector<std::pair<double, double>> currentPath;
 
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
@@ -112,28 +114,30 @@ public:
                 end = response.map.point;
             }
 
-            // interpolate and add to interpolatedPoints
-            double n, d, dx, dy;
-            // total distance
-            dx = end.x - start.x; dy = end.y - start.y;
-            d = sqrt(dx * dx + dy * dy);
-            // number of points
-            n = ceil(d / c_max_goal_distance);
-            // distance between each point
-            dx = dx / n; dy = dy / n;
-            for (int j = 1; j < n - 1; j++) {
-                currentPath.emplace_back(start.x + (j*dx), start.y + (j*dy));
-            }
+            m_Executive->addRibbon(start.x, start.y, end.x, end.y);
 
-            currentPath.emplace_back(end.x, end.y);
+//            // interpolate and add to interpolatedPoints
+//            double n, d, dx, dy;
+//            // total distance
+//            dx = end.x - start.x; dy = end.y - start.y;
+//            d = sqrt(dx * dx + dy * dy);
+//            // number of points
+//            n = ceil(d / c_max_goal_distance);
+//            // distance between each point
+//            dx = dx / n; dy = dy / n;
+//            for (int j = 1; j < n - 1; j++) {
+//                currentPath.emplace_back(start.x + (j*dx), start.y + (j*dy));
+//            }
+//
+//            currentPath.emplace_back(end.x, end.y);
         }
 
-        for (auto p : currentPath) {
-            m_Executive->addToCover((int)p.first, (int)p.second);
-        }
+//        for (auto p : currentPath) {
+//            m_Executive->addToCover((int)p.first, (int)p.second);
+//        }
 
         // start planner
-        m_Executive->startPlanner("NOFILE", 0, 0);
+        m_Executive->startPlanner("", 0, 0);
     }
 
     void preemptCallback()

@@ -16,7 +16,6 @@ find_package(catkin REQUIRED COMPONENTS
         actionlib_msgs
         actionlib
         dubins_curves
-        robust_dubins
         dynamic_reconfigure
         )
 
@@ -76,7 +75,7 @@ add_library(planner
         src/planner/utilities/RibbonManager.cpp
         )
 
-target_link_libraries(planner path_planner_common robust_dubins dubins)
+target_link_libraries(planner path_planner_common dubins)
 
 add_library(executive
         src/executive/executive.cpp

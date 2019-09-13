@@ -1,7 +1,8 @@
 #include <utility>
 #include <thread>
 #include <string.h>
-#include "communication.h"
+//#include "State.h"
+//#include "communication.h"
 #include <fstream>
 #include <wait.h>
 #include <pwd.h>
@@ -10,6 +11,10 @@
 // #include "geotiffio.h"
 
 #include "executive.h"
+#include "../planner/SamplingBasedPlanner.h"
+#include "../planner/AStarPlanner.h"
+#include "../common/map/GeoTiffMap.h"
+#include "../common/map/GridWorldMap.h"
 
 using namespace std;
 
@@ -31,80 +36,85 @@ double Executive::getCurrentTime()
     return t.tv_sec + t.tv_nsec * 1e-9;
 }
 
-void Executive::print_map(string file)
-{
-    if (file != "NOFILE")
-    {
-        string line;
-        ifstream f(file);
-        if (f.is_open())
-        {
-            getline(f, line);
-            string factor = line;
-            getline(f, line);
-            string w = line;
-            getline(f, line);
-            string h = line;
-            cerr << "EXEUTIVE::START " << w << " " << h << endl;
-            cerr << "EXECUTIVE::MAP::" + w + " " + h << endl;
-            int width = stoi(w), height = stoi(h);
-            m_Path.maxX = width;
-            m_Path.Obstacles = new bool[width * height];
-            int hcount = 0;
-            m_PipeToPlanner.cwrite("map " + factor + " " + w + " " + h);
-            while (getline(f, line))
-            {
-                ++hcount;
-                string s = "";
-                char previous = ' ';
-                int ncount = 0;
-                for (int i = 0; i < line.size(); i++)
-                {
-                    m_Path.Obstacles[m_Path.getIndex(i, height - hcount)] = line[i] == '#';
-
-                    if (line[i] != previous)
-                    {
-                        if (i == 0)
-                            s += line[i];
-                        else
-                            s += " " + to_string(ncount);
-                        previous = line[i];
-                    }
-                    ncount += 1;
-                }
-                m_PipeToPlanner.cwrite(s);
-            }
-
-            f.close();
-            return;
-        }
-    }
-    string s = "";
-    cerr << "EXECUTIVE::MAP::DEFAULT" << endl;
-    m_PipeToPlanner.cwrite("map 1 2000 2000");
-    for (int i = 0; i < 1999; i++)
-        s += "_\n";
-    s += "_";
-    m_Path.Obstacles = new bool[2000 * 2000]{};
-    m_PipeToPlanner.cwrite(s);
-}
-
-bool Executive::plannerIsDead()
-{
-    int status;
-    pid_t result = waitpid(m_PipeToPlanner.getPid(), &status, WNOHANG);
-//    if (result != 0) {
-//        cerr << "Planner seems to be dead" << endl;
-//    } else {
-//        cerr << "Planner seems to be alive" << endl;
+//void Executive::print_map(string file)
+//{
+//    if (file != "NOFILE")
+//    {
+//        string line;
+//        ifstream f(file);
+//        if (f.is_open())
+//        {
+//            getline(f, line);
+//            string factor = line;
+//            getline(f, line);
+//            string w = line;
+//            getline(f, line);
+//            string h = line;
+//            cerr << "EXEUTIVE::START " << w << " " << h << endl;
+//            cerr << "EXECUTIVE::MAP::" + w + " " + h << endl;
+//            int width = stoi(w), height = stoi(h);
+//            path.Maxx = width;
+//            path.Obstacles = new bool[width * height];
+//            int hcount = 0;
+//            communication_With_Planner.cwrite("map " + factor + " " + w + " " + h);
+//            while (getline(f, line))
+//            {
+//                ++hcount;
+//                string s = "";
+//                char previous = ' ';
+//                int ncount = 0;
+//                for (int i = 0; i < line.size(); i++)
+//                {
+//                    path.Obstacles[path.getindex(i, height - hcount)] = line[i] == '#';
+//
+//                    if (line[i] != previous)
+//                    {
+//                        if (i == 0)
+//                            s += line[i];
+//                        else
+//                            s += " " + to_string(ncount);
+//                        previous = line[i];
+//                    }
+//                    ncount += 1;
+//                }
+//                communication_With_Planner.cwrite(s);
+//            }
+//
+//            f.close();
+//            return;
+//        }
 //    }
-    return result != 0; // TODO! -- check error case
-}
+//    string s = "";
+//    cerr << "EXECUTIVE::MAP::DEFAULT" << endl;
+//    communication_With_Planner.cwrite("map 1 2000 2000");
+//    for (int i = 0; i < 1999; i++)
+//        s += "_\n";
+//    s += "_";
+//    path.Obstacles = new bool[2000 * 2000]{};
+//    communication_With_Planner.cwrite(s);
+//}
+
+//bool Executive::plannerIsDead()
+//{
+//    int status;
+//    pid_t result = waitpid(communication_With_Planner.getPid(), &status, WNOHANG);
+////    if (result != 0) {
+////        cerr << "Planner seems to be dead" << endl;
+////    } else {
+////        cerr << "Planner seems to be alive" << endl;
+////    }
+//    return result != 0; // TODO! -- check error case
+//}
 
 void Executive::updateCovered(double x, double y, double speed, double heading, double t)
 {
-    m_Path.update_current(x,y,speed,heading,t);
-    m_Path.update_covered();
+    request_start = true;
+    path.update_current(x,y,speed,heading,t);
+    path.update_covered();
+    if ((m_LastHeading - heading) / m_LastUpdateTime <= c_CoverageHeadingRateMax) {
+        m_RibbonManager.cover(x, y);
+    }
+    m_LastUpdateTime = t; m_LastHeading = heading;
 }
 
 void Executive::sendAction() {
@@ -117,18 +127,20 @@ void Executive::sendAction() {
 //        cerr << "sendAction unblocked (with the lock)" << endl;
         lk.unlock();
 //        cerr << "sendAction released the lock" << endl;
-        auto actions = m_Path.getActions();
+        auto actions = path.getActions();
 //        cerr << "sendAction got path actions" << endl;
-        if (actions.size() == 1)
+        if (actions == nullptr)
             continue;
 //        cerr << "and they aren't null" << endl;
-        m_TrajectoryPublisher->publishTrajectory(actions);
-//        m_TrajectoryPublisher->displayTrajectory(actions, false);
-//        cerr << "trajectory had length " << actions.size() << endl;
+        vector<State> a;
+        for (int i = 0; i < 5; i++) a.push_back(actions[i]);
+        m_TrajectoryPublisher->publishTrajectory(a);
+//        cerr << "sendAction published trajectory" << endl;
         this_thread::sleep_for(std::chrono::milliseconds(sleep));
 
 //        cerr << "sendAction asking if planner is dead" << endl;
-        if (plannerIsDead()) pause();
+//        if (plannerIsDead()) pause();
+        delete[] actions;
     }
 }
 
@@ -139,10 +151,11 @@ void Executive::requestPath()
     int numberOfState, sleeptime;
     char response[1024];
 
-    m_Path.initialize();
+    path.initialize();
 
     while (m_Running)
     {
+//        cerr << "Checking to make sure planner is not paused..." << endl;
         // if m_Pause, block until !m_Pause
         unique_lock<mutex> lk(m_PauseMutex);
         m_PauseCV.wait(lk, [=]{return !m_Pause;});
@@ -150,87 +163,90 @@ void Executive::requestPath()
         lk.unlock();
 //        cerr << "requestPath released the lock" << endl;
 
-        if (m_Path.isFinished())
+        if (m_RibbonManager.done())
+//        if (m_InternalsManager.finish())
         {
             this_thread::sleep_for(chrono::milliseconds(1000));
             cerr << "Finished path; pausing" << endl;
             pause();
+            continue;
+        }
+
+        if (m_MapMutex.try_lock()) {
+            if (m_NewMap) {
+                m_Planner->updateMap(m_NewMap);
+            }
+            m_NewMap = nullptr;
+            m_MapMutex.unlock();
         }
 
         start = getCurrentTime();
-        m_PipeToPlanner.cwrite(m_Path.construct_request_string(m_TrajectoryPublisher->getEstimatedState(m_Path.getCurrent().time + 1)));
-//        cerr << "requestPath sent the planner a request" << endl;
-
-//        fgets(response, sizeof response, readstream);
-        // TODO! -- make a way to fail gracefully if we need to shut down or some error happens
-        m_PipeToPlanner.readAll(response);
-//        cerr << "requestPath read the response" << endl;
-        if (!strncmp(response, "done", 4))
-        {
-            cerr << "Unexpected answer from planner; pausing" << endl;
+        auto newlyCoveredList = path.getNewlyCovered();
+        vector<pair<double, double>> newlyCovered;
+        for (auto p : newlyCoveredList) newlyCovered.emplace_back(p.x, p.y);
+        vector<State> plan;
+        auto startState = path.getStart(); // m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1);
+        try {
+            cerr << "Planning..." << endl;
+            // change this line to use controller's starting estimate
+            //            plan = m_Planner->plan(newlyCovered, m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1), DynamicObstaclesManager());
+//            plan = m_Planner->plan(newlyCovered, m_InternalsManager.getStart(), DynamicObstaclesManager(), 0.95);
+            // TODO! -- low-key race condition with the ribbon manager here but it might be fine
+            plan = m_Planner->plan(m_RibbonManager, startState, DynamicObstaclesManager(), 0.95);
+        } catch (...) {
+            cerr << "Exception thrown while planning; pausing" << endl;
             pause();
+            throw;
         }
+//        cerr << "Done planning" << endl;
 
-        sscanf(response, "plan %d\n", &numberOfState);
-//        cerr << "which was a plan of length " << numberOfState << endl;
-
-        time_bound = m_Path.getCurrent().time;
-
-        vector<State> trajectory;
-        for (int i = 0; i < numberOfState; i++) // if no new path then keep old path // ??
-        {
-//            fgets(response, sizeof response, readstream);
-            m_PipeToPlanner.readAll(response);
-            auto s = Path::readStateFromPlanner(response);
-            if (s.time > time_bound) trajectory.push_back(s);
-        }
-
-        m_Path.setNewPath(trajectory);
-        m_TrajectoryPublisher->displayTrajectory(trajectory);
-
+        path.setNewPath(plan);
+//        m_TrajectoryPublisher->publishTrajectory(plan);
+        m_TrajectoryPublisher->displayTrajectory(plan, true);
+//        cerr << "Plan: " << '\n';
+//        for (auto s : plan) {
+//            cerr << s.toString() << '\n';
+//        }
+//        cerr << endl;
         end = getCurrentTime();
-        // TODO! -- have another look at this (seconds vs ms?) also don't use inline ifs
-        // also make 1 second a constant or variable or something
-        sleeptime = (numberOfState) ? ((end - start <= 1) ? ((int)((1 - (end - start)) * 1000)) : 0) : 50;
+        sleeptime = (end - start <= 1) ? ((int)((1 - (end - start)) * 1000)) : 0;
 
         this_thread::sleep_for(chrono::milliseconds(sleeptime));
 
-//        cerr << "requestPath asking if planner is dead" << endl;
-        if (plannerIsDead()) pause();
+//        if (plannerIsDead()) pause();
     }
 }
 
 void Executive::addToCover(int x, int y)
 {
-    m_Path.add_covered(x, y);
+    path.add_covered(x, y);
 }
 
-void Executive::startPlanner(string mapFile)
+void Executive::startPlanner(const string& mapFile, double latitude, double longitude)
 {
     cerr << "Starting planner" << endl;
 
-    const char *homedir;
-    if ((homedir = getenv("HOME")) == NULL) {
-        homedir = getpwuid(getuid())->pw_dir;
+    shared_ptr<Map> map;
+    try {
+        map = make_shared<GeoTiffMap>(mapFile, longitude, latitude);
+    }
+    catch (...) {
+        map = make_shared<Map>();
+    }
+//    m_Planner = std::unique_ptr<Planner>(new Planner(2.3, 8, Map()));
+    m_Planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, map));
+
+    if (!m_Planner) {
+        cerr << "Error creating planner! Planner not initialized!" << endl;
     }
 
-    m_PipeToPlanner.set(string(homedir) + "/go/src/github.com/afb2001/CCOM_planner/planner", true, true, false, false);
-    m_PipeToPlanner.cwrite("Start");
-    m_PipeToPlanner.cwrite("max speed 2.3");
-    m_PipeToPlanner.cwrite("max turning radius 8");
-    print_map(std::move(mapFile));
-
     // assume you've already set up path to cover
-    m_PipeToPlanner.cwrite("path to cover " + to_string(m_Path.getToCover().size()));
-    for (point p : m_Path.getToCover())
-        m_PipeToPlanner.cwrite(to_string(p.x) + " " + to_string(p.y));
+//    vector<pair<double, double>> toCover;
+//    for (point p : path.get_covered())
+//        toCover.emplace_back(p.x, p.y);
+//    m_Planner->addToCover(toCover);
 
-    cerr << "Waiting for planner to finish starting" << endl;
-
-    // wait for it to finish initializing (?)
-    char done[100];
-    m_PipeToPlanner.cread(done, 100);
-    m_PlannerPipeStale = true;
+    cerr << "Starting " << m_RibbonManager.dumpRibbons() << endl;
 
     cerr << "Planner is up and running" << endl;
 
@@ -256,13 +272,6 @@ void Executive::terminate()
 
     // un-pause so threads can terminate
     unPause();
-
-    // if the planner isn't dead, kill it
-    int status;
-    pid_t result = waitpid(m_PipeToPlanner.getPid(), &status, WNOHANG);
-    if (result == 0) {
-        kill(m_PipeToPlanner.getPid(), SIGKILL);
-    }
 }
 
 void Executive::pause()
@@ -279,13 +288,6 @@ void Executive::pause()
 
     // tell the node we achieved the goal
     m_TrajectoryPublisher->allDone();
-
-    // if the planner isn't dead, kill it
-    int status;
-    pid_t result = waitpid(m_PipeToPlanner.getPid(), &status, WNOHANG);
-    if (result == 0) {
-        kill(m_PipeToPlanner.getPid(), SIGKILL);
-    }
 }
 
 
@@ -300,6 +302,47 @@ void Executive::unPause() {
     m_PauseCV.notify_all();
 }
 
-void Executive::updateDyamicObstacle(uint32_t mmsi, State obstacle) {
-    m_Path.updateDynamicObstacle(mmsi, obstacle);
+void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
+    m_DynamicObstaclesManager.update(mmsi, inventDistributions(obstacle));
+}
+
+void Executive::refreshMap(std::string pathToMapFile, double latitude, double longitude) {
+    thread worker([this, pathToMapFile, latitude, longitude] {
+        std::lock_guard<std::mutex> lock(m_MapMutex);
+        // could take some time for I/O, Dijkstra on entire map
+        try {
+            // If the name looks like it's one of our gridworld maps, load it in that format, otherwise assume GeoTIFF
+            if (pathToMapFile.find(".map") == -1) {
+                m_NewMap = make_shared<GeoTiffMap>(pathToMapFile, longitude, latitude);
+            } else {
+                m_NewMap = make_shared<GridWorldMap>(pathToMapFile);
+            }
+        }
+        catch (...) {
+            // swallow all errors in this thread
+            cerr << "Encountered an error loading map at path " << pathToMapFile << endl;
+            m_NewMap = nullptr;
+        }
+    });
+    worker.detach();
+}
+
+
+void Executive::addRibbon(double x1, double y1, double x2, double y2) {
+    m_RibbonManager.add(x1, y1, x2, y2);
+}
+
+std::vector<Distribution> Executive::inventDistributions(State obstacle) {
+    std::vector<Distribution> distributions;
+    double mean[2] = {obstacle.x, obstacle.y};
+    double covariance[2][2] = {{0, 5},{5, 0}};
+    distributions.emplace_back(mean, covariance, obstacle.heading, obstacle.time);
+    obstacle.setEstimate(1, obstacle);
+    mean[0] = obstacle.x; mean[1] = obstacle.y;
+    distributions.emplace_back(mean, covariance, obstacle.heading, obstacle.time);
+    return distributions;
+}
+
+void Executive::clearRibbons() {
+    m_RibbonManager = RibbonManager(RibbonManager::TspPointRobotNoSplitAllRibbons);
 }

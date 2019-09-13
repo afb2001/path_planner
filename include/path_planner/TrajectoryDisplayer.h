@@ -1,7 +1,6 @@
 #ifndef SRC_TRAJECTORYDISPLAYER_H
 #define SRC_TRAJECTORYDISPLAYER_H
 
-
 #include <ros/ros.h>
 #include <geographic_msgs/GeoPoint.h>
 #include "State.h"
@@ -34,12 +33,20 @@ public:
         geographic_visualization_msgs::GeoVizPointList displayPoints;
         displayPoints.color.b = 1;
         if (!plannerTrajectory) {
-//            std::cerr << "Displaying controller trajectory of length " << trajectory.size() << std::endl;
+//            std::cerr << "Displaying controller trajectory of length " << trajectory.size();
+//            if (!trajectory.empty()) {
+//                std::cerr << " starting at " << trajectory.front().toString() << std::endl;
+//            } else {
+//                std::cerr << std::endl;
+//            }
+
             displayPoints.color.g = 1;
         }
         displayPoints.color.a = 1;
         displayPoints.size = 3.0;
-        for (State s : trajectory) {
+//        std::cerr << "Displaying controller trajectory: " << std::endl;
+        for (const State& s : trajectory) {
+//            std::cerr << s.toString() << std::endl;
             geographic_msgs::GeoPoint point;
             displayPoints.points.push_back(convertToLatLong(s));
         }
@@ -54,7 +61,7 @@ public:
     }
 
 protected:
-    geographic_msgs::GeoPoint convertToLatLong(State state) {
+    geographic_msgs::GeoPoint convertToLatLong(const State& state) {
         project11_transformations::MapToLatLong::Request request;
         project11_transformations::MapToLatLong::Response response;
         request.map.point.x = state.x;
@@ -63,10 +70,29 @@ protected:
         return response.wgs84.position;
     }
 
+    path_planner::StateMsg getStateMsg(const State& state) {
+        path_planner::StateMsg stateMsg;
+        stateMsg.x = state.x;
+        stateMsg.y = state.y;
+        stateMsg.heading = state.heading;
+        stateMsg.speed = state.speed;
+        stateMsg.time = state.time;
+        return stateMsg;
+    }
+
+    State getState(const path_planner::StateMsg& stateMsg) {
+        State state;
+        state.x = stateMsg.x;
+        state.y = stateMsg.y;
+        state.heading = stateMsg.heading;
+        state.speed = stateMsg.speed;
+        state.time = stateMsg.time;
+        return state;
+    }
+
     ros::NodeHandle m_node_handle;
     ros::Publisher m_display_pub;
     ros::ServiceClient m_map_to_lat_long_client;
 };
-
 
 #endif //SRC_TRAJECTORYDISPLAYER_H

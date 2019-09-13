@@ -13,7 +13,7 @@ public:
      * @param trajectory the trajectory to publish
      */
     virtual void publishTrajectory(std::vector<State> trajectory) = 0;
-    virtual void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory=true) = 0;
+    virtual void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) = 0;
     /**
      * Alert the system that the planner has finished this iteration. This might deserve its own interface.
      */
@@ -25,6 +25,7 @@ public:
      */
     virtual State getEstimatedState(double desiredTime) = 0;
 };
+
 
 
 #endif //SRC_TRAJECTORY_PUBLISHER_H

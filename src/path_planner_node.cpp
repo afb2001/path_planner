@@ -1,16 +1,8 @@
 #include <utility>
-
-#include <utility>
-
 #include "ros/ros.h"
-#include "geographic_msgs/GeoPointStamped.h"
 #include "geographic_msgs/GeoPath.h"
 #include "geometry_msgs/TwistStamped.h"
-#include "std_msgs/Bool.h"
 #include "std_msgs/String.h"
-#include "std_msgs/Float32.h"
-#include "std_msgs/Float64.h"
-#include "marine_msgs/Helm.h"
 #include "marine_msgs/Contact.h"
 #include "marine_msgs/NavEulerStamped.h"
 #include <vector>
@@ -18,28 +10,21 @@
 #include "path_planner/path_plannerAction.h"
 #include "actionlib/server/simple_action_server.h"
 #include "path_planner/Trajectory.h"
-#include <sys/types.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <fstream>
 #include <project11_transformations/LatLongToMap.h>
-#include <thread>
-#include <signal.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <project11_transformations/MapToLatLong.h>
+#include <mpc/EstimateStateRequest.h>
+#include <mpc/EstimateStateResponse.h>
 #include <mpc/EstimateState.h>
-#include "geographic_visualization_msgs/GeoVizItem.h"
-#include "geographic_visualization_msgs/GeoVizPointList.h"
-#include "path_planner/TrajectoryDisplayer.h"
-
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
+#include "path_planner/TrajectoryDisplayer.h"
+#include <path_planner/path_plannerConfig.h>
+#include <dynamic_reconfigure/server.h>
 
-using std::string;
-using std::vector;
-using std::cerr;
-using std::endl;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 
 /**
  * Node to act as interface between ROS and path planning system.
@@ -47,11 +32,12 @@ using std::endl;
 class PathPlanner: public TrajectoryDisplayer, public TrajectoryPublisher
 {
 public:
-    explicit PathPlanner(std::string name): TrajectoryDisplayer(),
+    explicit PathPlanner(std::string name):
     m_action_server(m_node_handle, std::move(name), false)
 {
     m_current_speed = 3.0;
     m_current_heading = 0;
+    m_Executive = new Executive(this);
 
     m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
     m_estimate_state_client = m_node_handle.serviceClient<mpc::EstimateState>("/mpc/estimate_state");
@@ -59,17 +45,20 @@ public:
     m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
     m_reference_trajectory_pub = m_node_handle.advertise<path_planner::Trajectory>("/reference_trajectory",1);
 
-
     m_position_sub = m_node_handle.subscribe("/position_map", 10, &PathPlanner::positionCallback, this);
     m_heading_sub = m_node_handle.subscribe("/heading", 10, &PathPlanner::headingCallback, this);
     m_speed_sub = m_node_handle.subscribe("/sog", 10, &PathPlanner::speedCallback, this);
     m_contact_sub = m_node_handle.subscribe("/contact", 10, &PathPlanner::contactCallback, this);
+    m_origin_sub = m_node_handle.subscribe("/origin", 1, &PathPlanner::originCallback, this);
 
     m_action_server.registerGoalCallback(boost::bind(&PathPlanner::goalCallback, this));
     m_action_server.registerPreemptCallback(boost::bind(&PathPlanner::preemptCallback, this));
     m_action_server.start();
 
-    m_Executive = new Executive(this);
+    dynamic_reconfigure::Server<path_planner::path_plannerConfig>::CallbackType f;
+    f = boost::bind(&PathPlanner::reconfigureCallback, this, _1, _2);
+
+    m_Server.setCallback(f);
 }
 
     ~PathPlanner() final
@@ -82,29 +71,25 @@ public:
     // This is really only designed to work once right now
     void goalCallback()
     {
-        std::cerr << "Grabbing goal...";
         auto goal = m_action_server.acceptNewGoal();
-        std::cerr << " done." << std::endl;
 
         // make sure controller is up
         publishControllerMessage("start running");
-
 
         // if executive is already running, shut it down
         m_Executive->pause();
 //        return;
         publishControllerMessage("start sending controls");
 
-        std::cerr << "Touching goal for the first time...";
         m_current_speed = goal->speed;
-        std::cerr << " done." << std::endl;
+
+        m_Executive->clearRibbons();
 
         std::vector<std::pair<double, double>> currentPath;
 
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 
         // interpolate points to cover from segments
-        // TODO! -- add "why" comments
         for (int i = 0; i + 1 < goal->path.poses.size(); i++)
         {
             // assume points represent track-line pairs
@@ -128,28 +113,30 @@ public:
                 end = response.map.point;
             }
 
-            // interpolate and add to interpolatedPoints
-            double n, d, dx, dy;
-            // total distance
-            dx = end.x - start.x; dy = end.y - start.y;
-            d = sqrt(dx * dx + dy * dy);
-            // number of points
-            n = ceil(d / c_max_interpolation_distance);
-            // distance between each point
-            dx = dx / n; dy = dy / n;
-            for (int j = 1; j < n - 1; j++) {
-                currentPath.emplace_back(start.x + (j*dx), start.y + (j*dy));
-            }
+            m_Executive->addRibbon(start.x, start.y, end.x, end.y);
 
-            currentPath.emplace_back(end.x, end.y);
+//            // interpolate and add to interpolatedPoints
+//            double n, d, dx, dy;
+//            // total distance
+//            dx = end.x - start.x; dy = end.y - start.y;
+//            d = sqrt(dx * dx + dy * dy);
+//            // number of points
+//            n = ceil(d / c_max_goal_distance);
+//            // distance between each point
+//            dx = dx / n; dy = dy / n;
+//            for (int j = 1; j < n - 1; j++) {
+//                currentPath.emplace_back(start.x + (j*dx), start.y + (j*dy));
+//            }
+//
+//            currentPath.emplace_back(end.x, end.y);
         }
 
-        for (auto p : currentPath) {
-            m_Executive->addToCover((int)p.first, (int)p.second);
-        }
+//        for (auto p : currentPath) {
+//            m_Executive->addToCover((int)p.first, (int)p.second);
+//        }
 
         // start planner
-        m_Executive->startPlanner("NOFILE");
+        m_Executive->startPlanner("", 0, 0);
     }
 
     void preemptCallback()
@@ -163,7 +150,6 @@ public:
 
     void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg)
     {
-        // TODO! -- check when we last got an update
         m_Executive->updateCovered(
                 inmsg->pose.position.x,
                 inmsg->pose.position.y,
@@ -202,15 +188,15 @@ public:
 
         obstacle.time = inmsg->header.stamp.toNSec() / 1.0e9;
 
-        m_Executive->updateDyamicObstacle(inmsg->mmsi, obstacle);
+        m_Executive->updateDynamicObstacle(inmsg->mmsi, obstacle);
     }
 
     void publishTrajectory(vector<State> trajectory) final
     {
         path_planner::Trajectory reference;
         for (State s : trajectory) {
-            // explicit conversion to make this cleaner
-            reference.states.push_back((path_planner::StateMsg)s);
+            // explicit conversion to make this cleaner // got rid of it
+            reference.states.push_back(getStateMsg(s));
         }
         m_reference_trajectory_pub.publish(reference);
     }
@@ -226,7 +212,9 @@ public:
         mpc::EstimateStateResponse res;
         req.desiredTime = desiredTime;
         if (m_estimate_state_client.call(req, res)) {
-            return State(res.state);
+            cerr << "Asking planner to plan from " << res.state.x << ", " << res.state.y << endl;
+//            cerr << "and are currently in state  " <<
+            return getState(res.state);
         }
         cerr << "EstimateState service call failed" << endl;
         return State(-1);
@@ -238,13 +226,6 @@ public:
         path_planner::path_plannerResult result;
         m_action_server.setSucceeded(result);
 
-        // publish empty trajectory to clear the display
-        geographic_visualization_msgs::GeoVizItem geoVizItem;
-        geoVizItem.id = "planner_trajectory";
-        m_display_pub.publish(geoVizItem);
-        geoVizItem.id = "controller_trajectory";
-        m_display_pub.publish(geoVizItem);
-
         publishControllerMessage("stop sending controls");
     }
 
@@ -255,8 +236,17 @@ public:
         m_controller_msgs_pub.publish(msg);
     }
 
+    void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
+        cerr << "Reconfigure request: planner_geotiff_map <- " << config.planner_geotiff_map << endl;
+        m_Executive->refreshMap(config.planner_geotiff_map, m_origin.latitude, m_origin.longitude);
+    }
+
+    void originCallback(const geographic_msgs::GeoPointConstPtr& inmsg) {
+        m_origin = *inmsg;
+    }
+
 private:
-//    ros::NodeHandle m_node_handle;
+    ros::NodeHandle m_node_handle;
     actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
 
     // Since speed and heading are updated through different topics than position,
@@ -265,23 +255,26 @@ private:
     double m_current_speed;
     double m_current_heading;
 
+    geographic_msgs::GeoPoint m_origin;
+
     ros::Publisher m_controller_msgs_pub;
     ros::Publisher m_reference_trajectory_pub;
-//    ros::Publisher m_display_pub;
 
     ros::Subscriber m_position_sub;
     ros::Subscriber m_heading_sub;
     ros::Subscriber m_speed_sub;
     ros::Subscriber m_contact_sub;
+    ros::Subscriber m_origin_sub;
 
     ros::ServiceClient m_lat_long_to_map_client;
-//    ros::ServiceClient m_map_to_lat_long_client;
     ros::ServiceClient m_estimate_state_client;
+
+    dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Server;
 
     // handle on Executive
     Executive* m_Executive;
     // constant for linear interpolation of points to cover
-    const double c_max_interpolation_distance = 10;
+    const double c_max_goal_distance = 10;
 };
 
 int main(int argc, char **argv)
@@ -293,3 +286,5 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+#pragma clang diagnostic pop

@@ -76,7 +76,7 @@ add_library(planner
         src/planner/utilities/RibbonManager.cpp
         )
 
-target_link_libraries(planner path_planner_common robust_dubins dubins)
+target_link_libraries(planner path_planner_common dubins)
 
 add_library(executive
         src/executive/executive.cpp
@@ -86,8 +86,6 @@ add_library(executive
 target_link_libraries(executive planner path_planner_common)
 
 add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp)
-
-
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp)
@@ -101,12 +99,15 @@ target_link_libraries(${PROJECT_NAME}_node
         )
 
 catkin_add_gtest(test_planner test/planner/test_planner.cpp)
-
 target_link_libraries(test_planner planner dubins)
 
 catkin_add_gtest(test_system test/system/test_executive.cpp test/system/NodeStub.cpp)
-
 target_link_libraries(test_system executive)
+
+if (robust_dubins_FOUND)
+    catkin_add_gtest(dubins_tests test/planner/tests_using_robust_dubins.cpp)
+    target_link_libraries(dubins_tests planner robust_dubins)
+endif ()
 
 ## Install project namespaced headers
 install(DIRECTORY include/${PROJECT_NAME}

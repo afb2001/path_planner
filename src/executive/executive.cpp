@@ -155,6 +155,7 @@ void Executive::requestPath()
 
     while (m_Running)
     {
+//        cerr << "Checking to make sure planner is not paused..." << endl;
         // if m_Pause, block until !m_Pause
         unique_lock<mutex> lk(m_PauseMutex);
         m_PauseCV.wait(lk, [=]{return !m_Pause;});
@@ -186,6 +187,7 @@ void Executive::requestPath()
         vector<State> plan;
         auto startState = path.getStart(); // m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1);
         try {
+            cerr << "Planning..." << endl;
             // change this line to use controller's starting estimate
             //            plan = m_Planner->plan(newlyCovered, m_TrajectoryPublisher->getEstimatedState(getCurrentTime() + 1), DynamicObstaclesManager());
 //            plan = m_Planner->plan(newlyCovered, m_InternalsManager.getStart(), DynamicObstaclesManager(), 0.95);
@@ -196,6 +198,7 @@ void Executive::requestPath()
             pause();
             throw;
         }
+//        cerr << "Done planning" << endl;
 
         path.setNewPath(plan);
 //        m_TrajectoryPublisher->publishTrajectory(plan);
@@ -233,11 +236,17 @@ void Executive::startPlanner(const string& mapFile, double latitude, double long
 //    m_Planner = std::unique_ptr<Planner>(new Planner(2.3, 8, Map()));
     m_Planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, map));
 
+    if (!m_Planner) {
+        cerr << "Error creating planner! Planner not initialized!" << endl;
+    }
+
     // assume you've already set up path to cover
 //    vector<pair<double, double>> toCover;
 //    for (point p : path.get_covered())
 //        toCover.emplace_back(p.x, p.y);
 //    m_Planner->addToCover(toCover);
+
+    cerr << "Starting " << m_RibbonManager.dumpRibbons() << endl;
 
     cerr << "Planner is up and running" << endl;
 

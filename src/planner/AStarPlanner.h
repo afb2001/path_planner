@@ -24,7 +24,7 @@ protected:
 
     std::shared_ptr<Vertex> aStar(DynamicObstaclesManager* obstacles, double endTime);
 
-    static constexpr double c_InitialSamples = 32;
+    static constexpr double c_InitialSamples = 1024;
 
 private:
     std::vector<State> plan(const State& start, DynamicObstaclesManager dynamicObstacles, double timeRemaining);

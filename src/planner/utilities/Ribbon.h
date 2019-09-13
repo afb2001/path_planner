@@ -6,6 +6,9 @@
 #include <string>
 #include <path_planner/State.h>
 
+/**
+ * Represent a survey line as a line segment with a width (ribbon).
+ */
 class Ribbon {
 public:
     Ribbon(double startX, double startY, double endX, double endY);
@@ -45,11 +48,12 @@ public:
 private:
     double m_StartX, m_StartY, m_EndX, m_EndY;
 
-    static constexpr double c_RibbonWidth = 5;
+    // Ribbon width (on one side, so really half the full width)
+    static constexpr double c_RibbonWidth = 1.5;
     // It might be a good idea for this to be the same as ribbon width. If it's smaller, you'll need to take another
     // look at the edge cost toCoverDistance calculation (should subtract ribbon width).
     // Intuitively, I think they should be the same, since you can cover a line going along it or across it.
-    static constexpr double c_MinLength = 5;
+    static constexpr double c_MinLength = c_RibbonWidth;
     static constexpr double c_MinSquaredLength = c_MinLength * c_MinLength;
 
     // use a tolerance to compensate for floating point errors that were happening

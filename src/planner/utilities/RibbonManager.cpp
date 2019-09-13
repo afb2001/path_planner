@@ -5,6 +5,8 @@
 #include "RibbonManager.h"
 
 void RibbonManager::add(double x1, double y1, double x2, double y2) {
+    if (m_Ribbons.size() > c_RibbonCountDangerThreshold)
+        std::cerr << "Warning: adding more ribbons than can be used for TSP heuristics" << std::endl;
     Ribbon r(x1, y1, x2, y2);
     add(r, m_Ribbons.end());
 }
@@ -25,22 +27,12 @@ bool RibbonManager::done() const {
 
 double RibbonManager::approximateDistanceUntilDone(double x, double y, double yaw) {
     if (done()) return 0;
+    // if we're above the danger threshold just give max distance
+    if (m_Ribbons.size() > c_RibbonCountDangerThreshold) return maxDistance(x, y);
     switch (m_Heuristic) {
         // Modified max distance heuristic
         case MaxDistance: {
-            // max represents the distance to the farthest endpoint.
-            // min represents the distance to the nearest endpoint plus the sum of the lengths of all ribbons.
-            // Whichever is larger is returned.
-            // Both are technically inadmissible due to the "done" action but that's not implemented yet anywhere
-            double sumLength = 0, min = DBL_MAX, max = 0;
-            for (const auto& r : m_Ribbons) {
-                sumLength += r.length();
-                auto dStart = distance(r.start(), x, y);
-                auto dEnd = distance(r.end(), x, y);
-                min = fmin(fmin(min, dEnd), dStart);
-                max = fmax(fmax(max, dEnd), dStart);
-            }
-            return fmax(sumLength + min, max);
+            return maxDistance(x, y);
         }
         case TspPointRobotNoSplitAllRibbons: {
             return tspPointRobotNoSplitAllRibbons(m_Ribbons, 0, std::make_pair(x, y));
@@ -236,4 +228,20 @@ void RibbonManager::projectOntoNearestRibbon(State& state) const {
         }
     }
     state = ribbon.getProjectionAsState(state.x, state.y);
+}
+
+double RibbonManager::maxDistance(double x, double y) const {
+    // max represents the distance to the farthest endpoint.
+    // min represents the distance to the nearest endpoint plus the sum of the lengths of all ribbons.
+    // Whichever is larger is returned.
+    // Both are technically inadmissible due to the "done" action but that's not implemented yet anywhere
+    double sumLength = 0, min = DBL_MAX, max = 0;
+    for (const auto& r : m_Ribbons) {
+        sumLength += r.length();
+        auto dStart = distance(r.start(), x, y);
+        auto dEnd = distance(r.end(), x, y);
+        min = fmin(fmin(min, dEnd), dStart);
+        max = fmax(fmax(max, dEnd), dStart);
+    }
+    return fmax(sumLength + min, max);
 }

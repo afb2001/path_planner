@@ -47,6 +47,8 @@ private:
 
     std::list<Ribbon> m_Ribbons;
 
+    static constexpr int c_RibbonCountDangerThreshold = 5;
+
     static double distance(std::pair<double, double> p1, std::pair<double, double> p2) {
         return distance(p1.first, p1.second, p2.first, p2.second);
     }
@@ -65,6 +67,8 @@ private:
     }
 
     void add(const Ribbon& r, std::list<Ribbon>::iterator i);
+
+    double maxDistance(double x, double y) const;
 
     static double tspPointRobotNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, std::pair<double, double> point);
 

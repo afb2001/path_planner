@@ -26,23 +26,17 @@ double Edge::computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager 
     double q[3];
     double lengthSoFar = 0;
     double length = dubins_path_length(&dubinsPath);
-    double staticDistance = 0, dynamicDistance = 0, toCoverDistance = 0;
+    double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
     double lastYaw = start()->state().yaw();
 
     // collision check along the curve (and watch out for newly covered points, too)
     while (lengthSoFar <= length) {
         dubins_path_sample(&dubinsPath, lengthSoFar, q);
-        if (staticDistance > Edge::dubinsIncrement()) {
-            staticDistance -= Edge::dubinsIncrement();
-        } else {
-            staticDistance = map->getUnblockedDistance(q[0], q[1]);
-            if (staticDistance <= Edge::dubinsIncrement()) {
-                collisionPenalty += Edge::collisionPenalty();
-                staticDistance = 0;
-                m_Infeasible = true;
-                break;
-            }
+        if (map->getUnblockedDistance(q[0], q[1]) <= Edge::dubinsIncrement()) {
+            collisionPenalty += Edge::collisionPenalty();
+            m_Infeasible = true;
+            break;
         }
         if (dynamicDistance > Edge::dubinsIncrement()) {
             dynamicDistance -= Edge::dubinsIncrement();

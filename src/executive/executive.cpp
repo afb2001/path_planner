@@ -105,26 +105,27 @@ void Executive::requestPath()
 //        vector<pair<double, double>> newlyCovered;
 //        for (auto p : newlyCoveredList) newlyCovered.emplace_back(p.x, p.y);
         vector<State> plan;
-        cerr << "ROS time is now " << m_TrajectoryPublisher->getTime() << endl;
+//        cerr << "ROS time is now " << m_TrajectoryPublisher->getTime() << endl;
         auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
         if (startState.time == -1) { // if the state estimator returns an error naively do it ourselves
             startState.setEstimate(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds - m_LastState.time, m_LastState);
         }
-        cerr << "Calling planner with state " << startState.toString() << endl;
+//        cerr << "Calling planner with state " << startState.toString() << endl;
         try {
             // change this line to use controller's starting estimate
 //            plan = m_Planner->plan(newlyCovered, m_InternalsManager.getStart(), DynamicObstaclesManager(), 0.95);
             // TODO! -- low-key race condition with the ribbon manager here but it might be fine
             // NOTE: changed the time remaining from 0.95 to 0.7 to hopefully allow the controller to update
             // its estimates of our trajectory
-            plan = m_Planner->plan(m_RibbonManager, startState, DynamicObstaclesManager(), c_PlanningTimeSeconds - 0.3);
+            plan = m_Planner->plan(m_RibbonManager, startState, DynamicObstaclesManager(),
+                    start + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
         } catch (...) {
             cerr << "Exception thrown while planning; pausing" << endl;
             pause();
             throw;
         }
 
-        cerr << "Setting new path of length " << plan.size() << endl;
+//        cerr << "Setting new path of length " << plan.size() << endl;
 //        m_InternalsManager.setNewPath(plan);
         m_TrajectoryPublisher->publishTrajectory(plan);
         m_TrajectoryPublisher->displayTrajectory(plan, true);

@@ -197,9 +197,9 @@ public:
     {
         path_planner::Trajectory reference;
         for (State s : trajectory) {
-            // explicit conversion to make this cleaner // got rid of it
             reference.states.push_back(getStateMsg(s));
         }
+        reference.trajectoryNumber = ++m_TrajectoryCount;
         m_reference_trajectory_pub.publish(reference);
     }
 
@@ -213,11 +213,12 @@ public:
         mpc::EstimateStateRequest req;
         mpc::EstimateStateResponse res;
         req.desiredTime = desiredTime;
-        if (m_estimate_state_client.call(req, res)) {
-            auto s = getState(res.state);
-//            cerr << "Asking planner to plan from " << s.toString() << endl;
-//            cerr << "The difference between that heading and the current on is " << fabs(m_current_heading - s.heading) << endl;
-            return s;
+        // loop while we're getting estimates from a stale trajectory
+        while (m_estimate_state_client.call(req, res)) {
+            if (res.trajectoryNumber == m_TrajectoryCount) {
+                auto s = getState(res.state);
+                return s;
+            } else cerr << "Trajectory number " << res.trajectoryNumber << " doesn't match count " << m_TrajectoryCount << endl;
         }
         cerr << "EstimateState service call failed" << endl;
         return State(-1);
@@ -277,6 +278,8 @@ private:
     ros::ServiceClient m_estimate_state_client;
 
     dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Server;
+
+    long m_TrajectoryCount = 1;
 
     // handle on Executive
     Executive* m_Executive;

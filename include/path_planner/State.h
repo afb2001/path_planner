@@ -134,8 +134,8 @@ class State
     double getDistanceScore(const State &other) const
     {
         double timeDistance = time - other.time;
-        double headingDistance = fabs(fmod((heading - other.heading), 2 * M_PI) / 4);
-        double speedDifference = fabs(speed - other.speed) / 2;
+        double headingDistance = 0; // fabs(fmod((heading - other.heading), 2 * M_PI) / 4);
+        double speedDifference =  0; // fabs(speed - other.speed) / 2;
         double displacement = timeDistance * other.speed;
         double dx = x - (other.x + sin(other.heading)*displacement);
         double dy = y - (other.y + cos(other.heading)*displacement);

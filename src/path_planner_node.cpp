@@ -156,7 +156,7 @@ public:
                 inmsg->pose.position.y,
                 m_current_speed,
                 m_current_heading,
-                getTime());
+                TrajectoryDisplayer::getTime());
 //                inmsg->header.stamp.toNSec() / 1.0e9);
     }
 
@@ -250,7 +250,7 @@ public:
     }
 
     double getTime() const override {
-        return ((double)ros::Time::now().toNSec()) / 1e9;
+        return TrajectoryDisplayer::getTime();
     }
 
 private:

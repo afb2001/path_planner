@@ -47,10 +47,13 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}/src/executive
         ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}/src/planner/*
         ${dubinscurves_INCLUDE_DIRS}
-        ${robustdubins_INCLUDE_DIRS}
         ${GDAL_INCLUDE_DIRS}
         include
 )
+
+if (robust_dubins_FOUND)
+    include_directories(${robustdubins_INCLUDE_DIRS})
+endif ()
 
 add_library(path_planner_common
         src/common/map/Map.cpp

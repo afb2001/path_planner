@@ -24,8 +24,13 @@ public:
      * @return an estimated state at desiredTime
      */
     virtual State getEstimatedState(double desiredTime) = 0;
-};
 
+    /**
+     * Get the current time.
+     * @return the current time in seconds
+     */
+    virtual double getTime() const = 0;
+};
 
 
 #endif //SRC_TRAJECTORY_PUBLISHER_H

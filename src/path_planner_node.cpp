@@ -23,6 +23,7 @@
 #include <dynamic_reconfigure/server.h>
 
 #pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCInconsistentNamingInspection"
 #pragma clang diagnostic ignored "-Wunknown-pragmas"
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 
@@ -155,7 +156,8 @@ public:
                 inmsg->pose.position.y,
                 m_current_speed,
                 m_current_heading,
-                inmsg->header.stamp.toNSec() / 1.0e9);
+                TrajectoryDisplayer::getTime());
+//                inmsg->header.stamp.toNSec() / 1.0e9);
     }
 
     void headingCallback(const marine_msgs::NavEulerStamped::ConstPtr& inmsg)
@@ -195,9 +197,9 @@ public:
     {
         path_planner::Trajectory reference;
         for (State s : trajectory) {
-            // explicit conversion to make this cleaner // got rid of it
             reference.states.push_back(getStateMsg(s));
         }
+        reference.trajectoryNumber = ++m_TrajectoryCount;
         m_reference_trajectory_pub.publish(reference);
     }
 
@@ -211,10 +213,12 @@ public:
         mpc::EstimateStateRequest req;
         mpc::EstimateStateResponse res;
         req.desiredTime = desiredTime;
-        if (m_estimate_state_client.call(req, res)) {
-            cerr << "Asking planner to plan from " << res.state.x << ", " << res.state.y << endl;
-//            cerr << "and are currently in state  " <<
-            return getState(res.state);
+        // loop while we're getting estimates from a stale trajectory
+        while (m_estimate_state_client.call(req, res)) {
+            if (res.trajectoryNumber == m_TrajectoryCount) {
+                auto s = getState(res.state);
+                return s;
+            }
         }
         cerr << "EstimateState service call failed" << endl;
         return State(-1);
@@ -245,6 +249,10 @@ public:
         m_origin = *inmsg;
     }
 
+    double getTime() const override {
+        return TrajectoryDisplayer::getTime();
+    }
+
 private:
     ros::NodeHandle m_node_handle;
     actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
@@ -270,6 +278,8 @@ private:
     ros::ServiceClient m_estimate_state_client;
 
     dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Server;
+
+    long m_TrajectoryCount = 1;
 
     // handle on Executive
     Executive* m_Executive;

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(path_planner)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g -O0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 add_compile_options(-std=c++11)
 
@@ -80,7 +80,7 @@ target_link_libraries(planner path_planner_common dubins)
 
 add_library(executive
         src/executive/executive.cpp
-        src/executive/path.cpp
+        src/executive/ExecutiveInternalsManager.cpp
         )
 
 target_link_libraries(executive planner path_planner_common)

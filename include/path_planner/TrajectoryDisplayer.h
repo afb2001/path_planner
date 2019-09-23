@@ -60,6 +60,14 @@ public:
         m_display_pub.publish(geoVizItem);
     }
 
+    /**
+     * Get the current time.
+     * @return the current time in seconds
+     */
+    virtual double getTime() const {
+        return ((double)ros::Time::now().toNSec()) / 1e9;
+    };
+
 protected:
     geographic_msgs::GeoPoint convertToLatLong(const State& state) {
         project11_transformations::MapToLatLong::Request request;

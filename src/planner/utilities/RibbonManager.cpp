@@ -229,6 +229,7 @@ void RibbonManager::projectOntoNearestRibbon(State& state) const {
     }
     state = ribbon.getProjectionAsState(state.x, state.y);
 }
+<<<<<<< HEAD
 
 double RibbonManager::maxDistance(double x, double y) const {
     // max represents the distance to the farthest endpoint.
@@ -245,3 +246,5 @@ double RibbonManager::maxDistance(double x, double y) const {
     }
     return fmax(sumLength + min, max);
 }
+=======
+>>>>>>> port

@@ -218,7 +218,7 @@ public:
             if (res.trajectoryNumber == m_TrajectoryCount) {
                 auto s = getState(res.state);
                 return s;
-            } else cerr << "Trajectory number " << res.trajectoryNumber << " doesn't match count " << m_TrajectoryCount << endl;
+            }
         }
         cerr << "EstimateState service call failed" << endl;
         return State(-1);

@@ -2,7 +2,6 @@
 #define SRC_EDGE_H
 
 #include "Vertex.h"
-#include <robust_dubins/RobustDubins.h>
 #include "../../common/map/Map.h"
 #include "../../common/dynamic_obstacles/DynamicObstaclesManager.h"
 #include "../utilities/Path.h"

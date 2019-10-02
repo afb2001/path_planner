@@ -16,7 +16,6 @@ find_package(catkin REQUIRED COMPONENTS
         actionlib_msgs
         actionlib
         dubins_curves
-        robust_dubins
         dynamic_reconfigure
         )
 
@@ -50,10 +49,6 @@ include_directories(
         ${GDAL_INCLUDE_DIRS}
         include
 )
-
-if (robust_dubins_FOUND)
-    include_directories(${robustdubins_INCLUDE_DIRS})
-endif ()
 
 add_library(path_planner_common
         src/common/map/Map.cpp
@@ -106,11 +101,6 @@ target_link_libraries(test_planner planner dubins)
 
 catkin_add_gtest(test_system test/system/test_executive.cpp test/system/NodeStub.cpp)
 target_link_libraries(test_system executive)
-
-if (robust_dubins_FOUND)
-    catkin_add_gtest(dubins_tests test/planner/tests_using_robust_dubins.cpp)
-    target_link_libraries(dubins_tests planner robust_dubins)
-endif ()
 
 ## Install project namespaced headers
 install(DIRECTORY include/${PROJECT_NAME}

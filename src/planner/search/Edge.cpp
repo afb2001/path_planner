@@ -3,7 +3,6 @@
 #include <memory>
 #include "Edge.h"
 #include "../utilities/Path.h"
-#include <robust_dubins/RobustDubins.h>
 #include <cfloat>
 
 extern "C" {

@@ -30,6 +30,7 @@
   <depend>actionlib_msgs</depend>
   <depend>dubins_curves</depend>
   <depend>dynamic_reconfigure</depend>
+  <depend>project11_transformations</depend>
   <export>
   </export>
 </package>

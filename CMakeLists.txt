@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
         actionlib
         dubins_curves
         dynamic_reconfigure
+        project11_transformations
         )
 
 find_package(GDAL REQUIRED)

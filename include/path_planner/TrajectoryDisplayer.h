@@ -41,9 +41,12 @@ public:
 //            }
 
             displayPoints.color.g = 1;
+            displayPoints.color.a = 0.8;
+            displayPoints.size = 10;
+        } else {
+            displayPoints.color.a = 1;
+            displayPoints.size = 3.0;
         }
-        displayPoints.color.a = 1;
-        displayPoints.size = 3.0;
 //        std::cerr << "Displaying controller trajectory: " << std::endl;
         for (const State& s : trajectory) {
 //            std::cerr << s.toString() << std::endl;

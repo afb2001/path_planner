@@ -238,6 +238,22 @@ class State
         return sqrt((this->x - x1)*(this->x - x1) + (this->y - y1)*(this->y - y1));
     }
 
+    State interpolate(const State& other, double desiredTime) const {
+        auto dt = other.time - time;
+        auto dx = (other.x - x) / dt;
+        auto dy = (other.y - y) / dt;
+        auto dh = (other.heading - heading) / dt;
+        auto ds = (other.speed - speed) / dt;
+        dt = desiredTime - time;
+        State s = *this;
+        s.x += dx * dt;
+        s.y += dy * dt;
+        s.heading += dh * dt;
+        s.speed += ds * dt;
+        s.time = desiredTime;
+        return s;
+    }
+
 //    double dubinsDistanceTo(double x2, double y2, double yaw2, double turningRadius) const {
 //        RobustDubins::Problem problem;
 //        problem.set_stateInitial(x, y, yaw());

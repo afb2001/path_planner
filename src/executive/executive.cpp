@@ -92,6 +92,8 @@ void Executive::requestPath()
             continue;
         }
 
+        m_TrajectoryPublisher->displayRibbons(m_RibbonManager);
+
         if (m_MapMutex.try_lock()) {
             if (m_NewMap) {
                 m_Planner->updateMap(m_NewMap);

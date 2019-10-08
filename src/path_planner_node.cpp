@@ -147,6 +147,7 @@ public:
         // Should the executive stop now? Probably?
         m_Executive->pause();
         publishControllerMessage("stop sending controls");
+        clearDisplay();
     }
 
     void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg)
@@ -217,6 +218,7 @@ public:
         while (m_estimate_state_client.call(req, res)) {
             if (res.trajectoryNumber == m_TrajectoryCount) {
                 auto s = getState(res.state);
+                displayPlannerStart(s);
                 return s;
             }
         }
@@ -251,6 +253,60 @@ public:
 
     double getTime() const override {
         return TrajectoryDisplayer::getTime();
+    }
+
+    void displayRibbons(const RibbonManager& ribbonManager) override {
+
+        geographic_visualization_msgs::GeoVizItem geoVizItem;
+
+        for (const auto& r : ribbonManager.get()) {
+            geographic_visualization_msgs::GeoVizPointList displayPoints;
+            displayPoints.color.r = 1;
+            displayPoints.color.b = 0.5;
+            displayPoints.color.a = 0.6;
+            displayPoints.size = 15;
+            geographic_msgs::GeoPoint point;
+            displayPoints.points.push_back(convertToLatLong(r.startAsState()));
+            displayPoints.points.push_back(convertToLatLong(r.endAsState()));
+            geoVizItem.lines.push_back(displayPoints);
+        }
+        geoVizItem.id = "ribbons";
+        m_display_pub.publish(geoVizItem);
+    }
+
+    void displayPlannerStart(const State& state) {
+        geographic_visualization_msgs::GeoVizItem geoVizItem;
+        geographic_visualization_msgs::GeoVizPolygon polygon;
+        geographic_visualization_msgs::GeoVizSimplePolygon simplePolygon;
+        State bow, sternPort, sternStarboard;
+        bow.setEstimate(3 / state.speed, state); //set bow 3m ahead of state
+        sternPort.setEstimate(-1 / state.speed, state);
+        sternStarboard.set(sternPort);
+        auto a = state.heading + M_PI_2;
+        auto dx = 1.5 * sin(a);
+        auto dy = 1.5 * cos(a);
+        sternPort.x += dx;
+        sternPort.y += dy;
+        sternStarboard.x -= dx;
+        sternStarboard.y -= dy;
+        simplePolygon.points.push_back(convertToLatLong(bow));
+        simplePolygon.points.push_back(convertToLatLong(sternPort));
+        simplePolygon.points.push_back(convertToLatLong(sternStarboard));
+        polygon.outer = simplePolygon;
+        polygon.edge_color.b = 1;
+        polygon.edge_color.a = 0.7;
+        polygon.fill_color = polygon.edge_color;
+        geoVizItem.polygons.push_back(polygon);
+        geoVizItem.id = "planner_start";
+        m_display_pub.publish(geoVizItem);
+    }
+
+    void clearDisplay() {
+        displayRibbons(RibbonManager());
+        TrajectoryDisplayer::displayTrajectory(std::vector<State>(), true);
+        geographic_visualization_msgs::GeoVizItem geoVizItem;
+        geoVizItem.id = "planner_start";
+        m_display_pub.publish(geoVizItem);
     }
 
 private:

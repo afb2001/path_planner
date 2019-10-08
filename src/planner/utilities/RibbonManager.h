@@ -40,6 +40,8 @@ public:
     std::string dumpRibbons() const;
 
     void projectOntoNearestRibbon(State& state) const;
+
+    const std::list<Ribbon>& get() const;
 private:
     Heuristic m_Heuristic;
     double m_TurningRadius = -1;

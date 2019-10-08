@@ -246,3 +246,7 @@ double RibbonManager::maxDistance(double x, double y) const {
     return fmax(sumLength + min, max);
 }
 
+const std::list<Ribbon>& RibbonManager::get() const {
+    return m_Ribbons;
+}
+

@@ -30,6 +30,8 @@ public:
      * @return the current time in seconds
      */
     virtual double getTime() const = 0;
+
+    virtual void displayRibbons(const RibbonManager& ribbonManager) = 0;
 };
 
 

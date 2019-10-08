@@ -27,7 +27,6 @@ double Edge::computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager 
     double length = dubins_path_length(&dubinsPath);
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
-    double lastYaw = start()->state().yaw();
 
     // collision check along the curve (and watch out for newly covered points, too)
     while (lengthSoFar <= length) {
@@ -56,7 +55,7 @@ double Edge::computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager 
                 // do this first because cover splits ribbons so you'd never get one that "contains" the point so it
                 // could be a bit more work
                 toCoverDistance = end()->ribbonManager().minDistanceFrom(q[0], q[1]);
-                if (lastYaw == q[2]) {
+                if (end()->coverageAllowed()) {
                     end()->ribbonManager().cover(q[0], q[1]);
                 }
             } else {
@@ -72,7 +71,6 @@ double Edge::computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager 
             }
         }
         lengthSoFar += Edge::dubinsIncrement();
-        lastYaw = q[2];
     }
 
     // set end's state's time
@@ -171,6 +169,14 @@ double Edge::approxCost() const {
 
 bool Edge::infeasible() const {
     return m_Infeasible;
+}
+
+double Edge::computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager* obstacles) {
+    return computeTrueCost(map, obstacles, end()->state().speed, end()->turningRadius());
+}
+
+double Edge::computeApproxCost() {
+    return computeApproxCost(end()->state().speed, end()->turningRadius());
 }
 
 Edge::~Edge() = default;

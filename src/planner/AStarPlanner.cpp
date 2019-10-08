@@ -83,3 +83,10 @@ shared_ptr<Vertex> AStarPlanner::aStar(DynamicObstaclesManager* obstacles, doubl
     return shared_ptr<Vertex>(nullptr);
 }
 
+AStarPlanner::AStarPlanner(double maxSpeed, double maxTurningRadius, double coverageSpeed, double coverageTurningRadius,
+                           std::shared_ptr<Map> staticMap) : AStarPlanner(maxSpeed, maxTurningRadius, std::move(staticMap))
+                           {
+    m_CoverageMaxSpeed = coverageSpeed;
+    m_CoverageTurningRadius = coverageTurningRadius;
+}
+

@@ -152,8 +152,8 @@ TEST(UnitTests, RibbonsTest3) {
 TEST(UnitTests, RibbonsTest4) {
     RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitAllRibbons);
     ribbonManager.add(0, 0, 1000, 0);
-    ribbonManager.cover(2, 2);
-    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(2, 0, 0), 998);
+    ribbonManager.cover(1, 1);
+    EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(1, 0, 0), 999);
 }
 
 TEST(UnitTests, RibbonsTest5) {
@@ -531,13 +531,13 @@ TEST(UnitTests, ExpandTest1) {
     Map::SharedPtr m = make_shared<Map>();
     DynamicObstaclesManager obstacles;
     auto root = Vertex::makeRoot(start, path);
-    AStarPlanner planner(2.5, 8, m);
+    AStarPlanner planner(2.5, 8, 2.5, 16, m);
     planner.addToCover(path.get());
     StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
     planner.addSamples(generator, 1000);
     planner.expand(root, &obstacles);
     double fPrev = 0;
-    for (int i = 0; i < 18; i++) { // k + 1, at the time of this writing
+    for (int i = 0; i < 20; i++) { // k + 1, at the time of this writing
         auto v = planner.popVertexQueue();
 //        cerr << "Popped vertex at " << v->state().toString() << endl;
 //        cerr << "g = " << v->currentCost() << ", h = " << v->approxToGo() << ", f = " << v->f() << endl;
@@ -554,13 +554,13 @@ TEST(UnitTests, ExpandTest1Ribbons) {
     Map::SharedPtr m = make_shared<Map>();
     DynamicObstaclesManager obstacles;
     auto root = Vertex::makeRoot(start, ribbonManager);
-    AStarPlanner planner(2.5, 8, m);
+    AStarPlanner planner(2.5, 8, 2.5, 16, m);
     planner.setRibbonManager(ribbonManager);
     StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
     planner.addSamples(generator, 1000);
     planner.expand(root, &obstacles);
     double fPrev = 0;
-    for (int i = 0; i < 18; i++) { // k + 1, at the time of this writing
+    for (int i = 0; i < 20; i++) { // k + 1, at the time of this writing
         auto v = planner.popVertexQueue();
 //        cerr << "Popped vertex at " << v->state().toString() << endl;
 //        cerr << "g = " << v->currentCost() << ", h = " << v->approxToGo() << ", f = " << v->f() << endl;
@@ -575,7 +575,7 @@ TEST(PlannerTests, RHRSAStarTest1) {
     points.emplace_back(0, 10);
     points.emplace_back(0, 20);
     points.emplace_back(0, 30);
-    AStarPlanner planner(2.5, 8, make_shared<Map>());
+    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
     planner.addToCover(points);
     State start(0, 0, 0, 2.5, 1);
     auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0.95);
@@ -586,7 +586,7 @@ TEST(PlannerTests, RHRSAStarTest1) {
 TEST(PlannerTests, RHRSAStarTest1Ribbons) {
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 0, 30);
-    AStarPlanner planner(2.5, 8, make_shared<Map>());
+    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
     State start(0, 0, 0, 2.5, 1);
     auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
     EXPECT_FALSE(plan.empty());
@@ -598,7 +598,7 @@ TEST(PlannerTests, RHRSAStarTest2) {
     points.emplace_back(0, 10);
     points.emplace_back(0, 20);
     points.emplace_back(0, 30);
-    AStarPlanner planner(2.5, 8, make_shared<Map>());
+    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
     planner.addToCover(points);
     State start(0, 0, 0, 2.5, 1);
     vector<pair<double , double>> newlyCovered;
@@ -620,7 +620,7 @@ TEST(PlannerTests, RHRSAStarTest2) {
 TEST(PlannerTests, RHRSAStarTest2Ribbons) {
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 0, 30);
-    AStarPlanner planner(2.5, 8, make_shared<Map>());
+    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
     State start(0, 0, 0, 2.5, 1);
     while(!ribbonManager.done()) {
         ribbonManager.cover(start.x, start.y);
@@ -639,7 +639,7 @@ TEST(PlannerTests, RHRSAStarTest3) {
     path.add(20, 10);
     path.add(20, 20);
     path.add(10, 20);
-    AStarPlanner planner(2.5, 8, make_shared<Map>());
+    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
     planner.addToCover(path.get());
     State start(0, 0, 0, 1, 1);
     while(path.size() != 0) {
@@ -662,7 +662,7 @@ TEST(PlannerTests, RHRSAStarTest4Ribbons) {
     ribbonManager.add(0, 60, 20, 60);
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
-    AStarPlanner planner(2.5, 8, make_shared<Map>());
+    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
@@ -684,7 +684,7 @@ TEST(PlannerTests, RHRSAStarTest4aRibbons) {
     ribbonManager.add(0, 60, 20, 60);
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
-    AStarPlanner planner(2.5, 8, make_shared<Map>());
+    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
     State start(0, 0, 0, 2.5, 1);
     auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
     EXPECT_FALSE(plan.empty());
@@ -695,7 +695,7 @@ TEST(PlannerTests, RHRSAStarSingleRibbonTSP) {
     RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitAllRibbons);
     ribbonManager.add(0, 20, 50, 20);
     ribbonManager.add(0, 40, 50, 40);
-    AStarPlanner planner(2.5, 8, make_shared<Map>());
+    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
@@ -717,7 +717,7 @@ TEST(PlannerTests, RHRSAStarTest5TspRibbons) {
     ribbonManager.add(0, 60, 20, 60);
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
-    AStarPlanner planner(2.5, 8, make_shared<Map>());
+    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
@@ -739,7 +739,7 @@ TEST(PlannerTests, RHRSAStarTest6DubinsRibbons) {
     ribbonManager.add(0, 60, 20, 60);
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
-    AStarPlanner planner(2.5, 8, make_shared<Map>());
+    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
@@ -757,7 +757,7 @@ TEST(PlannerTests, RHRSAStarTest6DubinsRibbons) {
 TEST(PlannerTests, RHRSAStarSeparateThreadTest) {
     // has memory leak with Valgrind despite being the same as RHRSAStarTest3 but in a spawned thread
     // and with the planner as a smart pointer
-    auto planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, make_shared<Map>()));
+    auto planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, 2.5, 16, make_shared<Map>()));
     Path path;
     path.add(10, 10);path.add(20, 10);path.add(20, 20);path.add(10, 20);
     planner->addToCover(path.get());

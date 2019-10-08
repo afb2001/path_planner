@@ -81,8 +81,12 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
         auto s = sourceVertex->getNearestPointAsState();
         s.speed = m_MaxSpeed;
         // TODO! -- what heading for points?
-        auto destinationVertex = Vertex::connect(sourceVertex, s);
-        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles, m_MaxSpeed, m_TurningRadius);
+        auto destinationVertex = Vertex::connect(sourceVertex, s, m_TurningRadius, false);
+        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
+        pushVertexQueue(destinationVertex);
+        s.speed = m_CoverageMaxSpeed;
+        destinationVertex = Vertex::connect(sourceVertex, s, m_CoverageTurningRadius, true);
+        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
         pushVertexQueue(destinationVertex);
     }
     auto comp = getStateComparator(sourceVertex->state());
@@ -91,19 +95,30 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
     std::make_heap(m_Samples.begin(), m_Samples.end(), comp);
     // Use another heap to sort by Dubins distance, skipping the samples which are farther away this time.
     // Making all the vertices adds some allocation overhead but it lets us cache the dubins paths
-    std::vector<std::shared_ptr<Vertex>> bestSamples;
-    for (uint64_t i = 0; i < m_Samples.size(); i++) {
+    std::vector<std::shared_ptr<Vertex>> bestSamples, bestCoverageSamples;
+    bool regularDone = false, coverageDone = false;
+    for (uint64_t i = 0; i < m_Samples.size() && (!regularDone || !coverageDone); i++) {
         auto sample = m_Samples.front();
         std::pop_heap(m_Samples.begin(), m_Samples.end() - i, comp);
         if (bestSamples.size() < k() ||
             bestSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state())) {
             if (!sourceVertex->state().colocated(sample)) {
-                bestSamples.push_back(Vertex::connect(sourceVertex, sample));
-                bestSamples.back()->parentEdge()->computeApproxCost(m_MaxSpeed, m_TurningRadius);
+                // don't force speed to be anything in particular, allowing samples to come with unique speeds
+                bestSamples.push_back(Vertex::connect(sourceVertex, sample, m_TurningRadius, false));
+                bestSamples.back()->parentEdge()->computeApproxCost();
                 std::push_heap(bestSamples.begin(), bestSamples.end(), dubinsComp);
             }
         } else {
-            break;
+            regularDone = true;
+        }
+        if (bestCoverageSamples.size() < k() ||
+            bestCoverageSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state())) {
+            if (!sourceVertex->state().colocated(sample)) {
+                sample.speed = m_CoverageMaxSpeed; // force speed to be coverage speed
+                bestCoverageSamples.push_back(Vertex::connect(sourceVertex, sample, m_CoverageTurningRadius, true));
+                bestCoverageSamples.back()->parentEdge()->computeApproxCost();
+                std::push_heap(bestCoverageSamples.begin(), bestCoverageSamples.end(), dubinsComp);
+            }
         }
     }
     // Push the closest K onto the open list
@@ -111,7 +126,15 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
         if (i >= bestSamples.size()) break;
         auto destinationVertex = bestSamples.front();
         std::pop_heap(bestSamples.begin(), bestSamples.end() - i, dubinsComp);
-        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles, m_MaxSpeed, m_TurningRadius);
+        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
+        pushVertexQueue(destinationVertex);
+    }
+    // and again for coverage edges
+    for (int i = 0; i < k(); i++) {
+        if (i >= bestCoverageSamples.size()) break;
+        auto destinationVertex = bestCoverageSamples.front();
+        std::pop_heap(bestCoverageSamples.begin(), bestCoverageSamples.end() - i, dubinsComp);
+        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
         pushVertexQueue(destinationVertex);
     }
     m_ExpandedCount++;

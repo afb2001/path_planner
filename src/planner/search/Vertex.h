@@ -37,6 +37,7 @@ public:
      * @return a vertex connected by a new edge to @start
      */
     static std::shared_ptr<Vertex> connect(const std::shared_ptr<Vertex>& start, const State& next);
+    static std::shared_ptr<Vertex> connect(const std::shared_ptr<Vertex>& start, const State& next, double turningRadius, bool coverageAllowed);
 
     static std::shared_ptr<Vertex> makeRoot(const State& start, const Path& uncovered);
 
@@ -82,6 +83,10 @@ public:
     RibbonManager& ribbonManager();
 
     std::string toString() const;
+
+    double turningRadius() const;
+
+    bool coverageAllowed() const;
 private:
     static const std::string c_Heuristic; // = "maxD";
 
@@ -93,6 +98,8 @@ private:
     double m_ApproxCost = -1;
     double m_ApproxToGo = -1;
     bool m_UseRibbons;
+    double m_TurningRadius;
+    bool m_CoverageIsAllowed = false;
 };
 
 

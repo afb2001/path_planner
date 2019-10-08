@@ -28,10 +28,12 @@ public:
     std::shared_ptr<Vertex> setEnd(const State& state);
 
     double computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager *obstacles, double maxSpeed, double maxTurningRadius);
+    double computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager *obstacles);
 
     double trueCost() const;
 
     double computeApproxCost(double maxSpeed, double maxTurningRadius);
+    double computeApproxCost();
 
     void smooth(Map::SharedPtr map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius);
 

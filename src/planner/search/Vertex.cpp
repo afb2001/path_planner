@@ -130,4 +130,19 @@ std::string Vertex::toString() const {
     return stream.str();
 }
 
+double Vertex::turningRadius() const {
+    return m_TurningRadius;
+}
+
+std::shared_ptr<Vertex> Vertex::connect(const std::shared_ptr<Vertex>& start, const State& next, double turningRadius, bool coverageAllowed) {
+    auto v = connect(start, next);
+    v->m_TurningRadius = turningRadius;
+    v->m_CoverageIsAllowed = coverageAllowed;
+    return v;
+}
+
+bool Vertex::coverageAllowed() const {
+    return m_CoverageIsAllowed;
+}
+
 Vertex::~Vertex() = default;

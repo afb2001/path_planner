@@ -90,7 +90,6 @@ public:
 
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 
-        // interpolate points to cover from segments
         for (int i = 0; i + 1 < goal->path.poses.size(); i++)
         {
             // assume points represent track-line pairs
@@ -105,7 +104,6 @@ public:
             // send to LatLongToMap
             request.wgs84.position = startPose.pose.position;
             if (m_lat_long_to_map_client.call(request, response)) {
-//                start = m_lat_long_to_map_service.response.map.point;
                 start = response.map.point;
             }
             currentPath.emplace_back(start.x, start.y);
@@ -115,26 +113,7 @@ public:
             }
 
             m_Executive->addRibbon(start.x, start.y, end.x, end.y);
-
-//            // interpolate and add to interpolatedPoints
-//            double n, d, dx, dy;
-//            // total distance
-//            dx = end.x - start.x; dy = end.y - start.y;
-//            d = sqrt(dx * dx + dy * dy);
-//            // number of points
-//            n = ceil(d / c_max_goal_distance);
-//            // distance between each point
-//            dx = dx / n; dy = dy / n;
-//            for (int j = 1; j < n - 1; j++) {
-//                currentPath.emplace_back(start.x + (j*dx), start.y + (j*dy));
-//            }
-//
-//            currentPath.emplace_back(end.x, end.y);
         }
-
-//        for (auto p : currentPath) {
-//            m_Executive->addToCover((int)p.first, (int)p.second);
-//        }
 
         // start planner
         m_Executive->startPlanner("", 0, 0);
@@ -243,7 +222,6 @@ public:
     }
 
     void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
-        cerr << "Reconfigure request: planner_geotiff_map <- " << config.planner_geotiff_map << endl;
         m_Executive->refreshMap(config.planner_geotiff_map, m_origin.latitude, m_origin.longitude);
         m_Executive->setVehicleConfiguration(config.non_coverage_max_speed, config.non_coverage_turning_radius,
                 config.coverage_max_speed, config.coverage_turning_radius);

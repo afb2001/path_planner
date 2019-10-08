@@ -83,8 +83,10 @@ std::vector<State> Planner::plan(const RibbonManager& ribbonManager, const State
 
 std::vector<State> Planner::plan(const RibbonManager& ribbonManager, const State& start,
                                  DynamicObstaclesManager dynamicObstacles, double timeRemaining, double maxSpeed,
-                                 double turningRadius) {
+                                 double turningRadius, double coverageMaxSpeed, double coverageTurningRadius) {
     m_MaxSpeed = maxSpeed;
     m_TurningRadius = turningRadius;
+    m_CoverageMaxSpeed = coverageMaxSpeed;
+    m_CoverageTurningRadius = coverageTurningRadius;
     return plan(ribbonManager, start, std::move(dynamicObstacles), timeRemaining);
 }

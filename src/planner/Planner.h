@@ -26,14 +26,15 @@ public:
             DynamicObstaclesManager dynamicObstacles, double timeRemaining);
 
     std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
-            DynamicObstaclesManager dynamicObstacles, double timeRemaining, double maxSpeed, double turningRadius);
+                            DynamicObstaclesManager dynamicObstacles, double timeRemaining, double maxSpeed,
+                            double turningRadius, double coverageMaxSpeed, double coverageTurningRadius);
 
     Plan tracePlan(const std::shared_ptr<Vertex>& v, bool smoothing, DynamicObstaclesManager* obstacles);
 
     void updateMap(Map::SharedPtr map);
 
 protected:
-    double m_MaxSpeed, m_TurningRadius;
+    double m_MaxSpeed, m_TurningRadius, m_CoverageMaxSpeed, m_CoverageTurningRadius;
     Path m_PointsToCover;
 
     Map::SharedPtr m_Map;

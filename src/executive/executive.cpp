@@ -120,8 +120,8 @@ void Executive::requestPath()
             // NOTE: changed the time remaining from 0.95 to 0.7 to hopefully allow the controller to update
             // its estimates of our trajectory
             plan = m_Planner->plan(m_RibbonManager, startState, DynamicObstaclesManager(),
-                    start + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime(),
-                    MaxSpeed, TurningRadius);
+                                   start + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime(),
+                                   MaxSpeed, TurningRadius, CoverageMaxSpeed, CoverageTurningRadius);
         } catch (...) {
             cerr << "Exception thrown while planning; pausing" << endl;
             pause();

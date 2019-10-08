@@ -25,6 +25,9 @@ public:
     virtual std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
             DynamicObstaclesManager dynamicObstacles, double timeRemaining);
 
+    std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
+            DynamicObstaclesManager dynamicObstacles, double timeRemaining, double maxSpeed, double turningRadius);
+
     Plan tracePlan(const std::shared_ptr<Vertex>& v, bool smoothing, DynamicObstaclesManager* obstacles);
 
     void updateMap(Map::SharedPtr map);

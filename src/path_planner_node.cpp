@@ -59,7 +59,7 @@ public:
     dynamic_reconfigure::Server<path_planner::path_plannerConfig>::CallbackType f;
     f = boost::bind(&PathPlanner::reconfigureCallback, this, _1, _2);
 
-    m_Server.setCallback(f);
+    m_Dynamic_Reconfigure_Server.setCallback(f);
 }
 
     ~PathPlanner() final
@@ -245,6 +245,8 @@ public:
     void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
         cerr << "Reconfigure request: planner_geotiff_map <- " << config.planner_geotiff_map << endl;
         m_Executive->refreshMap(config.planner_geotiff_map, m_origin.latitude, m_origin.longitude);
+        m_Executive->setVehicleConfiguration(config.non_coverage_max_speed, config.non_coverage_turning_radius,
+                config.coverage_max_speed, config.coverage_turning_radius);
     }
 
     void originCallback(const geographic_msgs::GeoPointConstPtr& inmsg) {
@@ -333,7 +335,7 @@ private:
     ros::ServiceClient m_lat_long_to_map_client;
     ros::ServiceClient m_estimate_state_client;
 
-    dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Server;
+    dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Dynamic_Reconfigure_Server;
 
     long m_TrajectoryCount = 1;
 

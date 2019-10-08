@@ -80,3 +80,11 @@ std::vector<State> Planner::plan(const RibbonManager& ribbonManager, const State
                                  DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
     throw std::runtime_error("Ribbon point-to-point planner is not yet implemented");
 }
+
+std::vector<State> Planner::plan(const RibbonManager& ribbonManager, const State& start,
+                                 DynamicObstaclesManager dynamicObstacles, double timeRemaining, double maxSpeed,
+                                 double turningRadius) {
+    m_MaxSpeed = maxSpeed;
+    m_TurningRadius = turningRadius;
+    return plan(ribbonManager, start, std::move(dynamicObstacles), timeRemaining);
+}

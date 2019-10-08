@@ -120,7 +120,8 @@ void Executive::requestPath()
             // NOTE: changed the time remaining from 0.95 to 0.7 to hopefully allow the controller to update
             // its estimates of our trajectory
             plan = m_Planner->plan(m_RibbonManager, startState, DynamicObstaclesManager(),
-                    start + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
+                    start + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime(),
+                    MaxSpeed, TurningRadius);
         } catch (...) {
             cerr << "Exception thrown while planning; pausing" << endl;
             pause();
@@ -157,7 +158,7 @@ void Executive::startPlanner(const string& mapFile, double latitude, double long
         map = make_shared<Map>();
     }
 //    m_Planner = std::unique_ptr<Planner>(new Planner(2.3, 8, Map()));
-    m_Planner = std::unique_ptr<Planner>(new AStarPlanner(DefaultMaxSpeed, DefaultTurningRadius, map));
+    m_Planner = std::unique_ptr<Planner>(new AStarPlanner(MaxSpeed, TurningRadius, map));
 
     // assume you've already set up path to cover
 //    vector<pair<double, double>> toCover;
@@ -225,19 +226,23 @@ void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
 void Executive::refreshMap(std::string pathToMapFile, double latitude, double longitude) {
     thread([this, pathToMapFile, latitude, longitude] {
         std::lock_guard<std::mutex> lock(m_MapMutex);
-        // could take some time for I/O, Dijkstra on entire map
-        try {
-            // If the name looks like it's one of our gridworld maps, load it in that format, otherwise assume GeoTIFF
-            if (pathToMapFile.find(".map") == -1) {
-                m_NewMap = make_shared<GeoTiffMap>(pathToMapFile, longitude, latitude);
-            } else {
-                m_NewMap = make_shared<GridWorldMap>(pathToMapFile);
+        if (m_CurrentMapPath != pathToMapFile) {
+            // could take some time for I/O, Dijkstra on entire map
+            try {
+                // If the name looks like it's one of our gridworld maps, load it in that format, otherwise assume GeoTIFF
+                if (pathToMapFile.find(".map") == -1) {
+                    m_NewMap = make_shared<GeoTiffMap>(pathToMapFile, longitude, latitude);
+                } else {
+                    m_NewMap = make_shared<GridWorldMap>(pathToMapFile);
+                }
+                m_CurrentMapPath = pathToMapFile;
             }
-        }
-        catch (...) {
-            // swallow all errors in this thread
-            cerr << "Encountered an error loading map at path " << pathToMapFile << endl;
-            m_NewMap = nullptr;
+            catch (...) {
+                // swallow all errors in this thread
+                cerr << "Encountered an error loading map at path " << pathToMapFile << endl;
+                m_NewMap = nullptr;
+                m_CurrentMapPath = "";
+            }
         }
     }).detach();
 }
@@ -259,4 +264,12 @@ std::vector<Distribution> Executive::inventDistributions(State obstacle) {
 
 void Executive::clearRibbons() {
     m_RibbonManager = RibbonManager();
+}
+
+void Executive::setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed,
+                                        double coverageTurningRadius) {
+    MaxSpeed = maxSpeed;
+    TurningRadius = turningRadius;
+    CoverageMaxSpeed = coverageMaxSpeed;
+    CoverageTurningRadius = coverageTurningRadius;
 }

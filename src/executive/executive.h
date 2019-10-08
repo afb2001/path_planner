@@ -34,8 +34,12 @@ public:
 
     static double getCurrentTime();
 
-    static constexpr double DefaultMaxSpeed = 2.3;
-    static constexpr double DefaultTurningRadius = 8;
+    double MaxSpeed = 2.3;
+    double TurningRadius = 8;
+    double CoverageMaxSpeed = 2.3;
+    double CoverageTurningRadius = 16;
+
+    void setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed, double coverageTurningRadius);
 
 private:
 
@@ -56,6 +60,7 @@ private:
     std::unique_ptr<Planner> m_Planner;
 
     std::shared_ptr<Map> m_NewMap = nullptr;
+    std::string m_CurrentMapPath = "";
     mutex m_MapMutex;
 
     std::future<void> m_TrajectoryPublishingFuture, m_PlanningFuture;

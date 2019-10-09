@@ -84,10 +84,12 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
         auto destinationVertex = Vertex::connect(sourceVertex, s, m_TurningRadius, false);
         destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
         pushVertexQueue(destinationVertex);
-        s.speed = m_CoverageMaxSpeed;
-        destinationVertex = Vertex::connect(sourceVertex, s, m_CoverageTurningRadius, true);
-        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
-        pushVertexQueue(destinationVertex);
+        if (m_CoverageMaxSpeed > 0) {
+            s.speed = m_CoverageMaxSpeed;
+            destinationVertex = Vertex::connect(sourceVertex, s, m_CoverageTurningRadius, true);
+            destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
+            pushVertexQueue(destinationVertex);
+        }
     }
     auto comp = getStateComparator(sourceVertex->state());
     auto dubinsComp = getDubinsComparator(sourceVertex->state());
@@ -97,11 +99,12 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
     // Making all the vertices adds some allocation overhead but it lets us cache the dubins paths
     std::vector<std::shared_ptr<Vertex>> bestSamples, bestCoverageSamples;
     bool regularDone = false, coverageDone = false;
+    if (m_CoverageTurningRadius <= 0) coverageDone = true;
     for (uint64_t i = 0; i < m_Samples.size() && (!regularDone || !coverageDone); i++) {
         auto sample = m_Samples.front();
         std::pop_heap(m_Samples.begin(), m_Samples.end() - i, comp);
-        if (bestSamples.size() < k() ||
-            bestSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state())) {
+        if (!regularDone && (bestSamples.size() < k() ||
+            bestSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
             if (!sourceVertex->state().colocated(sample)) {
                 // don't force speed to be anything in particular, allowing samples to come with unique speeds
                 bestSamples.push_back(Vertex::connect(sourceVertex, sample, m_TurningRadius, false));
@@ -111,14 +114,16 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
         } else {
             regularDone = true;
         }
-        if (bestCoverageSamples.size() < k() ||
-            bestCoverageSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state())) {
+        if (!coverageDone && (bestCoverageSamples.size() < k() ||
+            bestCoverageSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
             if (!sourceVertex->state().colocated(sample)) {
                 sample.speed = m_CoverageMaxSpeed; // force speed to be coverage speed
                 bestCoverageSamples.push_back(Vertex::connect(sourceVertex, sample, m_CoverageTurningRadius, true));
                 bestCoverageSamples.back()->parentEdge()->computeApproxCost();
                 std::push_heap(bestCoverageSamples.begin(), bestCoverageSamples.end(), dubinsComp);
             }
+        } else {
+            coverageDone = true;
         }
     }
     // Push the closest K onto the open list

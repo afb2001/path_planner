@@ -570,6 +570,22 @@ TEST(UnitTests, ExpandTest1Ribbons) {
     EXPECT_THROW(planner.popVertexQueue(), std::out_of_range);
 }
 
+TEST(UnitTests, ExpandDifferentTurningRadiiTest) {
+    State start(0, 0, 0, 2.5, 1);
+    RibbonManager ribbonManager;
+    ribbonManager.add(0, 0, 0, 30);
+    Map::SharedPtr m = make_shared<Map>();
+    DynamicObstaclesManager obstacles;
+    auto root = Vertex::makeRoot(start, ribbonManager);
+    AStarPlanner planner(2.5, 8, 2.5, 16, m);
+    planner.setRibbonManager(ribbonManager);
+    StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
+    planner.addSamples(generator, 1000);
+    planner.expand(root, &obstacles);
+    auto v1 = planner.popVertexQueue();
+    EXPECT_TRUE(v1->coverageAllowed());
+}
+
 TEST(PlannerTests, RHRSAStarTest1) {
     vector<pair<double, double>> points;
     points.emplace_back(0, 10);

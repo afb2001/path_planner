@@ -130,7 +130,9 @@ void Executive::requestPath()
 
 //        cerr << "Setting new path of length " << plan.size() << endl;
 //        m_InternalsManager.setNewPath(plan);
-        m_TrajectoryPublisher->publishTrajectory(plan);
+        if (!plan.empty()) {
+            m_TrajectoryPublisher->publishTrajectory(plan);
+        }
         m_TrajectoryPublisher->displayTrajectory(plan, true);
         end = m_TrajectoryPublisher->getTime();
         sleeptime = (end - start <= c_PlanningTimeSeconds) ? ((int)((c_PlanningTimeSeconds - (end - start)) * 1000)) : 0;

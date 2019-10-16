@@ -58,6 +58,7 @@ void Communication::set(const std::string& pathToExecutable, bool bindStdin, boo
             close(getp[0]);
             close(getp[1]);
             execl(pathToExecutable.c_str(),pathToExecutable.c_str(), (char *)NULL);
+            cerr << "Tried to execute planner at path: " << pathToExecutable << endl;
             cerr << "execl failed: " << strerror(errno) << endl;
         }
     }

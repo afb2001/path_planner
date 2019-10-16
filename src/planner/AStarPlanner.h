@@ -25,6 +25,8 @@ protected:
 
     std::shared_ptr<Vertex> aStar(DynamicObstaclesManager* obstacles, double endTime);
 
+    void expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples, DynamicObstaclesManager* obstacles);
+
     static constexpr double c_InitialSamples = 1024;
 
 private:

@@ -1,5 +1,4 @@
 #include "AStarPlanner.h"
-
 #include <utility>
 
 using std::shared_ptr;
@@ -42,11 +41,19 @@ std::vector<State> AStarPlanner::plan(const State& start, DynamicObstaclesManage
     auto startV = m_UseRibbons? Vertex::makeRoot(start, m_RibbonManager) : Vertex::makeRoot(start, m_PointsToCover);
     startV->computeApproxToGo();
     shared_ptr<Vertex> bestVertex(nullptr);
+    auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_CoverageTurningRadius * 2 + 1);
+//    if (m_UseRibbons) {
+//        for (const auto& s : m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_CoverageTurningRadius * 2 + 1)) {
+//            m_Samples.push_back(s);
+//        }
+//    }
     while (now() < endTime) {
         clearVertexQueue();
         pushVertexQueue(startV);
+        // manually expand starting node to include states on nearby ribbons far enough away such that the
+        expandToCoverSpecificSamples(startV, ribbonSamples, &dynamicObstacles);
         // On the first iteration add INITIAL_SAMPLES samples, otherwise just double them
-        if (m_Samples.empty()) addSamples(generator, c_InitialSamples);
+        if (m_Samples.size() < c_InitialSamples) addSamples(generator, c_InitialSamples);
         else addSamples(generator);
         auto v = aStar(&dynamicObstacles, endTime);
         if (!bestVertex || (v && v->f() < bestVertex->f())) {
@@ -88,5 +95,16 @@ AStarPlanner::AStarPlanner(double maxSpeed, double maxTurningRadius, double cove
                            {
     m_CoverageMaxSpeed = coverageSpeed;
     m_CoverageTurningRadius = coverageTurningRadius;
+}
+
+void AStarPlanner::expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples, DynamicObstaclesManager *obstacles) {
+    if (m_CoverageTurningRadius > 0) {
+        for (auto s : samples) {
+            s.speed = m_CoverageMaxSpeed;
+            auto destinationVertex = Vertex::connect(root, s, m_CoverageTurningRadius, true);
+            destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
+            pushVertexQueue(destinationVertex);
+        }
+    }
 }
 

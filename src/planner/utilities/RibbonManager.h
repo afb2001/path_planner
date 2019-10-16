@@ -42,6 +42,8 @@ public:
     void projectOntoNearestRibbon(State& state) const;
 
     const std::list<Ribbon>& get() const;
+
+    std::vector<State> findStatesOnRibbonsOnCircle(const State& center, double radius) const;
 private:
     Heuristic m_Heuristic;
     double m_TurningRadius = -1;

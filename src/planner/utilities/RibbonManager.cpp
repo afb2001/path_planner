@@ -250,3 +250,45 @@ const std::list<Ribbon>& RibbonManager::get() const {
     return m_Ribbons;
 }
 
+std::vector<State> RibbonManager::findStatesOnRibbonsOnCircle(const State& center, double radius) const {
+    std::vector<State> states;
+    for (const auto& r : m_Ribbons) {
+        // circle line intersection from mathworld.wolfram.com
+        auto dx = r.end().first - r.start().first;
+        auto dy = r.end().second - r.start().second;
+        auto dr = sqrt(dx*dx + dy*dy);
+        auto d = r.start().first*r.end().second - r.end().first*r.start().second;
+        auto i1 = dr*dr;
+        auto discriminant = radius*radius*i1 - d*d;
+        if (discriminant < 0) continue; // no intersection
+        auto i2 = sqrt(discriminant);
+        double sgn = dy < 0? -1 : 1;
+        auto i3 = sgn * dx * i2;
+        auto i4 = d * dy;
+        auto x1 = (i4 + i3) / i1;
+        auto x2 = (i4 - i3) / i1;
+        auto i5 = -d * dx;
+        auto i6 = fabs(dy) * i2;
+        auto y1 = (i5 + i6) / i1;
+        auto y2 = (i5 - i6) / i1;
+        const auto start = r.startAsState();
+        const auto end = r.endAsState();
+        // took out checks to determine the points are actually in the ribbons because it might make sense to try to
+        // drive to points past the ribbons anyway, and if these are only used once it won't matter much
+        // EDIT -- put them back in (they're the if (r.contains(...)) checks)
+        if (r.contains(x1, y1, r.getProjection(x1, y1))) {
+            // give each intersecting point both headings
+            states.emplace_back(x1, y1, start.heading, start.speed, 0);
+            states.emplace_back(x1, y1, end.heading, end.speed, 0);
+        }
+        // if it's a tangent line then they will be the same point
+        if (x1 != x2 && y1 != y2) {
+            if (r.contains(x1, y1, r.getProjection(x2, y2))) {
+                states.emplace_back(x2, y2, start.heading, start.speed, 0);
+                states.emplace_back(x2, y2, end.heading, end.speed, 0);
+            }
+        }
+    }
+    return states;
+}
+

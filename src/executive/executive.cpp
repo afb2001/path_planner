@@ -119,6 +119,8 @@ void Executive::requestPath()
             // TODO! -- low-key race condition with the ribbon manager here but it might be fine
             // NOTE: changed the time remaining from 0.95 to 0.7 to hopefully allow the controller to update
             // its estimates of our trajectory
+            m_Planner->setK(K); // not super elegant but I didn't want to keep adding more parameters
+                                   // At some point I should make like a config object that gets passed as part of the plan call
             plan = m_Planner->plan(m_RibbonManager, startState, DynamicObstaclesManager(),
                                    start + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime(),
                                    MaxSpeed, TurningRadius, CoverageMaxSpeed, CoverageTurningRadius);
@@ -269,9 +271,10 @@ void Executive::clearRibbons() {
 }
 
 void Executive::setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed,
-                                        double coverageTurningRadius) {
+                                        double coverageTurningRadius, int k) {
     MaxSpeed = maxSpeed;
     TurningRadius = turningRadius;
     CoverageMaxSpeed = coverageMaxSpeed;
     CoverageTurningRadius = coverageTurningRadius;
+    K = k;
 }

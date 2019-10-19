@@ -38,8 +38,9 @@ public:
     double TurningRadius = 8;
     double CoverageMaxSpeed = 2.3;
     double CoverageTurningRadius = 16;
+    int K = 9;
 
-    void setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed, double coverageTurningRadius);
+    void setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed, double coverageTurningRadius, int k);
 
 private:
 

@@ -90,3 +90,5 @@ std::vector<State> Planner::plan(const RibbonManager& ribbonManager, const State
     m_CoverageTurningRadius = coverageTurningRadius;
     return plan(ribbonManager, start, std::move(dynamicObstacles), timeRemaining);
 }
+
+void Planner::setK(int k) {}

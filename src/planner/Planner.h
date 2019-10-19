@@ -33,6 +33,8 @@ public:
 
     void updateMap(Map::SharedPtr map);
 
+    virtual void setK(int k);
+
 protected:
     double m_MaxSpeed, m_TurningRadius, m_CoverageMaxSpeed, m_CoverageTurningRadius;
     Path m_PointsToCover;

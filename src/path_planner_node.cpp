@@ -90,29 +90,38 @@ public:
 
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 
-        for (int i = 0; i + 1 < goal->path.poses.size(); i++)
-        {
-            // assume points represent track-line pairs
-            geographic_msgs::GeoPoseStamped startPose = goal->path.poses[i];
-            geographic_msgs::GeoPoseStamped endPose = goal->path.poses[i+1];
-            geometry_msgs::PointStamped::_point_type start;
-            geometry_msgs::PointStamped::_point_type end;
-
+        // transit mode
+        if (goal->path.poses.size() > 2) {
             project11_transformations::LatLongToMap::Request request;
             project11_transformations::LatLongToMap::Response response;
-
-            // send to LatLongToMap
-            request.wgs84.position = startPose.pose.position;
+            request.wgs84.position = goal->path.poses.back().pose.position;
             if (m_lat_long_to_map_client.call(request, response)) {
-                start = response.map.point;
+                m_Executive->addToCover(response.map.point.x, response.map.point.y);
             }
-            currentPath.emplace_back(start.x, start.y);
-            request.wgs84.position = endPose.pose.position;
-            if (m_lat_long_to_map_client.call(request, response)) {
-                end = response.map.point;
-            }
+        } else {
+            for (int i = 0; i + 1 < goal->path.poses.size(); i++) {
+                // assume points represent track-line pairs
+                geographic_msgs::GeoPoseStamped startPose = goal->path.poses[i];
+                geographic_msgs::GeoPoseStamped endPose = goal->path.poses[i + 1];
+                geometry_msgs::PointStamped::_point_type start;
+                geometry_msgs::PointStamped::_point_type end;
 
-            m_Executive->addRibbon(start.x, start.y, end.x, end.y);
+                project11_transformations::LatLongToMap::Request request;
+                project11_transformations::LatLongToMap::Response response;
+
+                // send to LatLongToMap
+                request.wgs84.position = startPose.pose.position;
+                if (m_lat_long_to_map_client.call(request, response)) {
+                    start = response.map.point;
+                }
+                currentPath.emplace_back(start.x, start.y);
+                request.wgs84.position = endPose.pose.position;
+                if (m_lat_long_to_map_client.call(request, response)) {
+                    end = response.map.point;
+                }
+
+                m_Executive->addRibbon(start.x, start.y, end.x, end.y);
+            }
         }
 
         // start planner
@@ -224,7 +233,7 @@ public:
     void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
         m_Executive->refreshMap(config.planner_geotiff_map, m_origin.latitude, m_origin.longitude);
         m_Executive->setVehicleConfiguration(config.non_coverage_max_speed, config.non_coverage_turning_radius,
-                config.coverage_max_speed, config.coverage_turning_radius);
+                config.coverage_max_speed, config.coverage_turning_radius, config.branching_factor);
     }
 
     void originCallback(const geographic_msgs::GeoPointConstPtr& inmsg) {

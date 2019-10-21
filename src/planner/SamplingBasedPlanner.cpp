@@ -146,7 +146,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
 }
 
 int SamplingBasedPlanner::k() const {
-    return 5;
+    return m_K;
 }
 
 void SamplingBasedPlanner::addSamples(StateGenerator& generator, int n) {
@@ -175,6 +175,10 @@ std::function<bool(const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vert
 void SamplingBasedPlanner::setRibbonManager(const RibbonManager& ribbonManager) {
     m_RibbonManager = ribbonManager;
     m_UseRibbons = true;
+}
+
+void SamplingBasedPlanner::setK(int k) {
+    m_K = k;
 }
 
 

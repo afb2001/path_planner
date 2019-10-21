@@ -30,10 +30,14 @@ public:
 
     void setRibbonManager(const RibbonManager& ribbonManager);
 
+    void setK(int k) override;
+
 protected:
     double m_StartStateTime;
     std::vector<State> m_Samples;
     int m_ExpandedCount = 0;
+
+    int m_K;
 
     bool m_UseRibbons = false;
     RibbonManager m_RibbonManager;

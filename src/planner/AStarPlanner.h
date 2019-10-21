@@ -21,9 +21,11 @@ protected:
 
     std::function<bool(std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2)> getVertexComparator() override;
 
-    int k() const override { return 9; }
+//    int k() const override { return 9; }
 
     std::shared_ptr<Vertex> aStar(DynamicObstaclesManager* obstacles, double endTime);
+
+    void expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples, DynamicObstaclesManager* obstacles);
 
     static constexpr double c_InitialSamples = 1024;
 

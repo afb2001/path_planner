@@ -130,6 +130,7 @@ public:
 
     void preemptCallback()
     {
+        cerr << "Canceling planner" << endl;
         m_action_server.setPreempted();
 
         // Should the executive stop now? Probably?

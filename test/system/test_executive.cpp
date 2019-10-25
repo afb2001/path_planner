@@ -18,8 +18,8 @@ TEST(SystemTests, LoadMapTest) {
     std::cerr.rdbuf(buffer.rdbuf());
     NodeStub stub;
     auto executive = new Executive(&stub);
-    executive->addToCover(20, 20);
-    executive->updateCovered(0, 0, Executive::MaxSpeed, M_PI / 4, Executive::getCurrentTime());
+    executive->addRibbon(20, 20, 20, 30);
+    executive->updateCovered(0, 0, 0, M_PI / 4, Executive::getCurrentTime());
     executive->startPlanner("", 43.073397415457535, -70.71054174878898);
     executive->refreshMap("/home/abrown/Downloads/depth_map/US5NH02M.tiff", 43.073397415457535, -70.71054174878898);
     for (int i = 0; i <= 60; i++) {
@@ -42,7 +42,7 @@ TEST(SystemTests, SimpleTwoLineTest) {
     auto executive = new Executive(&stub);
     executive->addRibbon(10, 10, 20, 10);
     executive->addRibbon(10, 20, 20, 20);
-    executive->updateCovered(0, 0, Executive::MaxSpeed, 0, Executive::getCurrentTime());
+    executive->updateCovered(0, 0, 0, 0, Executive::getCurrentTime());
     executive->startPlanner("", 0, 0);
     for (int i = 0; i < 120; i++) {
         if (stub.allDoneCalled()) break;

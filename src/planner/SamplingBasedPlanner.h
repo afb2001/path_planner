@@ -7,15 +7,18 @@
 
 class SamplingBasedPlanner : public Planner {
 public:
-    SamplingBasedPlanner(double maxSpeed, double maxTurningRadius, std::shared_ptr<Map> staticMap);
+    SamplingBasedPlanner();
 
     ~SamplingBasedPlanner() override = default;
 
-    std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
-                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
+//    std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
+//                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
+//
+//    std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
+//                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
 
-    std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
-                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
+    std::vector<State> plan(const RibbonManager&, const State& start, PlannerConfig config,
+            double timeRemaining) override;
 
     void pushVertexQueue(Vertex::SharedPtr vertex);
 
@@ -23,23 +26,23 @@ public:
 
     void clearVertexQueue();
 
-    virtual void expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstaclesManager* obstacles);
+    virtual void expand(const std::shared_ptr<Vertex>& sourceVertex, const DynamicObstaclesManager& obstacles);
 
     void addSamples(StateGenerator& generator);
     void addSamples(StateGenerator& generator, int n);
 
-    void setRibbonManager(const RibbonManager& ribbonManager);
+//    void setRibbonManager(const RibbonManager& ribbonManager);
 
-    void setK(int k) override;
+//    void setK(int k) override;
 
 protected:
     double m_StartStateTime;
     std::vector<State> m_Samples;
     int m_ExpandedCount = 0;
 
-    int m_K;
+//    int m_K;
 
-    bool m_UseRibbons = false;
+//    bool m_UseRibbons = false;
     RibbonManager m_RibbonManager;
 
     virtual std::function<bool(std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2)> getVertexComparator();
@@ -56,7 +59,7 @@ private:
     std::function<bool(const std::shared_ptr<Vertex>&, const std::shared_ptr<Vertex>&)> getDubinsComparator(
             const State& origin);
 
-    std::vector<State> plan(const State& start, DynamicObstaclesManager dynamicObstacles, double timeRemaining);
+//    std::vector<State> plan(const State& start, DynamicObstaclesManager dynamicObstacles, double timeRemaining);
 };
 
 

@@ -13,7 +13,7 @@ Edge::Edge(std::shared_ptr<Vertex> start, bool useRibbons) : m_UseRibbons(useRib
     this->m_Start = std::move(start);
 }
 
-double Edge::computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesManager& obstacles,
+double Edge::computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager *obstacles,
                              double maxSpeed, double maxTurningRadius) {
     if (start()->state().colocated(end()->state())) {
         std::cerr << "Computing cost of edge between two co-located states is likely an error" << std::endl;
@@ -39,11 +39,11 @@ double Edge::computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesMa
         if (dynamicDistance > Edge::dubinsIncrement()) {
             dynamicDistance -= Edge::dubinsIncrement();
         } else {
-            dynamicDistance = obstacles.distanceToNearestPossibleCollision(q[0], q[1], start()->state().speed,
+            dynamicDistance = obstacles->distanceToNearestPossibleCollision(q[0], q[1], start()->state().speed,
                                                                             start()->state().time +
                                                                             (lengthSoFar / maxSpeed));
             if (dynamicDistance <= Edge::dubinsIncrement()) {
-                collisionPenalty += obstacles.collisionExists(q[0], q[1], start()->state().time + (lengthSoFar / maxSpeed)) *
+                collisionPenalty += obstacles->collisionExists(q[0], q[1], start()->state().time + (lengthSoFar / maxSpeed)) *
                                     Edge::collisionPenalty();
                 dynamicDistance = 0;
             }
@@ -116,7 +116,7 @@ double Edge::netTime() {
     return end()->state().time - start()->state().time;
 }
 
-void Edge::smooth(Map::SharedPtr map, const DynamicObstaclesManager& obstacles, double maxSpeed, double maxTurningRadius) {
+void Edge::smooth(Map::SharedPtr map, DynamicObstaclesManager* obstacles, double maxSpeed, double maxTurningRadius) {
     if (start()->isRoot()) return;
     double parentCost = start()->parentEdge()->m_TrueCost; // should be up to date in A*, check for BIT*
     auto smoothed = Vertex::connect(start()->parent(), end()->state());
@@ -129,14 +129,14 @@ void Edge::smooth(Map::SharedPtr map, const DynamicObstaclesManager& obstacles, 
     }
 }
 
-Plan Edge::getPlan() {
+Plan Edge::getPlan(double maxSpeed) {
     double q[3];
     double lengthSoFar = 0;
     double length = dubins_path_length(&dubinsPath);
     Plan plan1;
     while (lengthSoFar < length) {
         dubins_path_sample(&dubinsPath, lengthSoFar, q);
-        plan1.append(State(q[0], q[1], M_PI_2 - q[2], end()->state().speed, lengthSoFar / end()->state().speed + start()->state().time));
+        plan1.append(State(q[0], q[1], M_PI_2 - q[2], maxSpeed, lengthSoFar / maxSpeed + start()->state().time));
         lengthSoFar += Edge::dubinsIncrement();
     }
     return plan1;
@@ -171,7 +171,7 @@ bool Edge::infeasible() const {
     return m_Infeasible;
 }
 
-double Edge::computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesManager& obstacles) {
+double Edge::computeTrueCost(const Map::SharedPtr& map, DynamicObstaclesManager* obstacles) {
     return computeTrueCost(map, obstacles, end()->state().speed, end()->turningRadius());
 }
 

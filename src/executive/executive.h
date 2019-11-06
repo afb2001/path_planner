@@ -7,6 +7,7 @@
 #include "../trajectory_publisher.h"
 #include "../planner/Planner.h"
 #include <future>
+#include <fstream>
 
 class Executive
 {
@@ -24,7 +25,10 @@ public:
 
     void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
+    void startPlanner();
     void startPlanner(const string& mapFile, double latitude, double longitude);
+
+    void cancelPlanner();
 
     void refreshMap(std::string pathToMapFile, double latitude, double longitude);
 
@@ -42,9 +46,15 @@ public:
 
     void setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed, double coverageTurningRadius, int k);
 
+    void setPlannerVisualization(bool visualize, const std::string& visualizationFilePath);
+
 private:
 
     bool m_Running = false;
+    bool m_PlannerCancelled = false;
+    mutex m_CancelLock;
+    condition_variable m_CancelCV;
+
     ExecutiveInternalsManager m_InternalsManager;
     RibbonManager m_RibbonManager;
     double m_LastUpdateTime = 1;
@@ -89,6 +99,8 @@ private:
      * Make sure the threads can exit and kill the planner (if it's running).
      */
     void terminate();
+
+    void planLoop();
 
     static std::vector<Distribution> inventDistributions(State obstacle);
 };

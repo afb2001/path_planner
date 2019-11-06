@@ -125,7 +125,7 @@ public:
         }
 
         // start planner
-        m_Executive->startPlanner("", 0, 0);
+        m_Executive->startPlanner();
     }
 
     void preemptCallback()
@@ -234,6 +234,7 @@ public:
         m_Executive->refreshMap(config.planner_geotiff_map, m_origin.latitude, m_origin.longitude);
         m_Executive->setVehicleConfiguration(config.non_coverage_max_speed, config.non_coverage_turning_radius,
                 config.coverage_max_speed, config.coverage_turning_radius, config.branching_factor);
+        m_Executive->setPlannerVisualization(config.dump_visualization, config.visualization_file);
     }
 
     void originCallback(const geographic_msgs::GeoPointConstPtr& inmsg) {

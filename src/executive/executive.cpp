@@ -42,6 +42,97 @@ void Executive::updateCovered(double x, double y, double speed, double heading, 
     m_LastState = State(x, y, heading, speed, t);
 }
 
+void Executive::planLoop() {
+    cerr << "Initializing planner" << endl;
+
+    auto planner = std::unique_ptr<Planner>(new AStarPlanner);
+
+    { // new scope to use RAII and not mess with later "lock" variable
+        unique_lock<mutex> lock(m_CancelLock);
+        m_CancelCV.wait_for(lock, chrono::seconds(2), [=] { return !m_PlannerCancelled; });
+        if (m_PlannerCancelled) {
+            cerr << "Planner initialization timed out. Cancel flag is still set." << endl;
+            return;
+        }
+    }
+
+    cerr << "Starting plan loop" << endl;
+
+    while (true) {
+        double startTime = m_TrajectoryPublisher->getTime();
+
+        unique_lock<mutex> lock(m_CancelLock);
+        if (m_PlannerCancelled) {
+            m_PlannerCancelled = false;
+            lock.unlock();
+            break;
+        }
+        lock.unlock();
+
+        if (m_RibbonManager.done()) {
+            // tell the node we're done
+            cerr << "Finished covering ribbons" << endl;
+            m_TrajectoryPublisher->allDone();
+            break;
+        }
+
+        // display ribbons
+        m_TrajectoryPublisher->displayRibbons(m_RibbonManager);
+
+        // copy the map pointer if it's been set (don't wait for the mutex because it may be a while
+        if (m_MapMutex.try_lock()) {
+            if (m_NewMap) {
+                m_PlannerConfig.setMap(m_NewMap);
+            }
+            m_NewMap = nullptr;
+            m_MapMutex.unlock();
+        }
+
+        // declare here so that I can assign it in try block and reference it later
+        vector<State> plan;
+
+        // call the controller service to get the estimated state we'll be in after the planning time has elapsed
+        auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
+
+        // if the state estimator returns an error naively do it ourselves
+        if (startState.time == -1) {
+            startState.setEstimate(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds - m_LastState.time, m_LastState);
+        }
+
+        try {
+            // TODO! -- low-key race condition with the ribbon manager here but it might be fine
+            // its estimates of our trajectory
+            m_PlannerConfig.setObstacles(m_DynamicObstaclesManager);
+            plan = planner->plan(m_RibbonManager, startState, m_PlannerConfig,
+                                   startTime + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
+        } catch(const std::exception& e) {
+            cerr << "Exception thrown while planning:" << endl;
+            cerr << e.what() << endl;
+            cerr << "Pausing." << endl;
+            pause();
+        } catch (...) {
+            cerr << "Unknown exception thrown while planning; pausing" << endl;
+            pause();
+            throw;
+        }
+
+        if (!plan.empty()) {
+            m_TrajectoryPublisher->publishTrajectory(plan);
+        } else {
+            cerr << "Planner returned empty trajectory." << endl;
+        }
+
+        // display the trajectory
+        m_TrajectoryPublisher->displayTrajectory(plan, true);
+
+        // calculate remaining time (to sleep)
+        double endTime = m_TrajectoryPublisher->getTime();
+        int sleepTime = (endTime - startTime <= c_PlanningTimeSeconds) ? ((int)((c_PlanningTimeSeconds - (endTime - startTime)) * 1000)) : 0;
+
+        this_thread::sleep_for(chrono::milliseconds(sleepTime));
+    }
+}
+
 void Executive::sendAction() {
     int sleep = 50; // for 20 Hz
     while (m_Running)
@@ -187,11 +278,14 @@ void Executive::startThreads()
 
 void Executive::terminate()
 {
-    if (!m_Running) return;
-    m_Running = false;
+//    if (!m_Running) return;
+//    m_Running = false;
+
+    // cancel planner so thread can finish
+    cancelPlanner();
 
     // un-pause so threads can terminate
-    unPause();
+//    unPause();
 }
 
 void Executive::pause()
@@ -201,13 +295,14 @@ void Executive::pause()
         m_PauseMutex.unlock();
         return;
     }
+    cancelPlanner();
     m_Pause = true;
     m_PauseMutex.unlock();
 
-    if (!m_Running) return;
+//    if (!m_Running) return;
 
     // tell the node we achieved the goal
-    m_TrajectoryPublisher->allDone();
+//    m_TrajectoryPublisher->allDone();
 }
 
 
@@ -277,4 +372,23 @@ void Executive::setVehicleConfiguration(double maxSpeed, double turningRadius, d
     CoverageMaxSpeed = coverageMaxSpeed;
     CoverageTurningRadius = coverageTurningRadius;
     K = k;
+}
+
+void Executive::startPlanner() {
+    unPause();
+    if (!m_PlannerConfig.map()) {
+        m_PlannerConfig.setMap(make_shared<Map>());
+    }
+    m_PlanningFuture = async(launch::async, &Executive::planLoop, this);
+}
+
+void Executive::cancelPlanner() {
+    std::unique_lock<mutex> lock(m_CancelLock);
+    m_PlannerCancelled = true;
+}
+
+void Executive::setPlannerVisualization(bool visualize, const std::string& visualizationFilePath) {
+    m_PlannerConfig.setVisualizations(visualize);
+    m_Visualizer = Visualizer::UniquePtr(new Visualizer(visualizationFilePath));
+    m_PlannerConfig.setVisualizer(&m_Visualizer);
 }

@@ -108,3 +108,9 @@ void AStarPlanner::expandToCoverSpecificSamples(Vertex::SharedPtr root, const st
     }
 }
 
+void AStarPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag) {
+    if (m_Config.visualizations()) {
+        *m_Config.visualizationStream() << v->toString() << " " << tag << "\n";
+    }
+}
+

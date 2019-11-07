@@ -794,6 +794,29 @@ TEST(PlannerTests, RHRSAStarSeparateThreadTest) {
     t.join();
 }
 
+TEST(PlannerTests, VisualizationTest) {
+    RibbonManager ribbonManager(RibbonManager::TspDubinsNoSplitKRibbons, 8, 2);
+    ribbonManager.add(0, 20, 20, 20);
+    ribbonManager.add(0, 40, 20, 40);
+    ribbonManager.add(0, 60, 20, 60);
+    ribbonManager.add(0, 80, 20, 80);
+    ribbonManager.add(0, 100, 20, 100);
+    AStarPlanner planner;
+    State start(0, 0, 0, 2.5, 1);
+    PlannerConfig config(&cerr);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_visualizations"));
+    config.setVisualizer(&visualizer);
+    config.setVisualizations(true);
+    config.setNowFunction([] () -> double {
+        struct timespec t{};
+        clock_gettime(CLOCK_REALTIME, &t);
+        return t.tv_sec + t.tv_nsec * 1e-9;
+    });
+    config.setMap(make_shared<Map>());
+    config.setObstacles(DynamicObstaclesManager());
+    auto plan = planner.plan(ribbonManager, start, config, 0.95);
+}
+
 
 int main(int argc, char **argv){
     testing::InitGoogleTest(&argc, argv);

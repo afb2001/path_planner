@@ -40,6 +40,7 @@ std::vector<State> AStarPlanner::plan(const State& start, DynamicObstaclesManage
                                            : StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7); // lucky seed
     auto startV = m_UseRibbons? Vertex::makeRoot(start, m_RibbonManager) : Vertex::makeRoot(start, m_PointsToCover);
     startV->computeApproxToGo();
+    visualizeVertex(startV, "start");
     shared_ptr<Vertex> bestVertex(nullptr);
     auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_CoverageTurningRadius * 2 + 1);
 //    if (m_UseRibbons) {
@@ -61,6 +62,7 @@ std::vector<State> AStarPlanner::plan(const State& start, DynamicObstaclesManage
 //            else *m_Output << "Returned from A* with no plan" << std::endl;
             // found a (better) plan
             bestVertex = v;
+            visualizeVertex(v, "goal");
         }
     }
     *m_Output << m_Samples.size() << " total samples, " << m_ExpandedCount << " expanded" << std::endl;
@@ -81,6 +83,7 @@ shared_ptr<Vertex> AStarPlanner::aStar(DynamicObstaclesManager* obstacles, doubl
             return vertex;
         }
 //        *m_Output << "Expanding vertex at " << vertex->state().toString() << std::endl;
+        visualizeVertex(vertex, "vertex");
         expand(vertex, obstacles);
 
         // should probably check if vertex queue is empty but expand should always push some on
@@ -110,7 +113,7 @@ void AStarPlanner::expandToCoverSpecificSamples(Vertex::SharedPtr root, const st
 
 void AStarPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag) {
     if (m_Config.visualizations()) {
-        *m_Config.visualizationStream() << v->toString() << " " << tag << "\n";
+        m_Config.visualizationStream() << v->toString() << " " << tag << std::endl;
     }
 }
 

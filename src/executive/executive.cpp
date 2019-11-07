@@ -389,6 +389,8 @@ void Executive::cancelPlanner() {
 
 void Executive::setPlannerVisualization(bool visualize, const std::string& visualizationFilePath) {
     m_PlannerConfig.setVisualizations(visualize);
-    m_Visualizer = Visualizer::UniquePtr(new Visualizer(visualizationFilePath));
-    m_PlannerConfig.setVisualizer(&m_Visualizer);
+    if (visualize) {
+        m_Visualizer = Visualizer::UniquePtr(new Visualizer(visualizationFilePath));
+        m_PlannerConfig.setVisualizer(&m_Visualizer);
+    }
 }

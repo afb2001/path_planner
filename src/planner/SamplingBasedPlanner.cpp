@@ -2,44 +2,42 @@
 #include <algorithm>
 #include <utility>
 
-SamplingBasedPlanner::SamplingBasedPlanner(double maxSpeed, double maxTurningRadius, std::shared_ptr<Map> staticMap) : Planner(
-        maxSpeed, maxTurningRadius, std::move(staticMap)) {}
+SamplingBasedPlanner::SamplingBasedPlanner() {}
 
-std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double, double>>& newlyCovered,
-                                              const State& start,
-                                              DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
-    m_PointsToCover.remove(newlyCovered);
-    return plan(start, dynamicObstacles, timeRemaining);
-}
+//std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double, double>>& newlyCovered,
+//                                              const State& start,
+//                                              DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
+//    m_PointsToCover.remove(newlyCovered);
+//    return plan(start, dynamicObstacles, timeRemaining);
+//}
 
-std::vector<State> SamplingBasedPlanner::plan(const RibbonManager& ribbonManager, const State& start,
-                                              DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
-    setRibbonManager(ribbonManager);
-    return plan(start, dynamicObstacles, timeRemaining);
-}
+//std::vector<State> SamplingBasedPlanner::plan(const RibbonManager& ribbonManager, const State& start,
+//                                              DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
+//    setRibbonManager(ribbonManager);
+//    return plan(start, dynamicObstacles, timeRemaining);
+//}
 
-std::vector<State> SamplingBasedPlanner::plan(const State& start, DynamicObstaclesManager dynamicObstacles,
-                                              double timeRemaining) {
-    m_StartStateTime = start.time;
-    m_Samples.clear();
-    m_VertexQueue.clear();
-    double minX, maxX, minY, maxY, minSpeed = m_MaxSpeed, maxSpeed = m_MaxSpeed;
-    double magnitude = m_MaxSpeed * Plan::timeHorizon();
-    minX = start.x - magnitude;
-    maxX = start.x + magnitude;
-    minY = start.y - magnitude;
-    maxY = start.y + magnitude;
-
-    StateGenerator generator = m_UseRibbons? StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager)
-                                           : StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7); // lucky seed
-    addSamples(generator, 1000);
-    std::shared_ptr<Vertex> vertex;
-    for (vertex = (m_UseRibbons? Vertex::makeRoot(start, m_RibbonManager) : Vertex::makeRoot(start, m_PointsToCover));
-         !goalCondition(vertex); vertex = popVertexQueue()) {
-        expand(vertex, &dynamicObstacles);
-    }
-    return tracePlan(vertex, false, &dynamicObstacles).get();
-}
+//std::vector<State> SamplingBasedPlanner::plan(const State& start, DynamicObstaclesManager dynamicObstacles,
+//                                              double timeRemaining) {
+//    m_StartStateTime = start.time;
+//    m_Samples.clear();
+//    m_VertexQueue.clear();
+//    double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
+//    double magnitude = m_Config.maxSpeed() * Plan::timeHorizon();
+//    minX = start.x - magnitude;
+//    maxX = start.x + magnitude;
+//    minY = start.y - magnitude;
+//    maxY = start.y + magnitude;
+//
+//    StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
+//    addSamples(generator, 1000);
+//    std::shared_ptr<Vertex> vertex;
+//    for (vertex = (Vertex::makeRoot(start, m_RibbonManager));
+//         !goalCondition(vertex); vertex = popVertexQueue()) {
+//        expand(vertex, m_Config.obstacles());
+//    }
+//    return tracePlan(vertex, false, m_Config.obstacles()).get();
+//}
 
 void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     if (!vertex->isRoot() && vertex->parentEdge()->infeasible()) return;
@@ -74,20 +72,21 @@ bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) 
             (vertex->allCovered() && vertex->state().time > m_StartStateTime + Plan::timeMinimum());
 }
 
-void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, DynamicObstaclesManager* obstacles) {
+void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, const DynamicObstaclesManager& obstacles) {
+    
 //    std::cerr << "Expanding vertex " << sourceVertex->toString() << std::endl;
     // add nearest point to cover
     if (!sourceVertex->allCovered()) {
         auto s = sourceVertex->getNearestPointAsState();
-        s.speed = m_MaxSpeed;
+        s.speed = m_Config.maxSpeed();
         // TODO! -- what heading for points?
-        auto destinationVertex = Vertex::connect(sourceVertex, s, m_TurningRadius, false);
-        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
+        auto destinationVertex = Vertex::connect(sourceVertex, s, m_Config.turningRadius(), false);
+        destinationVertex->parentEdge()->computeTrueCost(m_Config.map(), obstacles);
         pushVertexQueue(destinationVertex);
-        if (m_CoverageMaxSpeed > 0) {
-            s.speed = m_CoverageMaxSpeed;
-            destinationVertex = Vertex::connect(sourceVertex, s, m_CoverageTurningRadius, true);
-            destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
+        if (m_Config.coverageMaxSpeed() > 0) {
+            s.speed = m_Config.coverageMaxSpeed();
+            destinationVertex = Vertex::connect(sourceVertex, s, m_Config.coverageTurningRadius(), true);
+            destinationVertex->parentEdge()->computeTrueCost(m_Config.map(), obstacles);
             pushVertexQueue(destinationVertex);
         }
     }
@@ -99,7 +98,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
     // Making all the vertices adds some allocation overhead but it lets us cache the dubins paths
     std::vector<std::shared_ptr<Vertex>> bestSamples, bestCoverageSamples;
     bool regularDone = false, coverageDone = false;
-    if (m_CoverageTurningRadius <= 0) coverageDone = true;
+    if (m_Config.coverageTurningRadius() <= 0) coverageDone = true;
     for (uint64_t i = 0; i < m_Samples.size() && (!regularDone || !coverageDone); i++) {
         auto sample = m_Samples.front();
         std::pop_heap(m_Samples.begin(), m_Samples.end() - i, comp);
@@ -107,7 +106,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
             bestSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
             if (!sourceVertex->state().colocated(sample)) {
                 // don't force speed to be anything in particular, allowing samples to come with unique speeds
-                bestSamples.push_back(Vertex::connect(sourceVertex, sample, m_TurningRadius, false));
+                bestSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.coverageTurningRadius(), false));
                 bestSamples.back()->parentEdge()->computeApproxCost();
                 std::push_heap(bestSamples.begin(), bestSamples.end(), dubinsComp);
             }
@@ -117,8 +116,8 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
         if (!coverageDone && (bestCoverageSamples.size() < k() ||
             bestCoverageSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
             if (!sourceVertex->state().colocated(sample)) {
-                sample.speed = m_CoverageMaxSpeed; // force speed to be coverage speed
-                bestCoverageSamples.push_back(Vertex::connect(sourceVertex, sample, m_CoverageTurningRadius, true));
+                sample.speed = m_Config.coverageMaxSpeed(); // force speed to be coverage speed
+                bestCoverageSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.coverageTurningRadius(), true));
                 bestCoverageSamples.back()->parentEdge()->computeApproxCost();
                 std::push_heap(bestCoverageSamples.begin(), bestCoverageSamples.end(), dubinsComp);
             }
@@ -131,7 +130,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
         if (i >= bestSamples.size()) break;
         auto destinationVertex = bestSamples.front();
         std::pop_heap(bestSamples.begin(), bestSamples.end() - i, dubinsComp);
-        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
+        destinationVertex->parentEdge()->computeTrueCost(m_Config.map(), obstacles);
         pushVertexQueue(destinationVertex);
     }
     // and again for coverage edges
@@ -139,14 +138,14 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, D
         if (i >= bestCoverageSamples.size()) break;
         auto destinationVertex = bestCoverageSamples.front();
         std::pop_heap(bestCoverageSamples.begin(), bestCoverageSamples.end() - i, dubinsComp);
-        destinationVertex->parentEdge()->computeTrueCost(m_Map, obstacles);
+        destinationVertex->parentEdge()->computeTrueCost(m_Config.map(), obstacles);
         pushVertexQueue(destinationVertex);
     }
     m_ExpandedCount++;
 }
 
 int SamplingBasedPlanner::k() const {
-    return m_K;
+    return m_Config.branchingFactor();
 }
 
 void SamplingBasedPlanner::addSamples(StateGenerator& generator, int n) {
@@ -172,13 +171,36 @@ std::function<bool(const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vert
     };
 }
 
-void SamplingBasedPlanner::setRibbonManager(const RibbonManager& ribbonManager) {
-    m_RibbonManager = ribbonManager;
-    m_UseRibbons = true;
+//void SamplingBasedPlanner::setRibbonManager(const RibbonManager& ribbonManager) {
+//    m_RibbonManager = ribbonManager;
+//    m_UseRibbons = true;
+//}
+
+std::vector<State> SamplingBasedPlanner::plan(const RibbonManager&, const State& start, PlannerConfig config,
+                                              double timeRemaining) {
+    m_Config = config;
+    m_StartStateTime = start.time;
+    m_Samples.clear();
+    m_VertexQueue.clear();
+    double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
+    double magnitude = m_Config.maxSpeed() * Plan::timeHorizon();
+    minX = start.x - magnitude;
+    maxX = start.x + magnitude;
+    minY = start.y - magnitude;
+    maxY = start.y + magnitude;
+
+    StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
+    addSamples(generator, 1000);
+    std::shared_ptr<Vertex> vertex;
+    for (vertex = Vertex::makeRoot(start, m_RibbonManager);
+         !goalCondition(vertex); vertex = popVertexQueue()) {
+        expand(vertex, m_Config.obstacles());
+    }
+    return tracePlan(vertex, false, m_Config.obstacles()).get();
 }
 
-void SamplingBasedPlanner::setK(int k) {
-    m_K = k;
-}
+//void SamplingBasedPlanner::setK(int k) {
+//    m_K = k;
+//}
 
 

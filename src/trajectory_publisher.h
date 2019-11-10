@@ -1,6 +1,8 @@
 #ifndef SRC_TRAJECTORY_PUBLISHER_H
 #define SRC_TRAJECTORY_PUBLISHER_H
 
+#include "planner/utilities/RibbonManager.h"
+
 /**
  * Interface to expose trajectory publishing to the Executive
  */

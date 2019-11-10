@@ -50,3 +50,13 @@ std::vector<State> NodeStub::lastTrajectory() const {
 bool NodeStub::allDoneCalled() const {
     return m_AllDoneCalled;
 }
+
+double NodeStub::getTime() const {
+    struct timespec t{};
+    clock_gettime(CLOCK_REALTIME, &t);
+    return t.tv_sec + t.tv_nsec * 1e-9;
+}
+
+void NodeStub::displayRibbons(const RibbonManager& ribbonManager) {
+    cerr << ribbonManager.dumpRibbons() << endl;
+}

@@ -2,15 +2,15 @@
 #include "DynamicObstaclesManager.h"
 #include <algorithm>
 
-double DynamicObstaclesManager::collisionExists(const State &s) {
+double DynamicObstaclesManager::collisionExists(const State &s) const{
     return collisionExists(s.x, s.y, s.time);
 }
 
-double DynamicObstaclesManager::distanceToNearestPossibleCollision(const State &s) {
+double DynamicObstaclesManager::distanceToNearestPossibleCollision(const State &s) const {
     return distanceToNearestPossibleCollision(s.x, s.y, s.speed, s.time);
 }
 
-double DynamicObstaclesManager::distanceToNearestPossibleCollision(double x, double y, double speed, double time) {
+double DynamicObstaclesManager::distanceToNearestPossibleCollision(double x, double y, double speed, double time) const {
     auto min = DBL_MAX;
     for (const auto& o : m_Obstacles) {
         min = fmin(min, o.second.distanceToEdge(x, y, speed, time));
@@ -18,7 +18,7 @@ double DynamicObstaclesManager::distanceToNearestPossibleCollision(double x, dou
     return min;
 }
 
-double DynamicObstaclesManager::collisionExists(double x, double y, double time) {
+double DynamicObstaclesManager::collisionExists(double x, double y, double time) const {
     // we're not using true probabilities anymore so just use sum of densities
     double sum = 0;
     for (const auto& o : m_Obstacles) {

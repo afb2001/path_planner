@@ -9,9 +9,6 @@
 #include "../../src/common/map/GeoTiffMap.h"
 #include "../../src/common/map/GridWorldMap.h"
 #include <thread>
-extern "C" {
-#include "dubins.h"
-}
 
 using std::vector;
 using std::pair;
@@ -19,6 +16,7 @@ using std::cerr;
 using std::endl;
 using std::make_shared;
 
+auto plannerConfig = PlannerConfig(&std::cerr);
 
 TEST(UnitTests, GaussianDensityTest) {
     double sigma[2][2] = {1, 0.1, 0.1, 1};
@@ -82,11 +80,11 @@ TEST(UnitTests, DynamicObstacleTest1) {
     EXPECT_NEAR(p1, p, 0.00001);
 }
 
-TEST(UnitTests, GeoTiffMapTest1) {
+TEST(UnitTests, DISABLED_GeoTiffMapTest1) {
     GeoTiffMap map("/home/abrown/Downloads/depth_map/US5NH02M.tiff", -70.71054174878898, 43.073397415457535);
 }
 
-TEST(UnitTests, GeoTiffMapTest2) {
+TEST(UnitTests, DISABLED_GeoTiffMapTest2) {
     GeoTiffMap map("/home/abrown/Downloads/depth_map/US5NH02M.tiff", -70.71054174878898, 43.073397415457535);
 //    EXPECT_DOUBLE_EQ(map.getDepth(0, 0), 0);
 //    EXPECT_NEAR(map.getDepth(365000, 4770000), 14.87, 0.001);
@@ -342,7 +340,7 @@ TEST(UnitTests, MakePlanTest) {
     auto e = v2->parentEdge();
     auto a = e->computeApproxCost(1, 2);
     EXPECT_DOUBLE_EQ(a, 5);
-    auto plan = e->getPlan(1);
+    auto plan = e->getPlan();
     EXPECT_TRUE(plan.getRef().front() == s1);
     EXPECT_GE(plan.getRef().back().y, 4.5); // because of plan density
 }
@@ -358,7 +356,7 @@ TEST(UnitTests, ComputeEdgeCostTest) {
     DynamicObstaclesManager dynamicObstacles;
     Path path;
     path.add(0, 10);
-    auto c = e->computeTrueCost(map, &dynamicObstacles, 1, 2);
+    auto c = e->computeTrueCost(map, dynamicObstacles, 1, 2);
     EXPECT_DOUBLE_EQ(6, e->end()->state().time);
     EXPECT_DOUBLE_EQ(c, a);
 }
@@ -384,7 +382,7 @@ TEST(UnitTests, VertexTests1) {
     EXPECT_DOUBLE_EQ(c, 10);
     Map::SharedPtr m = make_shared<Map>();
     DynamicObstaclesManager obstacles;
-    auto t = v1->parentEdge()->computeTrueCost(m, &obstacles, 2.5, 8);
+    auto t = v1->parentEdge()->computeTrueCost(m, obstacles, 2.5, 8);
     EXPECT_DOUBLE_EQ(t, c);
     EXPECT_DOUBLE_EQ(t, v1->currentCost());
     EXPECT_DOUBLE_EQ(v1->currentCost(), v1->state().time - 1);
@@ -402,7 +400,7 @@ TEST(UnitTests, VertexTests2) {
     auto c = v1->parentEdge()->computeApproxCost(2.5, 8);
     auto m = make_shared<Map>();
     DynamicObstaclesManager obstacles;
-    auto t = v1->parentEdge()->computeTrueCost(m, &obstacles, 2.5, 8);
+    auto t = v1->parentEdge()->computeTrueCost(m, obstacles, 2.5, 8);
     EXPECT_DOUBLE_EQ(c, t);
     auto h = v1->computeApproxToGo();
     EXPECT_DOUBLE_EQ((Path::distance(5, -20, 30, 30) + 20*sqrt(2) + 10 + 50) / 2.5, h);
@@ -418,147 +416,147 @@ TEST(UnitTests, VertexTests3) {
     v1->parentEdge()->computeApproxCost(2.5, 8);
     auto m = make_shared<Map>();
     DynamicObstaclesManager obstacles;
-    v1->parentEdge()->computeTrueCost(m, &obstacles, 2.5, 8);
+    v1->parentEdge()->computeTrueCost(m, obstacles, 2.5, 8);
     auto h = v1->computeApproxToGo();
     EXPECT_DOUBLE_EQ((Path::distance(5, -20, 30, 30) + 20*sqrt(2) + 50) / 2.5, h);
 }
 
-TEST(PlannerTests, DISABLED_DubinsWalkTest) {
-    // runs forever // doesn't run forever anymore but fails with new EXPECTs // and fails with the even newer one too
-    // basically all the dubins code is bad
-    vector<pair<double, double>> points;
-    points.emplace_back(100, 100);
-    points.emplace_back(200, 100);
-    points.emplace_back(200, 200);
-    points.emplace_back(100, 200);
-    Planner planner(2.5, 8, make_shared<Map>());
-    planner.addToCover(points);
-    State start(0,0,M_PI_2,2.5,1);
-    vector<pair<double , double>> newlyCovered;
-    vector<State> pastStarts;
-    double lastPlanEndTime = -1;
-    while(!points.empty()) {
-//        for (const auto& s : pastStarts) {
-//            auto d = s.distanceTo(start);
-//            EXPECT_LE(0.5, d);
-//            if (d < 0.5) {
-//                cerr << "Circled back to " << s.time << " from " << start.time << endl;
-//            }
-//
+//TEST(PlannerTests, DISABLED_DubinsWalkTest) {
+//    // runs forever // doesn't run forever anymore but fails with new EXPECTs // and fails with the even newer one too
+//    // basically all the dubins code is bad
+//    vector<pair<double, double>> points;
+//    points.emplace_back(100, 100);
+//    points.emplace_back(200, 100);
+//    points.emplace_back(200, 200);
+//    points.emplace_back(100, 200);
+//    Planner planner(2.5, 8, make_shared<Map>());
+//    planner.addToCover(points);
+//    State start(0,0,M_PI_2,2.5,1);
+//    vector<pair<double , double>> newlyCovered;
+//    vector<State> pastStarts;
+//    double lastPlanEndTime = -1;
+//    while(!points.empty()) {
+////        for (const auto& s : pastStarts) {
+////            auto d = s.distanceTo(start);
+////            EXPECT_LE(0.5, d);
+////            if (d < 0.5) {
+////                cerr << "Circled back to " << s.time << " from " << start.time << endl;
+////            }
+////
+////        }
+////        EXPECT_LE(start.x, 216);
+////        EXPECT_LE(start.y, 216);
+//        pastStarts.push_back(start);
+//        cerr << start.toString() << endl;
+//        if (Path::covers(points.front(), start.x, start.y)) {
+//            cerr << "Covered a point near " << start.x << ", " << start.y << endl;
+//            newlyCovered.push_back(points.front());
+//            points.erase(points.begin());
 //        }
-//        EXPECT_LE(start.x, 216);
-//        EXPECT_LE(start.y, 216);
-        pastStarts.push_back(start);
-        cerr << start.toString() << endl;
-        if (Path::covers(points.front(), start.x, start.y)) {
-            cerr << "Covered a point near " << start.x << ", " << start.y << endl;
-            newlyCovered.push_back(points.front());
-            points.erase(points.begin());
-        }
-        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0);
-        if (lastPlanEndTime != -1) {
-            EXPECT_LE(plan.back().time, lastPlanEndTime + 0.5); // 0.5 added for small fluctuations
-        }
-        lastPlanEndTime = plan.back().time;
-        newlyCovered.clear();
-        start = plan[1];
-    }
-}
+//        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0);
+//        if (lastPlanEndTime != -1) {
+//            EXPECT_LE(plan.back().time, lastPlanEndTime + 0.5); // 0.5 added for small fluctuations
+//        }
+//        lastPlanEndTime = plan.back().time;
+//        newlyCovered.clear();
+//        start = plan[1];
+//    }
+//}
 
-TEST(PlannerTests, PointToPointTest1) {
-    vector<pair<double, double>> points;
-    points.emplace_back(0, 10);
-    points.emplace_back(0, 20);
-    points.emplace_back(0, 30);
-    Planner planner(2.5, 8, make_shared<Map>());
-    planner.addToCover(points);
-    State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0);
-    for (auto s : plan) cerr << s.toString() << endl;
-    EXPECT_DOUBLE_EQ(plan.back().time, 12.64);
-}
+//TEST(PlannerTests, PointToPointTest1) {
+//    vector<pair<double, double>> points;
+//    points.emplace_back(0, 10);
+//    points.emplace_back(0, 20);
+//    points.emplace_back(0, 30);
+//    Planner planner(2.5, 8, make_shared<Map>());
+//    planner.addToCover(points);
+//    State start(0, 0, 0, 2.5, 1);
+//    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0);
+//    for (auto s : plan) cerr << s.toString() << endl;
+//    EXPECT_DOUBLE_EQ(plan.back().time, 12.64);
+//}
 
-TEST(PlannerTests, UCSTest1) {
-    vector<pair<double, double>> points;
-    points.emplace_back(0, 10);
-    points.emplace_back(0, 20);
-    points.emplace_back(0, 30);
-    SamplingBasedPlanner planner(2.5, 8, make_shared<Map>());
-    planner.addToCover(points);
-    State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0);
-    for (auto s : plan) cerr << s.toString() << endl;
-}
+//TEST(PlannerTests, UCSTest1) {
+//    vector<pair<double, double>> points;
+//    points.emplace_back(0, 10);
+//    points.emplace_back(0, 20);
+//    points.emplace_back(0, 30);
+//    SamplingBasedPlanner planner(2.5, 8, make_shared<Map>());
+//    planner.addToCover(points);
+//    State start(0, 0, 0, 2.5, 1);
+//    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0);
+//    for (auto s : plan) cerr << s.toString() << endl;
+//}
 
+// TODO! -- port to ribbons
 TEST(PlannerTests, VertexQueueTests) {
-    State start(0, 0, 0, 2.5, 1);
-    Path path;
-    path.add(0, 10);
-    path.add(0, 20);
-    path.add(0, 30);
-    Map::SharedPtr m = make_shared<Map>();
-    DynamicObstaclesManager obstacles;
-    auto root = Vertex::makeRoot(start, path);
-    AStarPlanner planner(2.5, 8, m);
-    planner.addToCover(path.get());
-    planner.pushVertexQueue(root);
-    auto popped = planner.popVertexQueue();
-    EXPECT_EQ(root, popped);
-    State s1(0, 10, 0, 2.5, 0), s2(0, -10, M_PI, 2.5, 0);
-    auto v1 = Vertex::connect(root, s1);
-    v1->parentEdge()->computeTrueCost(m, &obstacles, 2.5, 8);
-    v1->setCurrentCost();
-    auto v2 = Vertex::connect(root, s2);
-    v2->parentEdge()->computeTrueCost(m, &obstacles, 2.5, 8);
-    v2->setCurrentCost();
-    planner.pushVertexQueue(v1);
-    planner.pushVertexQueue(v2);
-    popped = planner.popVertexQueue();
-    EXPECT_EQ(v1, popped);
+//    State start(0, 0, 0, 2.5, 1);
+//    Path path;
+//    path.add(0, 10);
+//    path.add(0, 20);
+//    path.add(0, 30);
+//    Map::SharedPtr m = make_shared<Map>();
+//    DynamicObstaclesManager obstacles;
+//    auto root = Vertex::makeRoot(start, path);
+//    AStarPlanner planner(2.5, 8, m);
+//    planner.addToCover(path.get());
+//    planner.pushVertexQueue(root);
+//    auto popped = planner.popVertexQueue();
+//    EXPECT_EQ(root, popped);
+//    State s1(0, 10, 0, 2.5, 0), s2(0, -10, M_PI, 2.5, 0);
+//    auto v1 = Vertex::connect(root, s1);
+//    v1->parentEdge()->computeTrueCost(m, obstacles, 2.5, 8);
+//    v1->setCurrentCost();
+//    auto v2 = Vertex::connect(root, s2);
+//    v2->parentEdge()->computeTrueCost(m, obstacles, 2.5, 8);
+//    v2->setCurrentCost();
+//    planner.pushVertexQueue(v1);
+//    planner.pushVertexQueue(v2);
+//    popped = planner.popVertexQueue();
+//    EXPECT_EQ(v1, popped);
 }
 
 TEST(UnitTests, EmptyVertexQueueTest) {
-    AStarPlanner planner(2.5, 8, make_shared<Map>());
+    AStarPlanner planner;
     EXPECT_THROW(planner.popVertexQueue(), std::out_of_range);
 }
 
-TEST(UnitTests, ExpandTest1) {
-    State start(0, 0, 0, 2.5, 1);
-    Path path;
-    path.add(0, 10);
-    path.add(0, 20);
-    path.add(0, 30);
-    Map::SharedPtr m = make_shared<Map>();
-    DynamicObstaclesManager obstacles;
-    auto root = Vertex::makeRoot(start, path);
-    AStarPlanner planner(2.5, 8, 2.5, 16, m);
-    planner.addToCover(path.get());
-    StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
-    planner.addSamples(generator, 1000);
-    planner.expand(root, &obstacles);
-    double fPrev = 0;
-    for (int i = 0; i < 20; i++) { // k + 1, at the time of this writing
-        auto v = planner.popVertexQueue();
-//        cerr << "Popped vertex at " << v->state().toString() << endl;
-//        cerr << "g = " << v->currentCost() << ", h = " << v->approxToGo() << ", f = " << v->f() << endl;
-        EXPECT_LE(fPrev, v->f());
-        fPrev = v->f();
-    }
-    EXPECT_THROW(planner.popVertexQueue(), std::out_of_range);
-}
+//TEST(UnitTests, ExpandTest1) {
+//    State start(0, 0, 0, 2.5, 1);
+//    Path path;
+//    path.add(0, 10);
+//    path.add(0, 20);
+//    path.add(0, 30);
+//    Map::SharedPtr m = make_shared<Map>();
+//    DynamicObstaclesManager obstacles;
+//    auto root = Vertex::makeRoot(start, path);
+//    AStarPlanner planner(2.5, 8, 2.5, 16, m);
+//    planner.addToCover(path.get());
+//    StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
+//    planner.addSamples(generator, 1000);
+//    planner.expand(root, &obstacles);
+//    double fPrev = 0;
+//    for (int i = 0; i < 20; i++) { // k + 1, at the time of this writing
+//        auto v = planner.popVertexQueue();
+////        cerr << "Popped vertex at " << v->state().toString() << endl;
+////        cerr << "g = " << v->currentCost() << ", h = " << v->approxToGo() << ", f = " << v->f() << endl;
+//        EXPECT_LE(fPrev, v->f());
+//        fPrev = v->f();
+//    }
+//    EXPECT_THROW(planner.popVertexQueue(), std::out_of_range);
+//}
 
 TEST(UnitTests, ExpandTest1Ribbons) {
     State start(0, 0, 0, 2.5, 1);
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 0, 30);
-    Map::SharedPtr m = make_shared<Map>();
     DynamicObstaclesManager obstacles;
     auto root = Vertex::makeRoot(start, ribbonManager);
-    AStarPlanner planner(2.5, 8, 2.5, 16, m);
-    planner.setRibbonManager(ribbonManager);
+    AStarPlanner planner;
+    planner.setConfig(plannerConfig);
     StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
     planner.addSamples(generator, 1000);
-    planner.expand(root, &obstacles);
+    planner.expand(root, obstacles);
     double fPrev = 0;
     for (int i = 0; i < 20; i++) { // k + 1, at the time of this writing
         auto v = planner.popVertexQueue();
@@ -577,70 +575,71 @@ TEST(UnitTests, ExpandDifferentTurningRadiiTest) {
     Map::SharedPtr m = make_shared<Map>();
     DynamicObstaclesManager obstacles;
     auto root = Vertex::makeRoot(start, ribbonManager);
-    AStarPlanner planner(2.5, 8, 2.5, 16, m);
-    planner.setRibbonManager(ribbonManager);
+    AStarPlanner planner;
+    planner.setConfig(plannerConfig);
     StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
     planner.addSamples(generator, 1000);
-    planner.expand(root, &obstacles);
+    planner.expand(root, obstacles);
     auto v1 = planner.popVertexQueue();
     EXPECT_TRUE(v1->coverageAllowed());
 }
 
-TEST(PlannerTests, RHRSAStarTest1) {
-    vector<pair<double, double>> points;
-    points.emplace_back(0, 10);
-    points.emplace_back(0, 20);
-    points.emplace_back(0, 30);
-    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
-    planner.addToCover(points);
-    State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0.95);
-    EXPECT_FALSE(plan.empty());
-    for (auto s : plan) cerr << s.toString() << endl;
-}
+//TEST(PlannerTests, RHRSAStarTest1) {
+//    vector<pair<double, double>> points;
+//    points.emplace_back(0, 10);
+//    points.emplace_back(0, 20);
+//    points.emplace_back(0, 30);
+//    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
+//    planner.addToCover(points);
+//    State start(0, 0, 0, 2.5, 1);
+//    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0.95);
+//    EXPECT_FALSE(plan.empty());
+//    for (auto s : plan) cerr << s.toString() << endl;
+//}
 
 TEST(PlannerTests, RHRSAStarTest1Ribbons) {
+    plannerConfig.now();
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 0, 30);
-    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
+    AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.95);
     EXPECT_FALSE(plan.empty());
     for (auto s : plan) cerr << s.toString() << endl;
 }
 
-TEST(PlannerTests, RHRSAStarTest2) {
-    vector<pair<double, double>> points;
-    points.emplace_back(0, 10);
-    points.emplace_back(0, 20);
-    points.emplace_back(0, 30);
-    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
-    planner.addToCover(points);
-    State start(0, 0, 0, 2.5, 1);
-    vector<pair<double , double>> newlyCovered;
-    while(!points.empty()) {
-        if (Path::covers(points.front(), start.x, start.y)) {
-            cerr << "Covered a point near " << start.x << ", " << start.y << endl;
-            newlyCovered.push_back(points.front());
-            points.erase(points.begin());
-        }
-        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.5); // quick iterations
-        newlyCovered.clear();
-        ASSERT_FALSE(plan.empty());
-        start = plan[1];
-        ASSERT_LT(start.time, 30);
-        cerr << start.toString() << endl;
-    }
-}
+//TEST(PlannerTests, RHRSAStarTest2) {
+//    vector<pair<double, double>> points;
+//    points.emplace_back(0, 10);
+//    points.emplace_back(0, 20);
+//    points.emplace_back(0, 30);
+//    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
+//    planner.addToCover(points);
+//    State start(0, 0, 0, 2.5, 1);
+//    vector<pair<double , double>> newlyCovered;
+//    while(!points.empty()) {
+//        if (Path::covers(points.front(), start.x, start.y)) {
+//            cerr << "Covered a point near " << start.x << ", " << start.y << endl;
+//            newlyCovered.push_back(points.front());
+//            points.erase(points.begin());
+//        }
+//        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.5); // quick iterations
+//        newlyCovered.clear();
+//        ASSERT_FALSE(plan.empty());
+//        start = plan[1];
+//        ASSERT_LT(start.time, 30);
+//        cerr << start.toString() << endl;
+//    }
+//}
 
 TEST(PlannerTests, RHRSAStarTest2Ribbons) {
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 0, 30);
-    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
+    AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
     while(!ribbonManager.done()) {
         ribbonManager.cover(start.x, start.y);
-        auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.5); // quick iterations
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.5); // quick iterations
         ASSERT_FALSE(plan.empty());
         start = plan[1];
         ASSERT_LT(start.time, 30);
@@ -648,28 +647,28 @@ TEST(PlannerTests, RHRSAStarTest2Ribbons) {
     }
 }
 
-TEST(PlannerTests, RHRSAStarTest3) {
-    // no memory leak with Valgrind
-    Path path;
-    path.add(10, 10);
-    path.add(20, 10);
-    path.add(20, 20);
-    path.add(10, 20);
-    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
-    planner.addToCover(path.get());
-    State start(0, 0, 0, 1, 1);
-    while(path.size() != 0) {
-        cerr << start.toString() << endl;
-        auto newlyCovered = path.removeNewlyCovered(start.x, start.y);
-        if (!newlyCovered.empty()) {
-            cerr << "Covered a point near " << start.x << ", " << start.y << endl;
-        }
-        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.95);
-        ASSERT_FALSE(plan.empty());
-        start = plan[1];
-        ASSERT_LT(start.time, 60);
-    }
-}
+//TEST(PlannerTests, RHRSAStarTest3) {
+//    // no memory leak with Valgrind
+//    Path path;
+//    path.add(10, 10);
+//    path.add(20, 10);
+//    path.add(20, 20);
+//    path.add(10, 20);
+//    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
+//    planner.addToCover(path.get());
+//    State start(0, 0, 0, 1, 1);
+//    while(path.size() != 0) {
+//        cerr << start.toString() << endl;
+//        auto newlyCovered = path.removeNewlyCovered(start.x, start.y);
+//        if (!newlyCovered.empty()) {
+//            cerr << "Covered a point near " << start.x << ", " << start.y << endl;
+//        }
+//        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.95);
+//        ASSERT_FALSE(plan.empty());
+//        start = plan[1];
+//        ASSERT_LT(start.time, 60);
+//    }
+//}
 
 TEST(PlannerTests, RHRSAStarTest4Ribbons) {
     RibbonManager ribbonManager;
@@ -678,12 +677,12 @@ TEST(PlannerTests, RHRSAStarTest4Ribbons) {
     ribbonManager.add(0, 60, 20, 60);
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
-    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
+    AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x, start.y);
-        auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan[1].heading == start.heading;
         start = plan[1];
@@ -700,9 +699,9 @@ TEST(PlannerTests, RHRSAStarTest4aRibbons) {
     ribbonManager.add(0, 60, 20, 60);
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
-    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
+    AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.95);
     EXPECT_FALSE(plan.empty());
     for (auto s : plan) cerr << s.toString() << endl;
 }
@@ -711,12 +710,12 @@ TEST(PlannerTests, RHRSAStarSingleRibbonTSP) {
     RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitAllRibbons);
     ribbonManager.add(0, 20, 50, 20);
     ribbonManager.add(0, 40, 50, 40);
-    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
+    AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x, start.y);
-        auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan[1].heading == start.heading;
         start = plan[1];
@@ -733,12 +732,12 @@ TEST(PlannerTests, RHRSAStarTest5TspRibbons) {
     ribbonManager.add(0, 60, 20, 60);
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
-    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
+    AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x, start.y);
-        auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan[1].heading == start.heading;
         start = plan[1];
@@ -755,12 +754,12 @@ TEST(PlannerTests, RHRSAStarTest6DubinsRibbons) {
     ribbonManager.add(0, 60, 20, 60);
     ribbonManager.add(0, 80, 20, 80);
     ribbonManager.add(0, 100, 20, 100);
-    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
+    AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x, start.y);
-        auto plan = planner.plan(ribbonManager, start, DynamicObstaclesManager(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan[1].heading == start.heading;
         start = plan[1];
@@ -771,24 +770,22 @@ TEST(PlannerTests, RHRSAStarTest6DubinsRibbons) {
 }
 
 TEST(PlannerTests, RHRSAStarSeparateThreadTest) {
-    // has memory leak with Valgrind despite being the same as RHRSAStarTest3 but in a spawned thread
-    // and with the planner as a smart pointer
-    auto planner = std::unique_ptr<Planner>(new AStarPlanner(2.3, 8, 2.5, 16, make_shared<Map>()));
-    Path path;
-    path.add(10, 10);path.add(20, 10);path.add(20, 20);path.add(10, 20);
-    planner->addToCover(path.get());
+    auto planner = std::unique_ptr<Planner>(new AStarPlanner);
+    RibbonManager ribbonManager;
+    ribbonManager.add(10, 10, 20, 10);
+    ribbonManager.add(20, 10, 20, 20);
+    ribbonManager.add(20, 30, 10, 30);
+    ribbonManager.add(10, 20, 10, 10);
     State start(0, 0, 0, 1, 1);
     std::thread t ([&]{
-        while(path.size()) {
-            cerr << start.toString() << endl;
-            auto newlyCovered = path.removeNewlyCovered(start.x, start.y);
-            if (!newlyCovered.empty()) {
-                cerr << "Covered a point near " << start.x << ", " << start.y << endl;
-            }
-            auto plan = planner->plan(newlyCovered, start, DynamicObstaclesManager(), 0.95);
+        while(!ribbonManager.done()) {
+            ribbonManager.cover(start.x, start.y);
+            auto plan = planner->plan(ribbonManager, start, plannerConfig, 0.95);
             ASSERT_FALSE(plan.empty());
             start = plan[1];
             ASSERT_LT(start.time, 60);
+            cerr << "Remaining " << ribbonManager.dumpRibbons() << endl;
+            cerr << start.toString() << endl;
         }
     });
     t.join();
@@ -819,6 +816,14 @@ TEST(PlannerTests, VisualizationTest) {
 
 
 int main(int argc, char **argv){
+    auto f = [] () -> double {
+        struct timespec t{};
+        clock_gettime(CLOCK_REALTIME, &t);
+        return t.tv_sec + t.tv_nsec * 1e-9;
+    };
+    plannerConfig.setNowFunction(f);
+    plannerConfig.setMap(make_shared<Map>());
+    plannerConfig.setObstacles(DynamicObstaclesManager());
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

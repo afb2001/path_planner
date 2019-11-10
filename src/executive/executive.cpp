@@ -2,6 +2,8 @@
 #include <fstream>
 #include <wait.h>
 #include <future>
+#include <rosconsole/macros_generated.h>
+#include <memory>
 #include "ExecutiveInternalsManager.h"
 #include "executive.h"
 #include "../planner/SamplingBasedPlanner.h"
@@ -15,13 +17,15 @@ Executive::Executive(TrajectoryPublisher *controlReceiver)
 {
     m_TrajectoryPublisher = controlReceiver;
 
-    startThreads();
+    m_PlannerConfig.setNowFunction([&] { return m_TrajectoryPublisher->getTime(); });
+
+//    startThreads();
 }
 
 Executive::~Executive() {
     terminate();
-    m_PlanningFuture.wait_for(chrono::seconds(1));
-    m_TrajectoryPublishingFuture.wait_for(chrono::seconds(1));
+    m_PlanningFuture.wait_for(chrono::seconds(2));
+//    m_TrajectoryPublishingFuture.wait_for(chrono::seconds(1));
 }
 
 double Executive::getCurrentTime()
@@ -133,30 +137,6 @@ void Executive::planLoop() {
     }
 }
 
-void Executive::sendAction() {
-    int sleep = 50; // for 20 Hz
-    while (m_Running)
-    {
-        // if m_Pause, block until !m_Pause
-        unique_lock<mutex> lk(m_PauseMutex);
-        m_PauseCv.wait(lk, [=]{return !m_Pause;});
-//        cerr << "sendAction unblocked (with the lock)" << endl;
-        lk.unlock();
-//        cerr << "sendAction released the lock" << endl;
-        auto actions = m_InternalsManager.getActions();
-//        cerr << "sendAction got path actions" << endl;
-        if (actions.empty())
-            continue;
-//        cerr << "and they aren't null" << endl;
-        m_TrajectoryPublisher->publishTrajectory(actions);
-//        cerr << "sendAction published trajectory" << endl;
-        this_thread::sleep_for(std::chrono::milliseconds(sleep));
-
-//        cerr << "sendAction asking if planner is dead" << endl;
-//        if (plannerIsDead()) pause();
-    }
-}
-
 // fix the moving of start
 void Executive::requestPath()
 {
@@ -175,7 +155,6 @@ void Executive::requestPath()
 //        cerr << "requestPath released the lock" << endl;
 
         if (m_RibbonManager.done())
-//        if (m_InternalsManager.finish())
         {
             this_thread::sleep_for(chrono::milliseconds(1000));
             cerr << "Finished path; pausing" << endl;
@@ -187,16 +166,13 @@ void Executive::requestPath()
 
         if (m_MapMutex.try_lock()) {
             if (m_NewMap) {
-                m_Planner->updateMap(m_NewMap);
+                m_PlannerConfig.setMap(m_NewMap);
             }
             m_NewMap = nullptr;
             m_MapMutex.unlock();
         }
 
         start = m_TrajectoryPublisher->getTime();
-//        auto newlyCoveredList = m_InternalsManager.getNewlyCovered();
-//        vector<pair<double, double>> newlyCovered;
-//        for (auto p : newlyCoveredList) newlyCovered.emplace_back(p.x, p.y);
         vector<State> plan;
 //        cerr << "ROS time is now " << m_TrajectoryPublisher->getTime() << endl;
         auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
@@ -205,24 +181,26 @@ void Executive::requestPath()
         }
 //        cerr << "Calling planner with state " << startState.toString() << endl;
         try {
-            // change this line to use controller's starting estimate
-//            plan = m_Planner->plan(newlyCovered, m_InternalsManager.getStart(), DynamicObstaclesManager(), 0.95);
             // TODO! -- low-key race condition with the ribbon manager here but it might be fine
             // NOTE: changed the time remaining from 0.95 to 0.7 to hopefully allow the controller to update
             // its estimates of our trajectory
-            m_Planner->setK(K); // not super elegant but I didn't want to keep adding more parameters
-                                   // At some point I should make like a config object that gets passed as part of the plan call
-            plan = m_Planner->plan(m_RibbonManager, startState, DynamicObstaclesManager(),
-                                   start + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime(),
-                                   MaxSpeed, TurningRadius, CoverageMaxSpeed, CoverageTurningRadius);
-        } catch (...) {
-            cerr << "Exception thrown while planning; pausing" << endl;
+            m_PlannerConfig.setObstacles(m_DynamicObstaclesManager);
+            plan = m_Planner->plan(m_RibbonManager, startState, m_PlannerConfig,
+                                   start + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
+        }
+        catch(const std::exception& e) {
+            cerr << "Exception thrown while planning:" << endl;
+            cerr << e.what() << endl;
+            cerr << "Pausing." << endl;
+            pause();
+        }
+        catch (...) {
+            cerr << "Unknown exception thrown while planning; pausing" << endl;
             pause();
             throw;
         }
 
 //        cerr << "Setting new path of length " << plan.size() << endl;
-//        m_InternalsManager.setNewPath(plan);
         if (!plan.empty()) {
             m_TrajectoryPublisher->publishTrajectory(plan);
         }
@@ -231,9 +209,8 @@ void Executive::requestPath()
         sleeptime = (end - start <= c_PlanningTimeSeconds) ? ((int)((c_PlanningTimeSeconds - (end - start)) * 1000)) : 0;
 
         this_thread::sleep_for(chrono::milliseconds(sleeptime));
-
-//        if (plannerIsDead()) pause();
     }
+    cerr << "Planner thread exiting." << endl;
 }
 
 void Executive::addToCover(int x, int y)
@@ -245,6 +222,8 @@ void Executive::startPlanner(const string& mapFile, double latitude, double long
 {
     cerr << "Starting planner" << endl;
 
+    cerr << m_RibbonManager.dumpRibbons() << endl;
+
     shared_ptr<Map> map;
     try {
         map = make_shared<GeoTiffMap>(mapFile, longitude, latitude);
@@ -252,8 +231,9 @@ void Executive::startPlanner(const string& mapFile, double latitude, double long
     catch (...) {
         map = make_shared<Map>();
     }
-//    m_Planner = std::unique_ptr<Planner>(new Planner(2.3, 8, Map()));
-    m_Planner = std::unique_ptr<Planner>(new AStarPlanner(MaxSpeed, TurningRadius, map));
+    this->m_PlannerConfig.setMap(map);
+
+    m_Planner = std::unique_ptr<Planner>(new AStarPlanner);
 
     // assume you've already set up path to cover
 //    vector<pair<double, double>> toCover;
@@ -269,7 +249,6 @@ void Executive::startPlanner(const string& mapFile, double latitude, double long
 
 void Executive::startThreads()
 {
-    m_Running = true;
 //    cerr << "Starting thread to publish to controller" << endl;
 //    m_TrajectoryPublishingFuture = async(launch::async, &Executive::sendAction, this);
     cerr << "Starting thread to listen to planner" << endl;
@@ -367,11 +346,11 @@ void Executive::clearRibbons() {
 
 void Executive::setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed,
                                         double coverageTurningRadius, int k) {
-    MaxSpeed = maxSpeed;
-    TurningRadius = turningRadius;
-    CoverageMaxSpeed = coverageMaxSpeed;
-    CoverageTurningRadius = coverageTurningRadius;
-    K = k;
+    m_PlannerConfig.setMaxSpeed(maxSpeed);
+    m_PlannerConfig.setTurningRadius(turningRadius);
+    m_PlannerConfig.setCoverageMaxSpeed(coverageMaxSpeed);
+    m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
+    m_PlannerConfig.setBranchingFactor(k);
 }
 
 void Executive::startPlanner() {

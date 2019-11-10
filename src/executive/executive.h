@@ -38,15 +38,17 @@ public:
 
     static double getCurrentTime();
 
-    double MaxSpeed = 2.3;
-    double TurningRadius = 8;
-    double CoverageMaxSpeed = 2.3;
-    double CoverageTurningRadius = 16;
-    int K = 9;
+//    double MaxSpeed = 2.3;
+//    double TurningRadius = 8;
+//    double CoverageMaxSpeed = 2.3;
+//    double CoverageTurningRadius = 16;
+//    int K = 9;
 
     void setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed, double coverageTurningRadius, int k);
 
     void setPlannerVisualization(bool visualize, const std::string& visualizationFilePath);
+
+
 
 private:
 
@@ -60,6 +62,11 @@ private:
     double m_LastUpdateTime = 1;
     double m_LastHeading = 0; // TODO! -- use moving average or something
     State m_LastState;
+
+    // TODO! -- use ROS_INFO
+    PlannerConfig m_PlannerConfig = PlannerConfig(&std::cerr);
+
+    Visualizer::UniquePtr m_Visualizer;
 
     DynamicObstaclesManager m_DynamicObstaclesManager;
 
@@ -82,8 +89,6 @@ private:
     static constexpr double c_PlanningTimeSeconds = 1;
 
     void requestPath();
-
-    void sendAction();
 
     /**
      * Clear m_PauseAll and notify threads blocked on it.

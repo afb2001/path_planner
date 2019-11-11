@@ -125,7 +125,7 @@ RibbonManager& Vertex::ribbonManager() {
 
 std::string Vertex::toString() const {
     std::stringstream stream;
-    stream << "State: (" << state().toString() << "), f: " << m_CurrentCost + m_ApproxToGo << ", g: " << m_CurrentCost
+    stream << "State: (" << state().toStringRad() << "), f: " << m_CurrentCost + m_ApproxToGo << ", g: " << m_CurrentCost
         << ", h: " << m_ApproxToGo;
     return stream.str();
 }

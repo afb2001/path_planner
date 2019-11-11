@@ -29,6 +29,7 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
     m_Config = std::move(config); // gotta do this before we can call now()
     double endTime = timeRemaining + now();
     std::cerr << "Starting to plan" << std::endl;
+    m_RibbonManager = ribbonManager;
     m_ExpandedCount = 0;
     m_StartStateTime = start.time;
     m_Samples.clear();
@@ -113,8 +114,4 @@ void AStarPlanner::expandToCoverSpecificSamples(Vertex::SharedPtr root, const st
     }
 }
 
-void AStarPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag) {
-    if (m_Config.visualizations()) {
-        m_Config.visualizationStream() << v->toString() << " " << tag << std::endl;
-    }
-}
+

@@ -32,8 +32,6 @@ protected:
 
     void expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples, const DynamicObstaclesManager& obstacles);
 
-    void visualizeVertex(Vertex::SharedPtr v, const std::string& tag);
-
     static constexpr double c_InitialSamples = 1024;
 
 private:

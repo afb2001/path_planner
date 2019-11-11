@@ -42,6 +42,7 @@ SamplingBasedPlanner::SamplingBasedPlanner() {}
 void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     if (!vertex->isRoot() && vertex->parentEdge()->infeasible()) return;
     m_VertexQueue.push_back(vertex);
+    visualizeVertex(vertex, "vertex");
     std::push_heap(m_VertexQueue.begin(), m_VertexQueue.end(), getVertexComparator());
 }
 
@@ -197,6 +198,12 @@ std::vector<State> SamplingBasedPlanner::plan(const RibbonManager&, const State&
         expand(vertex, m_Config.obstacles());
     }
     return tracePlan(vertex, false, m_Config.obstacles()).get();
+}
+
+void SamplingBasedPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag) {
+    if (m_Config.visualizations()) {
+        m_Config.visualizationStream() << v->toString() << " " << tag << std::endl;
+    }
 }
 
 //void SamplingBasedPlanner::setK(int k) {

@@ -51,6 +51,8 @@ protected:
 
     virtual int k() const;
 
+    void visualizeVertex(Vertex::SharedPtr v, const std::string& tag);
+
 private:
     std::vector<std::shared_ptr<Vertex>> m_VertexQueue;
 

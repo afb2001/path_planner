@@ -25,6 +25,7 @@ double Edge::computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesMa
     double q[3];
     double lengthSoFar = 0;
     double length = dubins_path_length(&dubinsPath);
+    if (length > maxSpeed * 30) length = maxSpeed * 30; // truncate longer edges than 30 seconds
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
 

@@ -701,6 +701,9 @@ TEST(PlannerTests, RHRSAStarTest4aRibbons) {
     ribbonManager.add(0, 100, 20, 100);
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_test_visualizations"));
+    plannerConfig.setVisualizations(true);
+    plannerConfig.setVisualizer(&visualizer);
     auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.95);
     EXPECT_FALSE(plan.empty());
     for (auto s : plan) cerr << s.toString() << endl;

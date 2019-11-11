@@ -55,7 +55,9 @@ void Executive::planLoop() {
         unique_lock<mutex> lock(m_CancelLock);
         m_CancelCV.wait_for(lock, chrono::seconds(2), [=] { return !m_PlannerCancelled; });
         if (m_PlannerCancelled) {
-            cerr << "Planner initialization timed out. Cancel flag is still set." << endl;
+            cerr << "Planner initialization timed out. Cancel flag is still set.\n" <<
+                "This is likely the result of a race condition I haven't gotten around to fixing yet.\n" <<
+                "You're gonna have to restart the planner node if you want to keep using it." << endl;
             return;
         }
     }

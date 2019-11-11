@@ -57,7 +57,7 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
         expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles());
         // On the first iteration add INITIAL_SAMPLES samples, otherwise just double them
         if (m_Samples.size() < c_InitialSamples) addSamples(generator, c_InitialSamples);
-        else addSamples(generator);
+        else addSamples(generator, c_InitialSamples); // linearly increase samples
         auto v = aStar(m_Config.obstacles(), endTime);
         if (!bestVertex || (v && v->f() < bestVertex->f())) {
 //            if (v) *m_Output << "Found a plan with final fvalue " << v->f() << std::endl;

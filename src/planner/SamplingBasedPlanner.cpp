@@ -41,9 +41,10 @@ SamplingBasedPlanner::SamplingBasedPlanner() {}
 
 void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     if (!vertex->isRoot() && vertex->parentEdge()->infeasible()) return;
+    vertex->approxToGo(); // make sure it is calculated
     m_VertexQueue.push_back(vertex);
-    visualizeVertex(vertex, "vertex");
     std::push_heap(m_VertexQueue.begin(), m_VertexQueue.end(), getVertexComparator());
+    visualizeVertex(vertex, "vertex");
 }
 
 std::shared_ptr<Vertex> SamplingBasedPlanner::popVertexQueue() {
@@ -110,6 +111,10 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
                 bestSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.coverageTurningRadius(), false));
                 bestSamples.back()->parentEdge()->computeApproxCost();
                 std::push_heap(bestSamples.begin(), bestSamples.end(), dubinsComp);
+                if (bestSamples.size() > k()) {
+                    std::pop_heap(bestSamples.begin(), bestSamples.end(), dubinsComp);
+                    bestSamples.pop_back();
+                }
             }
         } else {
             regularDone = true;
@@ -121,6 +126,10 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
                 bestCoverageSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.coverageTurningRadius(), true));
                 bestCoverageSamples.back()->parentEdge()->computeApproxCost();
                 std::push_heap(bestCoverageSamples.begin(), bestCoverageSamples.end(), dubinsComp);
+                if (bestCoverageSamples.size() > k()) {
+                    std::pop_heap(bestCoverageSamples.begin(), bestCoverageSamples.end(), dubinsComp);
+                    bestCoverageSamples.pop_back();
+                }
             }
         } else {
             coverageDone = true;

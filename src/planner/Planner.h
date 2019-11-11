@@ -8,42 +8,50 @@
 #include "search/Vertex.h"
 #include "utilities/Path.h"
 #include "utilities/Plan.h"
+#include "PlannerConfig.h"
 
 class Planner {
 public:
-    Planner(double maxSpeed, double maxTurningRadius, Map::SharedPtr staticMap);
+    Planner();
 
     virtual ~Planner() = default;
 
-    void addToCover(const std::vector<std::pair<double, double>>& points);
+//    void addToCover(const std::vector<std::pair<double, double>>& points);
 
-    void clearToCover();
+//    void clearToCover();
 
-    virtual std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
-                                    DynamicObstaclesManager dynamicObstacles, double timeRemaining);
+//    virtual std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
+//                                    DynamicObstaclesManager dynamicObstacles, double timeRemaining);
+
+//    virtual std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
+//            DynamicObstaclesManager dynamicObstacles, double timeRemaining);
 
     virtual std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
-            DynamicObstaclesManager dynamicObstacles, double timeRemaining);
+                            PlannerConfig config, double timeRemaining);
 
-    std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
-                            DynamicObstaclesManager dynamicObstacles, double timeRemaining, double maxSpeed,
-                            double turningRadius, double coverageMaxSpeed, double coverageTurningRadius);
+    Plan tracePlan(const std::shared_ptr<Vertex>& v, bool smoothing, const DynamicObstaclesManager& obstacles);
 
-    Plan tracePlan(const std::shared_ptr<Vertex>& v, bool smoothing, DynamicObstaclesManager* obstacles);
+    /**
+     * Manually set the planner config. Meant for testing.
+     * @param config
+     */
+    void setConfig(PlannerConfig config);
 
-    void updateMap(Map::SharedPtr map);
+//    void updateMap(Map::SharedPtr map);
 
-    virtual void setK(int k);
+//    virtual void setK(int k);
 
 protected:
-    double m_MaxSpeed, m_TurningRadius, m_CoverageMaxSpeed, m_CoverageTurningRadius;
-    Path m_PointsToCover;
+//    double m_MaxSpeed, m_TurningRadius, m_CoverageMaxSpeed, m_CoverageTurningRadius;
+//    Path m_PointsToCover;
 
-    Map::SharedPtr m_Map;
+//    Map::SharedPtr m_Map;
 
-    std::ostream* m_Output = &std::cerr;
+//    std::ostream* m_Output = &std::cerr;
 
     double now() const;
+
+    PlannerConfig m_Config;
 
 };
 

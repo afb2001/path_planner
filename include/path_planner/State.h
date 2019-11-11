@@ -164,6 +164,11 @@ class State
         return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading*180/M_PI) + " " + std::to_string(speed) + " " + std::to_string(time);
     }
 
+    std::string toStringRad() const
+    {
+        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(time);
+    }
+
     void print()
     {
         std::cout << x << " " << y << " " << heading << " " << speed << " " << time << std::endl;

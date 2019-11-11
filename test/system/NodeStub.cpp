@@ -5,7 +5,7 @@ using std::endl;
 
 void NodeStub::publishTrajectory(std::vector<State> trajectory) {
     m_LastTrajectory = std::move(trajectory);
-//    cerr << "NodeStub published trajectory: \n";
+    cerr << "NodeStub published trajectory: \n";
 //    for (auto s : trajectory) cerr << s.toString() << endl;
 //    cerr << endl;
 }
@@ -49,4 +49,14 @@ std::vector<State> NodeStub::lastTrajectory() const {
 
 bool NodeStub::allDoneCalled() const {
     return m_AllDoneCalled;
+}
+
+double NodeStub::getTime() const {
+    struct timespec t{};
+    clock_gettime(CLOCK_REALTIME, &t);
+    return t.tv_sec + t.tv_nsec * 1e-9;
+}
+
+void NodeStub::displayRibbons(const RibbonManager& ribbonManager) {
+    cerr << "NodeStub Displaying " << ribbonManager.dumpRibbons() << endl;
 }

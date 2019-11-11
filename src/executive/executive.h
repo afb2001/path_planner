@@ -7,6 +7,7 @@
 #include "../trajectory_publisher.h"
 #include "../planner/Planner.h"
 #include <future>
+#include <fstream>
 
 class Executive
 {
@@ -24,7 +25,10 @@ public:
 
     void updateDynamicObstacle(uint32_t mmsi, State obstacle);
 
+    void startPlanner();
     void startPlanner(const string& mapFile, double latitude, double longitude);
+
+    void cancelPlanner();
 
     void refreshMap(std::string pathToMapFile, double latitude, double longitude);
 
@@ -34,22 +38,35 @@ public:
 
     static double getCurrentTime();
 
-    double MaxSpeed = 2.3;
-    double TurningRadius = 8;
-    double CoverageMaxSpeed = 2.3;
-    double CoverageTurningRadius = 16;
-    int K = 9;
+//    double MaxSpeed = 2.3;
+//    double TurningRadius = 8;
+//    double CoverageMaxSpeed = 2.3;
+//    double CoverageTurningRadius = 16;
+//    int K = 9;
 
     void setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed, double coverageTurningRadius, int k);
+
+    void setPlannerVisualization(bool visualize, const std::string& visualizationFilePath);
+
+
 
 private:
 
     bool m_Running = false;
+    bool m_PlannerCancelled = false;
+    mutex m_CancelLock;
+    condition_variable m_CancelCV;
+
     ExecutiveInternalsManager m_InternalsManager;
     RibbonManager m_RibbonManager;
     double m_LastUpdateTime = 1;
     double m_LastHeading = 0; // TODO! -- use moving average or something
     State m_LastState;
+
+    // TODO! -- use ROS_INFO
+    PlannerConfig m_PlannerConfig = PlannerConfig(&std::cerr);
+
+    Visualizer::UniquePtr m_Visualizer;
 
     DynamicObstaclesManager m_DynamicObstaclesManager;
 
@@ -73,8 +90,6 @@ private:
 
     void requestPath();
 
-    void sendAction();
-
     /**
      * Clear m_PauseAll and notify threads blocked on it.
      */
@@ -89,6 +104,8 @@ private:
      * Make sure the threads can exit and kill the planner (if it's running).
      */
     void terminate();
+
+    void planLoop();
 
     static std::vector<Distribution> inventDistributions(State obstacle);
 };

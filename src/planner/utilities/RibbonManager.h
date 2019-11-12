@@ -44,6 +44,8 @@ public:
     const std::list<Ribbon>& get() const;
 
     std::vector<State> findStatesOnRibbonsOnCircle(const State& center, double radius) const;
+
+    std::vector<State> findNearStatesOnRibbons(const State& start, double radius) const;
 private:
     Heuristic m_Heuristic;
     double m_TurningRadius = -1;

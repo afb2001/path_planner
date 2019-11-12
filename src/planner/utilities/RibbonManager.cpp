@@ -292,3 +292,17 @@ std::vector<State> RibbonManager::findStatesOnRibbonsOnCircle(const State& cente
     return states;
 }
 
+std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, double radius) const {
+    std::vector<State> states;
+    auto h = start.yaw() + M_PI_2;
+    auto x1 = start.x + cos(h) * radius;
+    auto x2 = start.x - cos(h) * radius;
+    auto y1 = start.y + sin(h) * radius;
+    auto y2 = start.y - sin(h) * radius;
+    for (const Ribbon& r : m_Ribbons) {
+        auto s = r.startAsState();
+        auto h2 = s.yaw() + M_PI_2;
+    }
+    return states;
+}
+

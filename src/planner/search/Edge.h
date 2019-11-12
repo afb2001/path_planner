@@ -6,6 +6,7 @@
 #include "../../common/dynamic_obstacles/DynamicObstaclesManager.h"
 #include "../utilities/Path.h"
 #include "../utilities/Plan.h"
+#include "../PlannerConfig.h"
 
 extern "C" {
 #include "dubins.h"
@@ -29,6 +30,7 @@ public:
 
     double computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesManager& obstacles, double maxSpeed, double maxTurningRadius);
     double computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesManager& obstacles);
+    double computeTrueCost(const PlannerConfig& config);
 
     double trueCost() const;
 

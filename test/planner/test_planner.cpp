@@ -815,6 +815,7 @@ TEST(PlannerTests, VisualizationTest) {
     config.setMap(make_shared<Map>());
     config.setObstacles(DynamicObstaclesManager());
     auto plan = planner.plan(ribbonManager, start, config, 0.95);
+    EXPECT_FALSE(plan.empty());
 }
 
 

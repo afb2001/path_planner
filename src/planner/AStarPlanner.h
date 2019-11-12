@@ -32,7 +32,7 @@ protected:
 
     void expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples, const DynamicObstaclesManager& obstacles);
 
-    static constexpr double c_InitialSamples = 1024;
+    static constexpr double c_InitialSamples = 100;
 
 private:
 //    std::vector<State> plan(const State& start, DynamicObstaclesManager dynamicObstacles, double timeRemaining);

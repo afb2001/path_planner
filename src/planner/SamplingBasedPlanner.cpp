@@ -83,12 +83,12 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
         s.speed = m_Config.maxSpeed();
         // TODO! -- what heading for points?
         auto destinationVertex = Vertex::connect(sourceVertex, s, m_Config.turningRadius(), false);
-        destinationVertex->parentEdge()->computeTrueCost(m_Config.map(), obstacles);
+        destinationVertex->parentEdge()->computeTrueCost(m_Config);
         pushVertexQueue(destinationVertex);
         if (m_Config.coverageMaxSpeed() > 0) {
             s.speed = m_Config.coverageMaxSpeed();
             destinationVertex = Vertex::connect(sourceVertex, s, m_Config.coverageTurningRadius(), true);
-            destinationVertex->parentEdge()->computeTrueCost(m_Config.map(), obstacles);
+            destinationVertex->parentEdge()->computeTrueCost(m_Config);
             pushVertexQueue(destinationVertex);
         }
     }
@@ -140,7 +140,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
         if (i >= bestSamples.size()) break;
         auto destinationVertex = bestSamples.front();
         std::pop_heap(bestSamples.begin(), bestSamples.end() - i, dubinsComp);
-        destinationVertex->parentEdge()->computeTrueCost(m_Config.map(), obstacles);
+        destinationVertex->parentEdge()->computeTrueCost(m_Config);
         pushVertexQueue(destinationVertex);
     }
     // and again for coverage edges
@@ -148,7 +148,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
         if (i >= bestCoverageSamples.size()) break;
         auto destinationVertex = bestCoverageSamples.front();
         std::pop_heap(bestCoverageSamples.begin(), bestCoverageSamples.end() - i, dubinsComp);
-        destinationVertex->parentEdge()->computeTrueCost(m_Config.map(), obstacles);
+        destinationVertex->parentEdge()->computeTrueCost(m_Config);
         pushVertexQueue(destinationVertex);
     }
     m_ExpandedCount++;

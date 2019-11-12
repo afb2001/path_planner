@@ -42,7 +42,6 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
     StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
     auto startV = Vertex::makeRoot(start, m_RibbonManager);
     startV->computeApproxToGo();
-    visualizeVertex(startV, "start");
     shared_ptr<Vertex> bestVertex(nullptr);
     auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
 //    if (m_UseRibbons) {
@@ -52,6 +51,7 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
 //    }
     while (now() < endTime) {
         clearVertexQueue();
+        visualizeVertex(startV, "start");
         pushVertexQueue(startV);
         // manually expand starting node to include states on nearby ribbons far enough away such that the
         expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles());
@@ -64,7 +64,7 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
 //            else *m_Output << "Returned from A* with no plan" << std::endl;
             // found a (better) plan
             bestVertex = v;
-            visualizeVertex(v, "goal");
+            if (v) visualizeVertex(v, "goal");
         }
     }
     *m_Config.output() << m_Samples.size() << " total samples, " << m_ExpandedCount << " expanded" << std::endl;
@@ -108,7 +108,7 @@ void AStarPlanner::expandToCoverSpecificSamples(Vertex::SharedPtr root, const st
         for (auto s : samples) {
             s.speed = m_Config.coverageMaxSpeed();
             auto destinationVertex = Vertex::connect(root, s, m_Config.coverageTurningRadius(), true);
-            destinationVertex->parentEdge()->computeTrueCost(m_Config.map(), obstacles);
+            destinationVertex->parentEdge()->computeTrueCost(m_Config);
             pushVertexQueue(destinationVertex);
         }
     }

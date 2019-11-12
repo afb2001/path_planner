@@ -217,6 +217,15 @@ class State
         return h;
     }
 
+    /**
+     * Set the heading with a yaw value.
+     * @param yaw1
+     * @return
+     */
+    double yaw(double yaw1) {
+        heading = M_PI_2 - yaw1;
+    }
+
     double timeUntil(const State& other) const {
         return other.time - time;
     }

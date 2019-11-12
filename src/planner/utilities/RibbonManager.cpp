@@ -295,13 +295,29 @@ std::vector<State> RibbonManager::findStatesOnRibbonsOnCircle(const State& cente
 std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, double radius) const {
     std::vector<State> states;
     auto h = start.yaw() + M_PI_2;
+    // get points one radius away from start in the directions perpendicular to its heading
     auto x1 = start.x + cos(h) * radius;
     auto x2 = start.x - cos(h) * radius;
     auto y1 = start.y + sin(h) * radius;
     auto y2 = start.y - sin(h) * radius;
+
     for (const Ribbon& r : m_Ribbons) {
         auto s = r.startAsState();
         auto h2 = s.yaw() + M_PI_2;
+
+        // project them onto ribbon
+        auto proj1 = r.getProjection(x1, y1);
+        auto proj2 = r.getProjection(x2, y2);
+
+        // go another half radius out
+
+        // extend that ahead until it reaches the circle around (x1, y1)
+
+        // go one radius along the line from (x1, y1) to that point
+
+        // project that back onto the ribbon
+
+        // done. that's the state.
     }
     return states;
 }

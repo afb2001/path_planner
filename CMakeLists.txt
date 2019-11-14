@@ -83,7 +83,7 @@ add_library(executive
 
 target_link_libraries(executive planner path_planner_common)
 
-add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp)
+add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp src/controller_test_node.cpp)
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp)

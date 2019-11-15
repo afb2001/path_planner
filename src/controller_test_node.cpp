@@ -19,8 +19,6 @@
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
 #include "path_planner/TrajectoryDisplayer.h"
-#include <path_planner/path_plannerConfig.h>
-#include <dynamic_reconfigure/server.h>
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCInconsistentNamingInspection"
@@ -30,7 +28,7 @@
 /**
  * Node to act as interface between ROS and path planning system.
  */
-class ControllerTest
+class ControllerTest : public TrajectoryDisplayer
 {
 public:
     explicit ControllerTest(std::string name):
@@ -72,40 +70,52 @@ public:
 
         std::vector<std::pair<double, double>> currentPath;
 
-        std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
+        std::cerr << "Received " << goal->path.poses.size() / 2 << " survey lines" << std::endl;
 
-        // transit mode
-        if (goal->path.poses.size() > 2) {
-            project11_transformations::LatLongToMap::Request request;
-            project11_transformations::LatLongToMap::Response response;
-            request.wgs84.position = goal->path.poses.back().pose.position;
-            if (m_lat_long_to_map_client.call(request, response)) {
-//                m_Executive->addToCover(response.map.point.x, response.map.point.y);
+        m_Trajectory.clear();
+
+        for (unsigned long i = 0; i < goal->path.poses.size() - 1; i += 2) {
+            auto startPoint = convertToMap(goal->path.poses[i]);
+            auto endPoint = convertToMap(goal->path.poses[i + 1]);
+            State start(startPoint.x, startPoint.y, 0, c_MaxSpeed, getTime() + 10);
+            State end(endPoint.x, endPoint.y, 0, 0, 0);
+            start.setHeadingTowards(end);
+            State current = start;
+            for (int j = 0; current.x < end.x; j++){
+                m_Trajectory.push_back(current);
+                current.setEstimate(0.5 * j, start);
             }
+            m_Trajectory.push_back(current);
+        }
+
+        cerr << "Publishing trajectory of length " << m_Trajectory.size() << " to controller" << endl;
+
+        publishTrajectory(m_Trajectory);
+        displayTrajectory(m_Trajectory, true);
+
+        auto t = async(launch::async, [&]{
+            auto t = getTime();
+            cerr << "Starting display loop at time " << t << endl;
+            int i = 0;
+            while (i < m_Trajectory.size()) {
+                t = getTime();
+                while (i < m_Trajectory.size() && m_Trajectory[i].time < t) i++;
+                if (i > 0) displayDot(m_Trajectory[i - 1]);
+                sleep(1);
+            }
+            allDone();
+        });
+    }
+
+    geometry_msgs::Point convertToMap(geographic_msgs::GeoPoseStamped pose) {
+        project11_transformations::LatLongToMap::Request request;
+        project11_transformations::LatLongToMap::Response response;
+        request.wgs84.position = pose.pose.position;
+        if (m_lat_long_to_map_client.call(request, response)) {
+            return response.map.point;
         } else {
-            for (int i = 0; i + 1 < goal->path.poses.size(); i++) {
-                // assume points represent track-line pairs
-                geographic_msgs::GeoPoseStamped startPose = goal->path.poses[i];
-                geographic_msgs::GeoPoseStamped endPose = goal->path.poses[i + 1];
-                geometry_msgs::PointStamped::_point_type start;
-                geometry_msgs::PointStamped::_point_type end;
-
-                project11_transformations::LatLongToMap::Request request;
-                project11_transformations::LatLongToMap::Response response;
-
-                // send to LatLongToMap
-                request.wgs84.position = startPose.pose.position;
-                if (m_lat_long_to_map_client.call(request, response)) {
-                    start = response.map.point;
-                }
-                currentPath.emplace_back(start.x, start.y);
-                request.wgs84.position = endPose.pose.position;
-                if (m_lat_long_to_map_client.call(request, response)) {
-                    end = response.map.point;
-                }
-
-//                m_Executive->addRibbon(start.x, start.y, end.x, end.y);
-            }
+            cerr << "LatLongToMap failed" << endl;
+            return response.map.point;
         }
     }
 
@@ -121,7 +131,7 @@ public:
 
     void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg)
     {
-        // TODO!
+
     }
 
     void headingCallback(const marine_msgs::NavEulerStamped::ConstPtr& inmsg)
@@ -134,7 +144,7 @@ public:
         m_current_speed = inmsg->twist.linear.x; // this will change once /sog is a vector
     }
 
-    void publishTrajectory(vector<State> trajectory) final
+    void publishTrajectory(vector<State> trajectory)
     {
         path_planner::Trajectory reference;
         for (State s : trajectory) {
@@ -142,11 +152,6 @@ public:
         }
         reference.trajectoryNumber = ++m_TrajectoryCount;
         m_reference_trajectory_pub.publish(reference);
-    }
-
-    void displayTrajectory(vector<State> trajectory, bool plannerTrajectory) override
-    {
-        TrajectoryDisplayer::displayTrajectory(trajectory, plannerTrajectory);
     }
 
     State getEstimatedState(double desiredTime)
@@ -234,6 +239,22 @@ public:
         geographic_visualization_msgs::GeoVizItem geoVizItem;
         geoVizItem.id = "planner_start";
         m_display_pub.publish(geoVizItem);
+        geoVizItem.id = "reference_tracker";
+        m_display_pub.publish(geoVizItem);
+    }
+
+    void displayDot(const State& s) {
+        cerr << "Displaying dot at state " << s.toString() << endl;
+        geographic_visualization_msgs::GeoVizItem geoVizItem;
+        geoVizItem.id = "reference_tracker";
+        geographic_visualization_msgs::GeoVizPointList displayPoints;
+        displayPoints.color.r = 1;
+        displayPoints.color.g = 1;
+        displayPoints.color.b = 1;
+        displayPoints.color.a = 0.5;
+        displayPoints.size = 8;
+        displayPoints.points.push_back(convertToLatLong(s));
+        geoVizItem.lines.push_back(displayPoints);
     }
 
 private:
@@ -241,6 +262,8 @@ private:
     ros::Publisher m_display_pub;
     ros::ServiceClient m_map_to_lat_long_client;
     actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
+
+    vector<State> m_Trajectory;
 
     // Since speed and heading are updated through different topics than position,
     // but we need them for state updates to the executive, keep the latest of each
@@ -259,6 +282,8 @@ private:
     ros::ServiceClient m_estimate_state_client;
 
     long m_TrajectoryCount = 1;
+
+    static constexpr double c_MaxSpeed = 2.0;
 };
 
 int main(int argc, char **argv)

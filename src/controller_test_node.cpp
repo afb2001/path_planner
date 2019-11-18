@@ -70,28 +70,33 @@ public:
 
         std::vector<std::pair<double, double>> currentPath;
 
-        std::cerr << "Received " << goal->path.poses.size() / 2 << " survey lines" << std::endl;
+        std::cerr << "Received " << goal->path.poses.size() - 1 << " survey line(s)" << std::endl;
 
         m_Trajectory.clear();
 
-        for (unsigned long i = 0; i < goal->path.poses.size() - 1; i += 2) {
+        double time = getTime() + 10;
+
+        for (unsigned long i = 0; i < goal->path.poses.size() - 1; i ++) {
             auto startPoint = convertToMap(goal->path.poses[i]);
             auto endPoint = convertToMap(goal->path.poses[i + 1]);
-            State start(startPoint.x, startPoint.y, 0, c_MaxSpeed, getTime() + 10);
+            State start(startPoint.x, startPoint.y, 0, c_MaxSpeed, time);
             State end(endPoint.x, endPoint.y, 0, 0, 0);
             start.setHeadingTowards(end);
+            cerr << "Adding line between\n" << start.toString() << " and\n" << end.toString() << endl;
             State current = start;
-            for (int j = 0; current.x < end.x; j++){
+            auto d = start.distanceTo(end);
+            for (int j = 0; j < d; j++){ // 2 m/s updated every half second is 1m of distance each iteration
                 m_Trajectory.push_back(current);
                 current.setEstimate(0.5 * j, start);
             }
             m_Trajectory.push_back(current);
+            time = current.time;
         }
 
         cerr << "Publishing trajectory of length " << m_Trajectory.size() << " to controller" << endl;
 
-        publishTrajectory(m_Trajectory);
         displayTrajectory(m_Trajectory, true);
+        publishTrajectory(m_Trajectory);
 
         auto t = async(launch::async, [&]{
             auto t = getTime();
@@ -100,10 +105,18 @@ public:
             while (i < m_Trajectory.size()) {
                 t = getTime();
                 while (i < m_Trajectory.size() && m_Trajectory[i].time < t) i++;
-                if (i > 0) displayDot(m_Trajectory[i - 1]);
+                if (i > 0) displayPlannerStart(m_Trajectory[i - 1]);
                 sleep(1);
+                if (m_Preempted) {
+                    break;
+                }
             }
-            allDone();
+            if (m_Preempted) {
+                m_Preempted = false;
+            } else {
+                m_ActionDone = true;
+            }
+            clearDisplay();
         });
     }
 
@@ -123,6 +136,7 @@ public:
     {
         cerr << "Canceling controller test run" << endl;
         m_action_server.setPreempted();
+        m_Preempted = true;
 
         // Should the executive stop now? Probably?
         publishControllerMessage("stop sending controls");
@@ -131,7 +145,7 @@ public:
 
     void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg)
     {
-
+        if (m_ActionDone) allDone();
     }
 
     void headingCallback(const marine_msgs::NavEulerStamped::ConstPtr& inmsg)
@@ -173,9 +187,10 @@ public:
 
     void allDone()
     {
-        std::cerr << "Planner appears to have finished" << std::endl;
+        m_ActionDone = false;
         path_planner::path_plannerResult result;
         m_action_server.setSucceeded(result);
+        std::cerr << "The times in the trajectory have now all passed. Setting the succeeded bit in the action server." << std::endl;
 
         publishControllerMessage("stop sending controls");
     }
@@ -207,6 +222,7 @@ public:
     }
 
     void displayPlannerStart(const State& state) {
+        cerr << "Displaying state " << state.toString() << endl;
         geographic_visualization_msgs::GeoVizItem geoVizItem;
         geographic_visualization_msgs::GeoVizPolygon polygon;
         geographic_visualization_msgs::GeoVizSimplePolygon simplePolygon;
@@ -255,13 +271,15 @@ public:
         displayPoints.size = 8;
         displayPoints.points.push_back(convertToLatLong(s));
         geoVizItem.lines.push_back(displayPoints);
+        m_display_pub.publish(geoVizItem);
     }
 
 private:
-    ros::NodeHandle m_node_handle;
-    ros::Publisher m_display_pub;
-    ros::ServiceClient m_map_to_lat_long_client;
+//    ros::NodeHandle m_node_handle;
+//    ros::Publisher m_display_pub;
+//    ros::ServiceClient m_map_to_lat_long_client;
     actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
+    bool m_ActionDone = false, m_Preempted = false;
 
     vector<State> m_Trajectory;
 

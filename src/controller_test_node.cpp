@@ -100,7 +100,7 @@ public:
 
         auto t = async(launch::async, [&]{
             auto t = getTime();
-            cerr << "Starting display loop at time " << t << endl;
+//            cerr << "Starting display loop at time " << t << endl;
             int i = 0;
             while (i < m_Trajectory.size()) {
                 t = getTime();
@@ -222,7 +222,7 @@ public:
     }
 
     void displayPlannerStart(const State& state) {
-        cerr << "Displaying state " << state.toString() << endl;
+//        cerr << "Displaying state " << state.toString() << endl;
         geographic_visualization_msgs::GeoVizItem geoVizItem;
         geographic_visualization_msgs::GeoVizPolygon polygon;
         geographic_visualization_msgs::GeoVizSimplePolygon simplePolygon;

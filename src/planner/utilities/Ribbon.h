@@ -31,6 +31,8 @@ public:
 
     bool contains(double x, double y, const std::pair<double, double>& projected) const;
 
+    bool containsProjection(const std::pair<double, double>& projected) const;
+
     std::string toString() const;
 
     static double minLength();

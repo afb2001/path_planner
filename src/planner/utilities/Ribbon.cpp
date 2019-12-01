@@ -35,10 +35,7 @@ std::pair<double, double> Ribbon::end() const {
 }
 
 bool Ribbon::contains(double x, double y, const std::pair<double, double>& projected) const {
-    if (((projected.first - m_StartX < -c_Tolerance && projected.first - m_EndX < -c_Tolerance) ||
-         (projected.first - m_StartX > c_Tolerance && projected.first - m_EndX > c_Tolerance)) ||
-        ((projected.second - m_StartY < -c_Tolerance && projected.second - m_EndY < -c_Tolerance) ||
-            (projected.second - m_StartY > c_Tolerance && projected.second - m_EndY > c_Tolerance))) return false;
+    if (!containsProjection(projected)) return false;
     auto d = distance(x, y);
     return d < c_RibbonWidth;
 }
@@ -82,6 +79,13 @@ State Ribbon::getProjectionAsState(double x, double y) const {
     State s(projectedX + m_StartX, projectedY + m_StartY, 0, 0, 0);
     s.setHeadingTowards(m_EndX, m_EndY);
     return s;
+}
+
+bool Ribbon::containsProjection(const std::pair<double, double>& projected) const {
+    return !(((projected.first - m_StartX < -c_Tolerance && projected.first - m_EndX < -c_Tolerance) ||
+              (projected.first - m_StartX > c_Tolerance && projected.first - m_EndX > c_Tolerance)) ||
+             ((projected.second - m_StartY < -c_Tolerance && projected.second - m_EndY < -c_Tolerance) ||
+              (projected.second - m_StartY > c_Tolerance && projected.second - m_EndY > c_Tolerance)));
 }
 
 

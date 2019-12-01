@@ -44,6 +44,7 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
     startV->computeApproxToGo();
     shared_ptr<Vertex> bestVertex(nullptr);
     auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
+    auto otherRibbonSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());
 //    if (m_UseRibbons) {
 //        for (const auto& s : m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_CoverageTurningRadius * 2 + 1)) {
 //            m_Samples.push_back(s);
@@ -55,6 +56,7 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
         pushVertexQueue(startV);
         // manually expand starting node to include states on nearby ribbons far enough away such that the
         expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles());
+        expandToCoverSpecificSamples(startV, otherRibbonSamples, m_Config.obstacles());
         // On the first iteration add INITIAL_SAMPLES samples, otherwise just double them
         if (m_Samples.size() < c_InitialSamples) addSamples(generator, c_InitialSamples);
         else addSamples(generator, c_InitialSamples); // linearly increase samples

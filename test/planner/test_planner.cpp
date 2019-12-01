@@ -218,6 +218,14 @@ TEST(UnitTests, RibbonManagerGetNearestEndpointTest) {
     EXPECT_DOUBLE_EQ(s.x, 2.6625366957003918);
 }
 
+TEST(UnitTests, RibbonManagerFindNearStatesOnRibbonsTest) {
+    RibbonManager ribbonManager;
+    ribbonManager.add(10, 10, 20, 10);
+    ribbonManager.add(2.6625366957003918, 60, 7.8363094365852275, 60);
+    auto states = ribbonManager.findNearStatesOnRibbons(State(10.1, 9.9, M_PI_2, 2.5, 1), 8);
+    for (const auto& s : states) std::cerr << s.toString() << std::endl;
+}
+
 TEST(Benchmarks, RibbonsTSPBenhcmark) {
     auto overallStart = std::chrono::system_clock::now();
     StateGenerator generator(-5000, -5000, 5000, 5000, 0, 0, 19);

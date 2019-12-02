@@ -231,7 +231,7 @@ class PLOT:
                 self.obs.append(Obs(x, y, heading, cost + h, tag))
         else:
             self.obs.append(Obs(x, y, heading, cost + h, tag))
-        if cost < 500 and tag == "vertex":
+        if tag == "vertex":
             self.maxColor = max(self.maxColor, cost + h, 1)
             self.minColor = min(self.minColor, cost + h)
 
@@ -240,6 +240,8 @@ class PLOT:
         if cost >= 500:
             return Color_BLACK
         else:
+            if not (self.minColor <= cost <= self.maxColor):
+                print ("bad cost: ", cost, self.minColor, self.maxColor)
             assert self.minColor <= cost <= self.maxColor
             r, g, b = colorsys.hsv_to_rgb(1 - ((cost - self.minColor) / self.maxColor), 0.9, 0.75)
             return r * 255, g * 255, b * 255

@@ -222,8 +222,22 @@ TEST(UnitTests, RibbonManagerFindNearStatesOnRibbonsTest) {
     RibbonManager ribbonManager;
     ribbonManager.add(10, 10, 20, 10);
     ribbonManager.add(2.6625366957003918, 60, 7.8363094365852275, 60);
-    auto states = ribbonManager.findNearStatesOnRibbons(State(10.1, 9.9, M_PI_2, 2.5, 1), 8);
+    auto s1 = State(10.1, 9.9, M_PI_2, 2.5, 1);
+    auto states = ribbonManager.findNearStatesOnRibbons(s1, 8);
     for (const auto& s : states) std::cerr << s.toString() << std::endl;
+//    double q0[3] = {10.1, 9.9, M_PI_2};
+    auto v1 = Vertex::makeRoot(s1, ribbonManager);
+    for (auto& s : states) {
+        s.speed = 2.5;
+//        double q1[3] = {s.x, s.y, s.yaw()};
+//        DubinsPath dubinsPath;
+//        int err = dubins_shortest_path(&dubinsPath, q0, q1, 8);
+        auto v2 = Vertex::connect(v1, s, 8, true);
+        v2->parentEdge()->computeApproxCost();
+        v2->parentEdge()->computeTrueCost(plannerConfig);
+        auto p = v2->parentEdge()->getPlan();
+        cerr << p.toString() << endl;
+    }
 }
 
 TEST(Benchmarks, RibbonsTSPBenhcmark) {

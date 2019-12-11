@@ -204,4 +204,74 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     return m_TrueCost;
 }
 
+void Edge::computeBrownPath(const PlannerConfig& config, const Ribbon& r) {
+
+    // I wrote this in the RibbonManager first and copied it here, so that's why this is a little awkward
+    auto start = m_Start->state();
+    auto radius = config.coverageTurningRadius();
+
+    auto h = start.yaw() + M_PI_2;
+    // Get points one radius away from start in the directions perpendicular to its heading.
+    // These are centers of circles on which start is tangent
+    auto x1 = start.x + cos(h) * radius;
+    auto x2 = start.x - cos(h) * radius;
+    auto y1 = start.y + sin(h) * radius;
+    auto y2 = start.y - sin(h) * radius;
+
+    auto proj1 = r.getProjection(x1, y1);
+    auto proj2 = r.getProjection(x2, y2);
+    auto proj = proj2;
+    auto x = x2; auto y = y2;
+    if (r.containsProjection(proj1)) {
+        proj = proj1;
+        x = x1; y = y1;
+    }
+
+    // go another half radius out
+    auto s1 = r.startAsState();
+    auto s2 = r.endAsState();
+    State s;
+    if (s1.distanceTo(start) < s2.distanceTo(start)) {
+        s = s1;
+    } else {
+        s = s2;
+    }
+    auto h2 = s.yaw() - M_PI_2;
+    auto dx1 = cos(h2) * radius / 2;
+    auto dy1 = sin(h2) * radius / 2;
+    auto x3 = proj.first + proj.first < x ? dx1 : -dx1;
+    auto y3 = proj.second = proj.second < y ? dy1 : -dy1;
+//        auto x4 = proj2.first = proj2.first < x2 ? dx1 : -dx1;
+//        auto y4 = proj2.second = proj2.second < y2 ? dy1 : -dy1;
+
+    // extend that ahead until it reaches the circle around (x1, y1)
+    // sqrt(a^2 - r^2)
+    auto a = dx1 * dx1 + dy1 * dy1;
+    auto rSquared = radius * radius;
+    auto b = sqrt(rSquared - a);
+    auto h3 = s.yaw();
+    auto x5 = x3 + b * cos(h3);
+    auto y5 = x3 + b * sin(h3);
+//        auto x6 = x4 + b * cos(h3);
+//        auto y6 = y4 + b * sin(h3);
+
+    // go one radius along the line from (x1, y1) to that point
+    auto x7 = x5 - x;
+    auto y7 = y5 - y;
+    auto h4 = atan(y7 / x7);
+    auto x8 = x5 + radius * cos(h4);
+    auto y8 = y5 + radius * sin(h4);
+
+    // project that back onto the ribbon
+    auto projFinal = r.getProjection(x8, y8);
+    State final(projFinal.first, projFinal.second, s.heading, 0, 0);
+
+    // done. that's the state.
+    end()->state() = final;
+
+    // now to figure out a Dubins curve for it
+
+}
+
+
 Edge::~Edge() = default;

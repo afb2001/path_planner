@@ -325,8 +325,10 @@ std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, do
         auto h2 = s.yaw() - M_PI_2;
         auto dx1 = cos(h2) * radius / 2;
         auto dy1 = sin(h2) * radius / 2;
-        auto x3 = proj.first + proj.first < x ? dx1 : -dx1;
-        auto y3 = proj.second = proj.second < y ? dy1 : -dy1;
+//        auto x3 = proj.first + proj.first < x ? dx1 : -dx1;
+        auto x3 = proj.first + dx1;
+//        auto y3 = proj.second = proj.second < y ? dy1 : -dy1;
+        auto y3 = proj.second + dy1;
 //        auto x4 = proj2.first = proj2.first < x2 ? dx1 : -dx1;
 //        auto y4 = proj2.second = proj2.second < y2 ? dy1 : -dy1;
 
@@ -337,7 +339,7 @@ std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, do
         auto b = sqrt(rSquared - a);
         auto h3 = s.yaw();
         auto x5 = x3 + b * cos(h3);
-        auto y5 = x3 + b * sin(h3);
+        auto y5 = y3 + b * sin(h3);
 //        auto x6 = x4 + b * cos(h3);
 //        auto y6 = y4 + b * sin(h3);
 
@@ -351,9 +353,12 @@ std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, do
         // project that back onto the ribbon
         auto projFinal = r.getProjection(x8, y8);
 
+        // IT'S BACKWARDS! Ahhhh // alright I think I got it but I gotta go study
+
         // done. that's the state. If it's close by add it to the list
         if (distance(projFinal, start.x, start.y) < 2 * radius){
             states.emplace_back(projFinal.first, projFinal.second, s.heading, 0, 0);
+//            states.back().push(0.1); // push the state along the ribbon a tiny bit to fix rounding errors
         }
     }
     return states;

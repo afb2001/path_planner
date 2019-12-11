@@ -7,6 +7,7 @@
 #include "../utilities/Path.h"
 #include "../utilities/Plan.h"
 #include "../PlannerConfig.h"
+#include "../utilities/Ribbon.h"
 
 extern "C" {
 #include "dubins.h"
@@ -36,6 +37,8 @@ public:
 
     double computeApproxCost(double maxSpeed, double maxTurningRadius);
     double computeApproxCost();
+
+    void computeBrownPath(const PlannerConfig& config, const Ribbon& r);
 
     void smooth(Map::SharedPtr map, const DynamicObstaclesManager& obstacles, double maxSpeed, double maxTurningRadius);
 

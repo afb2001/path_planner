@@ -123,6 +123,15 @@ class State
          
     }
 
+    /**
+     * Pushes a state forward some distance. Doesn't affect time.
+     * @param distance
+     */
+    void push(double distance) {
+        x += cos(yaw()) * distance;
+        y += sin(yaw()) * distance;
+    }
+
 //    explicit operator path_planner::StateMsg()
 //    {
 //        path_planner::StateMsg state;

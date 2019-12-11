@@ -569,14 +569,15 @@ TEST(UnitTests, EmptyVertexQueueTest) {
 //}
 
 TEST(UnitTests, ExpandTest1Ribbons) {
-    State start(0, 0, 0, 2.5, 1);
+    StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 9);
+    State start = generator.generate();
+    start.time = 1;
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 0, 30);
     DynamicObstaclesManager obstacles;
     auto root = Vertex::makeRoot(start, ribbonManager);
     AStarPlanner planner;
     planner.setConfig(plannerConfig);
-    StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
     planner.addSamples(generator, 1000);
     planner.expand(root, obstacles);
     double fPrev = 0;
@@ -838,6 +839,67 @@ TEST(PlannerTests, VisualizationTest) {
     config.setObstacles(DynamicObstaclesManager());
     auto plan = planner.plan(ribbonManager, start, config, 0.95);
     EXPECT_FALSE(plan.empty());
+}
+
+TEST(PlannerTests, VisualizationLongerTest) {
+    RibbonManager ribbonManager(RibbonManager::TspDubinsNoSplitKRibbons, 8, 2);
+    ribbonManager.add(0, 20, 20, 20);
+    ribbonManager.add(0, 40, 20, 40);
+    ribbonManager.add(0, 60, 20, 60);
+    ribbonManager.add(0, 80, 20, 80);
+    ribbonManager.add(0, 100, 20, 100);
+    AStarPlanner planner;
+    State start(0, 0, 0, 2.5, 1);
+    PlannerConfig config(&cerr);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_visualizations"));
+    config.setVisualizer(&visualizer);
+    config.setVisualizations(true);
+    config.setNowFunction([] () -> double {
+        struct timespec t{};
+        clock_gettime(CLOCK_REALTIME, &t);
+        return t.tv_sec + t.tv_nsec * 1e-9;
+    });
+    config.setMap(make_shared<Map>());
+    config.setObstacles(DynamicObstaclesManager());
+    std::thread t ([&]{
+        while(!ribbonManager.done()) {
+            ribbonManager.cover(start.x, start.y);
+            auto plan = planner.plan(ribbonManager, start, config, 0.95);
+            ASSERT_FALSE(plan.empty());
+            start = plan[1];
+            ASSERT_LT(start.time, 60);
+            cerr << "Remaining " << ribbonManager.dumpRibbons() << endl;
+            cerr << start.toString() << endl;
+        }
+    });
+    t.join();
+}
+
+TEST(PlannerTests, RandomVisualizationTest) {
+    RibbonManager ribbonManager(RibbonManager::TspDubinsNoSplitKRibbons, 8, 2);
+    ribbonManager.add(0, 20, 20, 20);
+    ribbonManager.add(0, 40, 20, 40);
+    ribbonManager.add(0, 60, 20, 60);
+    ribbonManager.add(0, 80, 20, 80);
+    ribbonManager.add(0, 100, 20, 100);
+    AStarPlanner planner;
+    State start(0, 0, 0, 2.5, 1);
+    PlannerConfig config(&cerr);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_visualizations"));
+    config.setVisualizer(&visualizer);
+    config.setVisualizations(true);
+    config.setNowFunction([] () -> double {
+        struct timespec t{};
+        clock_gettime(CLOCK_REALTIME, &t);
+        return t.tv_sec + t.tv_nsec * 1e-9;
+    });
+    config.setMap(make_shared<Map>());
+    config.setObstacles(DynamicObstaclesManager());
+    StateGenerator generator(-10, 30, 0, 120, 2.5, 2.5, 9);
+    for (int i = 0; i < 100; i++) {
+        auto plan = planner.plan(ribbonManager, generator.generate(), config, 0.95);
+        ASSERT_FALSE(plan.empty());
+    }
 }
 
 

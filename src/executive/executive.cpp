@@ -85,7 +85,7 @@ void Executive::planLoop() {
         // display ribbons
         m_TrajectoryPublisher->displayRibbons(m_RibbonManager);
 
-        // copy the map pointer if it's been set (don't wait for the mutex because it may be a while
+        // copy the map pointer if it's been set (don't wait for the mutex because it may be a while)
         if (m_MapMutex.try_lock()) {
             if (m_NewMap) {
                 m_PlannerConfig.setMap(m_NewMap);
@@ -106,7 +106,7 @@ void Executive::planLoop() {
         }
 
         try {
-            // TODO! -- low-key race condition with the ribbon manager here but it might be fine
+            // TODO! -- low-key data race with the ribbon manager here but it might be fine
             // its estimates of our trajectory
             m_PlannerConfig.setObstacles(m_DynamicObstaclesManager);
             plan = planner->plan(m_RibbonManager, startState, m_PlannerConfig,

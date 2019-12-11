@@ -378,7 +378,7 @@ class PLOT:
             xobs = (float(line[1]))
             yobs = (float(line[2]))
             hobs = (float(line[3]))
-            costobs = (float(line[7]))
+            costobs = (float(line[9]))
             heauristicobs = (float(line[11]))
             tag = line[12].strip().lower()
             if tag == "start":

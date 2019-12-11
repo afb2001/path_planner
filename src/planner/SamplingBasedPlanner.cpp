@@ -108,7 +108,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
             bestSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
             if (!sourceVertex->state().colocated(sample)) {
                 // don't force speed to be anything in particular, allowing samples to come with unique speeds
-                bestSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.coverageTurningRadius(), false));
+                bestSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.turningRadius(), false));
                 bestSamples.back()->parentEdge()->computeApproxCost();
                 std::push_heap(bestSamples.begin(), bestSamples.end(), dubinsComp);
                 if (bestSamples.size() > k()) {
@@ -162,6 +162,10 @@ void SamplingBasedPlanner::addSamples(StateGenerator& generator, int n) {
     for (int i = 0; i < n; i++) {
         const auto s = generator.generate();
         m_Samples.push_back(s);
+        if (m_Config.visualizations()) {
+            m_Config.visualizationStream() << "State: (" << s.toStringRad() << "), f: " << 0 << ", g: " << 0 << ", h: " <<
+                                         0 << " sample" << std::endl;
+        }
     }
 }
 

@@ -87,7 +87,7 @@ shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles,
             return vertex;
         }
 //        *m_Output << "Expanding vertex at " << vertex->state().toString() << std::endl;
-        visualizeVertex(vertex, "vertex");
+//        visualizeVertex(vertex, "vertex");
         expand(vertex, obstacles);
 
         // should probably check if vertex queue is empty but expand should always push some on

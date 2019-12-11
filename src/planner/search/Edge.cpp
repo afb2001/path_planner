@@ -120,17 +120,17 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     double q[3];
     double lengthSoFar = 0;
     double length = dubins_path_length(&dubinsPath);
-    if (length > maxSpeed * 30) length = maxSpeed * 30; // truncate longer edges than 30 seconds
+    if (length > maxSpeed * 30) length = maxSpeed * 30; // truncate longer edges than 30 seconds // TODO! -- use actual horizon variable
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
-    int visCount = 10; // counter to reduce visualization frequency
+    int visCount = int(1.0 / Edge::dubinsIncrement()); // counter to reduce visualization frequency
 
     // collision check along the curve (and watch out for newly covered points, too)
     while (lengthSoFar <= length) {
         dubins_path_sample(&dubinsPath, lengthSoFar, q);
         // visualize
         if (config.visualizations() && visCount-- == 0) {
-            visCount = 10;
+            visCount = int(1.0 / Edge::dubinsIncrement());
             // should really put visualizeVertex somewhere accessible
             config.visualizationStream() << "State: (" << q[0] << " " << q[1] << " " << q[2] << " " << maxSpeed <<
                 " " << start()->state().time + (lengthSoFar / maxSpeed) << "), f: " << 0 << ", g: " << 0 << ", h: " <<
@@ -138,6 +138,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
         }
         if (config.map()->getUnblockedDistance(q[0], q[1]) <= Edge::dubinsIncrement()) {
             collisionPenalty += Edge::collisionPenalty();
+            std::cerr << "Infeasible edge discovered" << std::endl;
             m_Infeasible = true;
             break;
         }
@@ -177,8 +178,11 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
         }
         lengthSoFar += Edge::dubinsIncrement();
     }
+    // make sure we're close // not valid because we truncate if too long
+//    assert(fabs(end()->state().x - q[0]) < Edge::dubinsIncrement() &&
+//        fabs(end()->state().y - q[1]) < Edge::dubinsIncrement());
     // set state to be at the end of where we collision checked
-    start()->state().x = q[0]; start()->state().y = q[1]; start()->state().yaw(q[2]);
+    end()->state().x = q[0]; end()->state().y = q[1]; end()->state().yaw(q[2]);
 
 
     // set end's state's time

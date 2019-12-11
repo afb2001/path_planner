@@ -20,7 +20,7 @@ State StateGenerator::generate() {
                            m_SpeedDistribution(m_RandomEngine),
                            0);
     if (m_SampleOnRibbons) {
-        if (m_HeadingDistribution(m_RandomEngine) < M_PI / 5) { // one in ten chance
+        if (m_HeadingDistribution(m_RandomEngine) < M_PI / 50) { // one in 100 chance
             m_RibbonManager.projectOntoNearestRibbon(s);
             if (m_HeadingDistribution(m_RandomEngine) < M_PI) { // one in two chance
                 s.heading += M_PI; // flip the heading (point to the start of the ribbon instead of the end)

@@ -28,7 +28,7 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
                                       double timeRemaining) {
     m_Config = std::move(config); // gotta do this before we can call now()
     double endTime = timeRemaining + now();
-    std::cerr << "Starting to plan" << std::endl;
+//    std::cerr << "Starting to plan" << std::endl;
     m_RibbonManager = ribbonManager;
     m_ExpandedCount = 0;
     m_StartStateTime = start.time;

@@ -24,6 +24,8 @@ public:
 
 protected:
 
+    Vertex::SharedPtr m_BestVertex;
+
     std::function<bool(std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2)> getVertexComparator() override;
 
 //    int k() const override { return 9; }
@@ -32,7 +34,7 @@ protected:
 
     void expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples, const DynamicObstaclesManager& obstacles);
 
-    static constexpr double c_InitialSamples = 1000;
+    static constexpr double c_InitialSamples = 100;
 
 private:
 //    std::vector<State> plan(const State& start, DynamicObstaclesManager dynamicObstacles, double timeRemaining);

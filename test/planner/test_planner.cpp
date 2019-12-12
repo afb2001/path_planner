@@ -876,7 +876,7 @@ TEST(PlannerTests, VisualizationLongerTest) {
 }
 
 TEST(PlannerTests, RandomVisualizationTest) {
-    RibbonManager ribbonManager(RibbonManager::TspDubinsNoSplitKRibbons, 8, 2);
+    RibbonManager ribbonManager(RibbonManager::MaxDistance, 8, 2);
     ribbonManager.add(0, 20, 20, 20);
     ribbonManager.add(0, 40, 20, 40);
     ribbonManager.add(0, 60, 20, 60);
@@ -896,7 +896,7 @@ TEST(PlannerTests, RandomVisualizationTest) {
     config.setMap(make_shared<Map>());
     config.setObstacles(DynamicObstaclesManager());
     StateGenerator generator(-10, 30, 0, 120, 2.5, 2.5, 9);
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 10; i++) {
         auto plan = planner.plan(ribbonManager, generator.generate(), config, 0.95);
         ASSERT_FALSE(plan.empty());
     }

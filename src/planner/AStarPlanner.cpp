@@ -42,7 +42,7 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
     StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
     auto startV = Vertex::makeRoot(start, m_RibbonManager);
     startV->computeApproxToGo();
-    shared_ptr<Vertex> bestVertex(nullptr);
+    m_BestVertex = nullptr;
     auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
     auto otherRibbonSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());
 //    if (m_UseRibbons) {
@@ -61,28 +61,28 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
         if (m_Samples.size() < c_InitialSamples) addSamples(generator, c_InitialSamples);
         else addSamples(generator, c_InitialSamples); // linearly increase samples
         auto v = aStar(m_Config.obstacles(), endTime);
-        if (!bestVertex || (v && v->f() < bestVertex->f())) {
+        if (!m_BestVertex || (v && v->f() < m_BestVertex->f())) {
 //            if (v) *m_Output << "Found a plan with final fvalue " << v->f() << std::endl;
 //            else *m_Output << "Returned from A* with no plan" << std::endl;
             // found a (better) plan
-            bestVertex = v;
+            m_BestVertex = v;
             if (v) visualizeVertex(v, "goal");
         }
     }
     *m_Config.output() << m_Samples.size() << " total samples, " << m_ExpandedCount << " expanded" << std::endl;
-    if (!bestVertex) {
+    if (!m_BestVertex) {
         *m_Config.output() << "Failed to find a plan" << std::endl;
         return std::vector<State>();
     } else {
 //        *m_Output << "Best Plan " << bestVertex->ribbonManager().dumpRibbons() << std::endl; // "Best Plan Ribbons: "
-        return tracePlan(bestVertex, false, m_Config.obstacles()).get();
+        return tracePlan(m_BestVertex, false, m_Config.obstacles()).get();
     }
 }
 
 shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles, double endTime) {
     auto vertex = popVertexQueue();
     while (now() < endTime) {
-        if (goalCondition(vertex)) {
+        if (goalCondition(vertex) && (!m_BestVertex || vertex->f() < m_BestVertex->f())) {
 //            *m_Output << "Found goal: " << vertex->toString() << std::endl;
             return vertex;
         }

@@ -51,14 +51,22 @@ void Edge::smooth(Map::SharedPtr map, const DynamicObstaclesManager& obstacles, 
     }
 }
 
-Plan Edge::getPlan() {
+Plan Edge::getPlan(const PlannerConfig& config) {
     double q[3];
     double lengthSoFar = 0;
     double length = dubins_path_length(&dubinsPath);
     Plan plan1;
+    int visCount = int(1.0 / Edge::dubinsIncrement()); // counter to reduce visualization frequency
     while (lengthSoFar < length) {
         dubins_path_sample(&dubinsPath, lengthSoFar, q);
         plan1.append(State(q[0], q[1], M_PI_2 - q[2], end()->state().speed, lengthSoFar / end()->state().speed + start()->state().time));
+        if (config.visualizations() && visCount-- == 0) {
+            visCount = int(1.0 / Edge::dubinsIncrement());
+            // should really put visualizeVertex somewhere accessible
+            config.visualizationStream() << "State: (" << q[0] << " " << q[1] << " " << q[2] << " " << config.maxSpeed() <<
+                                         " " << start()->state().time + (lengthSoFar / config.maxSpeed()) << "), f: " << 0 << ", g: " << 0 << ", h: " <<
+                                         0 << " plan" << std::endl;
+        }
         lengthSoFar += Edge::dubinsIncrement();
     }
     return plan1;
@@ -120,7 +128,10 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     double q[3];
     double lengthSoFar = 0;
     double length = dubins_path_length(&dubinsPath);
-    if (length > maxSpeed * 30) length = maxSpeed * 30; // truncate longer edges than 30 seconds // TODO! -- use actual horizon variable
+    // truncate longer edges than 30 seconds // TODO! -- use actual horizon variable
+    auto remainingTime = 30 + 1 + config.startStateTime() - start()->state().time;
+    if (length > maxSpeed * remainingTime) length = maxSpeed * remainingTime;
+
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
     int visCount = int(1.0 / Edge::dubinsIncrement()); // counter to reduce visualization frequency

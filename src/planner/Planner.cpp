@@ -55,7 +55,7 @@ Plan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, const Dynam
 
     Plan plan;
     for (auto it = branch.rbegin(); it != branch.rend(); it++) {
-        plan.append((*it)->getPlan());
+        plan.append((*it)->getPlan(m_Config));
         plan.append((*it)->end()->state());
     }
     plan.append(v->state());

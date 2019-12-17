@@ -42,6 +42,7 @@ SamplingBasedPlanner::SamplingBasedPlanner() {}
 void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     if (!vertex->isRoot() && vertex->parentEdge()->infeasible()) return;
     vertex->approxToGo(); // make sure it is calculated
+    if (m_BestVertex && m_BestVertex->f() < vertex->f()) return; // assumes heuristic is admissible
     m_VertexQueue.push_back(vertex);
     std::push_heap(m_VertexQueue.begin(), m_VertexQueue.end(), getVertexComparator());
     visualizeVertex(vertex, "vertex");
@@ -86,11 +87,13 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
             auto destinationVertex = Vertex::connect(sourceVertex, s, m_Config.turningRadius(), false);
             destinationVertex->parentEdge()->computeTrueCost(m_Config);
             pushVertexQueue(destinationVertex);
+//            std::cerr << "Expanding to cover " << destinationVertex->toString() << std::endl;
             if (m_Config.coverageMaxSpeed() > 0) {
                 s.speed = m_Config.coverageMaxSpeed();
                 destinationVertex = Vertex::connect(sourceVertex, s, m_Config.coverageTurningRadius(), true);
                 destinationVertex->parentEdge()->computeTrueCost(m_Config);
                 pushVertexQueue(destinationVertex);
+//                std::cerr << "Expanding to cover " << destinationVertex->toString() << std::endl;
             }
         }
     }
@@ -218,6 +221,16 @@ std::vector<State> SamplingBasedPlanner::plan(const RibbonManager&, const State&
 void SamplingBasedPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag) {
     if (m_Config.visualizations()) {
         m_Config.visualizationStream() << v->toString() << " " << tag << std::endl;
+    }
+}
+
+bool SamplingBasedPlanner::vertexQueueEmpty() const {
+    return m_VertexQueue.empty();
+}
+
+void SamplingBasedPlanner::visualizeRibbons(const RibbonManager& ribbonManager) {
+    if (m_Config.visualizations()) {
+        m_Config.visualizationStream() << ribbonManager.dumpRibbons() << "\nEnd Ribbons" << std::endl;
     }
 }
 

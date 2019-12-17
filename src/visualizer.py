@@ -51,6 +51,11 @@ class Obs:
         self.children = []
 
 
+class Ribbons:
+    def __init__(self):
+        self.ribbons = []
+
+
 class PLOT:
     def __init__(self, blocked, xlim, ylim, goal, in_file_name):
         self.display = None
@@ -184,7 +189,11 @@ class PLOT:
                     self.update_start_index(1)
             elif event.key == pygame.K_BACKSPACE or event.key == pygame.K_b:
                 if self.obs[self.index].tag == "start":
-                    self.update_start_index(-1)
+                    self.startIndex -= 1
+                    if self.startIndex < 0:
+                        self.startIndex = 0
+                    elif self.startIndex >= len(self.starts):
+                        self.startIndex = len(self.starts) - 1
                 self.index -= 1
                 if self.index < 0:
                     self.index = 0
@@ -364,15 +373,26 @@ class PLOT:
         self.minColor = 1000000
         self.index = 0
         self.obs = []
+        addingRibbons = False
         for line in input_lines:
             for c in "():,":  # drop extra characters
                 line = line.replace(c, "")
             line = line.split(' ')
+            if line == "End Ribbons":
+                addingRibbons = False
+                continue
+            elif line == "Ribbons":
+                addingRibbons = True
+                continue
+            if addingRibbons:
+                # ribbon mode means input will look different, hence the flag
+                r = Ribbons()
+
             # if len(line) < 3 or line[0].strip().lower() != 'planner' or line[1].strip().lower() != 'visualization:':
             #     continue
             # if line[2].strip().lower() == 'done':
             #     continue  # ignore "done" for now
-                # break
+            # break
             # if len(line) > 18 and line[18].strip().lower() != 'vis2':
             #     continue
             xobs = (float(line[1]))
@@ -392,22 +412,22 @@ def dist(x, x1, y, y1):
 
 if __name__ == "__main__":
 
-    map_file_name = goal_file_name = None
+    map_file_name = goal_file_name = input_file_name = None
     if len(sys.argv) == 4 and sys.argv[1] == "-test":
         base_name = sys.argv[2]
         map_file_name = base_name + ".map"
         goal_file_name = base_name + ".goal"
+        input_file_name = sys.argv[3]
 
-    elif len(sys.argv) == 4:
+    elif len(sys.argv) == 3:
         map_file_name = sys.argv[1]
-        goal_file_name = sys.argv[2]
+        # goal_file_name = sys.argv[2]
+        input_file_name = sys.argv[2]
 
-    if len(sys.argv) != 4:
+    else:
         print 'Usage: "./step_by_step.py mapfile goalfile inputfile" or\n       ' \
               '"./step_by_step.py -test testname inputfile"\n'
         exit(0)
-
-    input_file_name = sys.argv[3]
 
     with open(map_file_name, "r") as map_file:
         map_contents = map_file.readlines()

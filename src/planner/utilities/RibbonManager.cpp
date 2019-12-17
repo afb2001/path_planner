@@ -25,10 +25,10 @@ bool RibbonManager::done() const {
     return m_Ribbons.empty();
 }
 
-double RibbonManager::approximateDistanceUntilDone(double x, double y, double yaw) {
-    if (done()) return 0;
+double RibbonManager::approximateDistanceUntilDone(double x, double y, double yaw) const {
+   if (done()) return 0;
     // if we're above the danger threshold just give max distance
-    if (m_Ribbons.size() > c_RibbonCountDangerThreshold) return maxDistance(x, y);
+//    if (m_Ribbons.size() > c_RibbonCountDangerThreshold) return maxDistance(x, y);
     switch (m_Heuristic) {
         // Modified max distance heuristic
         case MaxDistance: {
@@ -68,7 +68,7 @@ double RibbonManager::tspPointRobotNoSplitAllRibbons(std::list<Ribbon> ribbonsLe
 }
 
 double RibbonManager::tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar,
-                                                   std::pair<double, double> point) {
+                                                   std::pair<double, double> point) const {
     if (ribbonsLeft.empty()) return distanceSoFar;
     auto min = DBL_MAX;
     auto comp = [&] (const Ribbon& r1, const Ribbon& r2) {
@@ -97,7 +97,7 @@ double RibbonManager::tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft
 
 
 double RibbonManager::tspDubinsNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, double x,
-                                                 double y, double yaw) {
+                                                 double y, double yaw) const{
     // Depth-first TSP solution
 //    std::cerr << "Computing TSP solution from " << x << ", " << y << std::endl;
     if (ribbonsLeft.empty()) return distanceSoFar;
@@ -117,7 +117,7 @@ double RibbonManager::tspDubinsNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, 
 }
 
 double RibbonManager::tspDubinsNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, double x, double y,
-                                               double yaw) {
+                                               double yaw) const {
     if (ribbonsLeft.empty()) return distanceSoFar;
     auto min = DBL_MAX;
     auto comp = [&] (const Ribbon& r1, const Ribbon& r2) {
@@ -143,7 +143,7 @@ double RibbonManager::tspDubinsNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, do
     return min;
 }
 
-double RibbonManager::minDistanceFrom(double x, double y) {
+double RibbonManager::minDistanceFrom(double x, double y) const {
     if (m_Ribbons.empty()) return 0;
     auto min = DBL_MAX;
     for (const auto& r : m_Ribbons) {
@@ -170,7 +170,8 @@ State RibbonManager::getNearestEndpointAsState(const State& state) const {
         auto s = r.startAsState();
         auto d = state.distanceTo(s);
         if (d < min) {
-            if (d < Ribbon::minLength() && r.contains(state.x, state.y, r.getProjection(state.x, state.y))) {
+            if (d < Ribbon::minLength()){ // && r.contains(state.x, state.y, r.getProjection(state.x, state.y))) {
+                // we actually want the state at the other end of the ribbon
                 ret = r.endAsState();
                 ret.heading = s.heading;
             } else {
@@ -181,7 +182,8 @@ State RibbonManager::getNearestEndpointAsState(const State& state) const {
         s = r.endAsState();
         d = state.distanceTo(s);
         if (d < min) {
-            if (d < Ribbon::minLength() && r.contains(state.x, state.y, r.getProjection(state.x, state.y))) {
+            if (d < Ribbon::minLength()){ // && r.contains(state.x, state.y, r.getProjection(state.x, state.y))) {
+                // we actually want the state at the other end of the ribbon
                 ret = r.startAsState();
                 ret.heading = s.heading;
             } else {
@@ -358,9 +360,16 @@ std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, do
         // done. that's the state. If it's close by add it to the list
         if (distance(projFinal, start.x, start.y) < 2 * radius){
             states.emplace_back(projFinal.first, projFinal.second, s.heading, 0, 0);
+            std::cerr << "Found Brown path to state " << states.back().toString() << " from " << start.toString() << std::endl;
 //            states.back().push(0.1); // push the state along the ribbon a tiny bit to fix rounding errors
         }
     }
     return states;
+}
+
+void RibbonManager::changeHeuristicIfTooManyRibbons() {
+    if (m_Ribbons.size() > c_RibbonCountDangerThreshold) {
+        m_Heuristic = MaxDistance;
+    }
 }
 

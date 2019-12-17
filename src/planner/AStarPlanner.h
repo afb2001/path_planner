@@ -23,8 +23,7 @@ public:
 //                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
 
 protected:
-
-    Vertex::SharedPtr m_BestVertex;
+    int m_IterationCount = 0;
 
     std::function<bool(std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2)> getVertexComparator() override;
 

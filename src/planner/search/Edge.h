@@ -42,7 +42,7 @@ public:
 
     void smooth(Map::SharedPtr map, const DynamicObstaclesManager& obstacles, double maxSpeed, double maxTurningRadius);
 
-    Plan getPlan();
+    Plan getPlan(const PlannerConfig& config);
 
     std::shared_ptr<Vertex> start();
 

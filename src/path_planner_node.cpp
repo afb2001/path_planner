@@ -131,6 +131,7 @@ public:
     void preemptCallback()
     {
         cerr << "Canceling planner" << endl;
+        m_Preempted = true;
         m_action_server.setPreempted();
 
         // Should the executive stop now? Probably?
@@ -148,6 +149,9 @@ public:
                 m_current_heading,
                 TrajectoryDisplayer::getTime());
 //                inmsg->header.stamp.toNSec() / 1.0e9);
+
+        // need to set succeeded in action server in ROS callback thread for some reason
+        if (m_ActionDone) setSucceeded();
     }
 
     void headingCallback(const marine_msgs::NavEulerStamped::ConstPtr& inmsg)
@@ -218,10 +222,16 @@ public:
     void allDone() final
     {
         std::cerr << "Planner appears to have finished" << std::endl;
+        m_ActionDone = true;
+        publishControllerMessage("stop sending controls");
+    }
+
+    void setSucceeded()
+    {
+        std::cerr << "Setting succeeded bit in action server." << std::endl;
+        m_ActionDone = false;
         path_planner::path_plannerResult result;
         m_action_server.setSucceeded(result);
-
-        publishControllerMessage("stop sending controls");
     }
 
     void publishControllerMessage(string m)
@@ -302,7 +312,12 @@ public:
 
 private:
     ros::NodeHandle m_node_handle;
+
     actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
+    // Apparently the action server is supposed to be manipulated on the ROS thread, so I had to make some flags
+    // to get the done/preemption behavior I wanted. It seems like there should be a better way to do this but I don't
+    // know what it is.
+    bool m_ActionDone = false, m_Preempted = false;
 
     // Since speed and heading are updated through different topics than position,
     // but we need them for state updates to the executive, keep the latest of each

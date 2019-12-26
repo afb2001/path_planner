@@ -134,6 +134,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
 
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
+    double lastYaw = start()->state().yaw();
     int visCount = int(1.0 / Edge::dubinsIncrement()); // counter to reduce visualization frequency
 
     // collision check along the curve (and watch out for newly covered points, too)
@@ -172,7 +173,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
                 // do this first because cover splits ribbons so you'd never get one that "contains" the point so it
                 // could be a bit more work
                 toCoverDistance = end()->ribbonManager().minDistanceFrom(q[0], q[1]);
-                if (end()->coverageAllowed()) {
+                if (end()->coverageAllowed() || lastYaw == q[2]) {
                     end()->ribbonManager().cover(q[0], q[1]);
                 }
             } else {
@@ -188,6 +189,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
             }
         }
         lengthSoFar += Edge::dubinsIncrement();
+        lastYaw = q[2];
     }
     // make sure we're close // not valid because we truncate if too long
 //    assert(fabs(end()->state().x - q[0]) < Edge::dubinsIncrement() &&

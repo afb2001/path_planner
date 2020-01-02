@@ -146,12 +146,12 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
         // visualize
         if (config.visualizations() && visCount-- <= 0) {
             visCount = int(1.0 / Edge::dubinsIncrement());
-            auto timeSoFar = start()->state().time + (lengthSoFar / maxSpeed);
+            auto timeSoFar = (lengthSoFar / maxSpeed);
             auto gSoFar = startG + timeSoFar + collisionPenalty;
             // should really put visualizeVertex somewhere accessible
             // use start H because it isn't worth it to calculate current H
             config.visualizationStream() << "State: (" << q[0] << " " << q[1] << " " << q[2] << " " << maxSpeed <<
-                " " << timeSoFar << "), f: " << gSoFar + startH << ", g: " << gSoFar << ", h: " <<
+                " " << start()->state().time + timeSoFar << "), f: " << gSoFar + startH << ", g: " << gSoFar << ", h: " <<
                 startH << " trajectory" << std::endl;
         }
         if (config.map()->getUnblockedDistance(q[0], q[1]) <= Edge::dubinsIncrement()) {

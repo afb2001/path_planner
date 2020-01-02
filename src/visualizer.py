@@ -81,6 +81,7 @@ class PLOT:
         self.obs = []
         self.starts = []
         self.startIndex = 0
+        self.ribbons = []
         # declare stuff defined in on_init
         self.w, self.h, self.scaleW, self.scaleH, self.startW, self.startH = 0, 0, 0, 0, 0, 0
         self.curr_x, self.curr_y, self.start_heading, self.index = 0, 0, 0, 0
@@ -228,14 +229,14 @@ class PLOT:
     def update_information(self, x, y, heading, h, cost, tag):
         if tag == "trajectory" or tag == "sample":
             obs = Obs(x, y, heading, cost + h, tag)
-            if len(self.obs) == 0 or self.obs[len(self.obs) - 1].tag != tag:
+            if len(self.obs) == 0 or self.obs[-1].tag != tag:
                 self.obs.append(obs)
             else:
-                self.obs[len(self.obs) - 1].children.append(obs)
+                self.obs[-1].children.append(obs)
         elif tag == "plan":
-            if self.obs[len(self.obs) - 1].tag == "plan":
+            if self.obs[-1].tag == "plan":
                 obs = Obs(x, y, heading, cost + h, tag)
-                self.obs[len(self.obs) - 1].children.append(obs)
+                self.obs[-1].children.append(obs)
             else:
                 self.obs.append(Obs(x, y, heading, cost + h, tag))
         else:
@@ -383,10 +384,11 @@ class PLOT:
                 continue
             elif line == "Ribbons":
                 addingRibbons = True
+                self.ribbons.append(Ribbons())
                 continue
             if addingRibbons:
                 # ribbon mode means input will look different, hence the flag
-                r = Ribbons()
+                self.ribbons[-1].append([float(line[1]), float(line[2]), float(line[4]), float(line[5])])
 
             # if len(line) < 3 or line[0].strip().lower() != 'planner' or line[1].strip().lower() != 'visualization:':
             #     continue

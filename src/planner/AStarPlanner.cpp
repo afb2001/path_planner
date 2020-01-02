@@ -44,7 +44,9 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
     maxY = start.y + magnitude;
     StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
     auto startV = Vertex::makeRoot(start, m_RibbonManager);
+    startV->state().speed = m_Config.maxSpeed(); // state's speed is used to compute h so need to use max
     startV->computeApproxToGo();
+    startV->state().speed = start.speed; // change the speed back to the current speed (not sure it matters)
     m_BestVertex = nullptr;
     auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
     auto otherRibbonSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());
@@ -77,6 +79,7 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
         }
         m_IterationCount++;
     }
+    // Add expected final cost, total accrued cost (not here)
     *m_Config.output() << m_Samples.size() << " total samples, " << m_ExpandedCount << " expanded in "
         << m_IterationCount << " iterations" << std::endl;
     if (!m_BestVertex) {

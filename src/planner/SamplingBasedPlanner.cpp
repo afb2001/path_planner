@@ -87,14 +87,10 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
             auto destinationVertex = Vertex::connect(sourceVertex, s, m_Config.turningRadius(), false);
             destinationVertex->parentEdge()->computeTrueCost(m_Config);
             pushVertexQueue(destinationVertex);
-//            std::cerr << "Expanding to cover " << destinationVertex->toString() << std::endl;
-            if (m_Config.coverageMaxSpeed() > 0) {
-                s.speed = m_Config.coverageMaxSpeed();
-                destinationVertex = Vertex::connect(sourceVertex, s, m_Config.coverageTurningRadius(), true);
-                destinationVertex->parentEdge()->computeTrueCost(m_Config);
-                pushVertexQueue(destinationVertex);
-//                std::cerr << "Expanding to cover " << destinationVertex->toString() << std::endl;
-            }
+            // add again for coverage (may not be necessary, as we're unlikely to be covering stuff on the way to the nearest endpoint)
+            destinationVertex = Vertex::connect(sourceVertex, s, m_Config.coverageTurningRadius(), true);
+            destinationVertex->parentEdge()->computeTrueCost(m_Config);
+            pushVertexQueue(destinationVertex);
         }
     }
     auto comp = getStateComparator(sourceVertex->state());
@@ -127,7 +123,6 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
         if (!coverageDone && (bestCoverageSamples.size() < k() ||
             bestCoverageSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
             if (sourceVertex->state().distanceTo(sample) > Edge::dubinsIncrement()) {
-                sample.speed = m_Config.coverageMaxSpeed(); // force speed to be coverage speed
                 bestCoverageSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.coverageTurningRadius(), true));
                 bestCoverageSamples.back()->parentEdge()->computeApproxCost();
                 std::push_heap(bestCoverageSamples.begin(), bestCoverageSamples.end(), dubinsComp);

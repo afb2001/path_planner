@@ -34,13 +34,13 @@ public:
         m_TurningRadius = turningRadius;
     }
 
-    double coverageMaxSpeed() const {
-        return m_CoverageMaxSpeed;
-    }
-
-    void setCoverageMaxSpeed(double coverageMaxSpeed) {
-        m_CoverageMaxSpeed = coverageMaxSpeed;
-    }
+//    double coverageMaxSpeed() const {
+//        return m_CoverageMaxSpeed;
+//    }
+//
+//    void setCoverageMaxSpeed(double coverageMaxSpeed) {
+//        m_CoverageMaxSpeed = coverageMaxSpeed;
+//    }
 
     double coverageTurningRadius() const {
         return m_CoverageTurningRadius;

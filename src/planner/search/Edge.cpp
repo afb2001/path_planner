@@ -114,11 +114,10 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
         std::cerr << "Computing cost of edge between two co-located states is likely an error" << std::endl;
     }
     double maxSpeed, maxTurningRadius;
+    maxSpeed = config.maxSpeed();
     if (end()->coverageAllowed()) {
-        maxSpeed = config.coverageMaxSpeed();
         maxTurningRadius = config.coverageTurningRadius();
     } else {
-        maxSpeed = config.maxSpeed();
         maxTurningRadius = config.turningRadius();
     }
     if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);

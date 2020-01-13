@@ -64,8 +64,8 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
         visualizeVertex(startV, "start");
         pushVertexQueue(startV);
         // manually expand starting node to include states on nearby ribbons far enough away such that the
-        expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles());
-        expandToCoverSpecificSamples(startV, otherRibbonSamples, m_Config.obstacles());
+        expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles(), true);
+        expandToCoverSpecificSamples(startV, otherRibbonSamples, m_Config.obstacles(), true);
         // On the first iteration add c_InitialSamples samples, otherwise just double them
         if (m_Samples.size() < c_InitialSamples) addSamples(generator, c_InitialSamples);
         else addSamples(generator); // linearly increase samples (changed to not double)
@@ -118,12 +118,13 @@ shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles,
 //    m_CoverageTurningRadius = coverageTurningRadius;
 //}
 
-void AStarPlanner::expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples, const DynamicObstaclesManager& obstacles) {
+void AStarPlanner::expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples,
+                                                const DynamicObstaclesManager& obstacles, bool coverageAllowed) {
     if (m_Config.coverageTurningRadius() > 0) {
         for (auto s : samples) {
 //            std::cerr << "Expanding to cover " << s.toString() << std::endl;
-            s.speed = m_Config.coverageMaxSpeed();
-            auto destinationVertex = Vertex::connect(root, s, m_Config.coverageTurningRadius(), true);
+            s.speed = m_Config.maxSpeed();
+            auto destinationVertex = Vertex::connect(root, s, m_Config.coverageTurningRadius(), coverageAllowed);
             destinationVertex->parentEdge()->computeTrueCost(m_Config);
             pushVertexQueue(destinationVertex);
         }

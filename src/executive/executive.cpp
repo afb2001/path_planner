@@ -350,7 +350,7 @@ void Executive::setVehicleConfiguration(double maxSpeed, double turningRadius, d
                                         double coverageTurningRadius, int k) {
     m_PlannerConfig.setMaxSpeed(maxSpeed);
     m_PlannerConfig.setTurningRadius(turningRadius);
-    m_PlannerConfig.setCoverageMaxSpeed(coverageMaxSpeed);
+//    m_PlannerConfig.setCoverageMaxSpeed(coverageMaxSpeed); // deprecated
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
     m_PlannerConfig.setBranchingFactor(k);
 }

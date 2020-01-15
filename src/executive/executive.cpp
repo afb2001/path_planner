@@ -83,6 +83,16 @@ void Executive::planLoop() {
         }
 
         // display ribbons
+        // seg fault has occurred in this call and I have no idea how (trace below)
+        /*
+            #0  0x00007f3c16e12cd5 in Ribbon::startAsState (this=0x10)
+                at /home/abrown/project11/catkin_ws/src/path_planner/src/planner/utilities/Ribbon.cpp:55
+            #1  0x00005582929167bb in PathPlanner::displayRibbons (this=0x7ffd7db6dc90,
+                ribbonManager=...)
+                at /home/abrown/project11/catkin_ws/src/path_planner/src/path_planner_node.cpp:270
+            #2  0x00007f3c17078483 in Executive::planLoop (this=0x558293696800)
+                at /home/abrown/project11/catkin_ws/src/path_planner/src/executive/executive.cpp:86
+         */
         m_TrajectoryPublisher->displayRibbons(m_RibbonManager);
 
         // copy the map pointer if it's been set (don't wait for the mutex because it may be a while)

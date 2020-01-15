@@ -295,6 +295,7 @@ std::vector<State> RibbonManager::findStatesOnRibbonsOnCircle(const State& cente
 }
 
 std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, double radius) const {
+    // This might not be right for all scenarios
     std::vector<State> states;
     auto h = start.yaw() + M_PI_2;
     // get points one radius away from start in the directions perpendicular to its heading
@@ -305,7 +306,20 @@ std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, do
 
     for (const Ribbon& r : m_Ribbons) {
 
-        // project them onto ribbon
+        // check if ribbon is anywhere near current state (within 2*r)
+        auto startProj = r.getProjection(start.x, start.y);
+        { // scope to clearly mark usage of poorly named "d"
+            double d;
+            if (r.containsProjection(startProj)) {
+                d = start.distanceTo(startProj.first, startProj.second);
+            } else {
+                d = fmin(start.distanceTo(r.start().first, r.start().second),
+                         start.distanceTo(r.end().first, r.end().second));
+            }
+            if (d > 2 * radius) continue;
+        }
+
+        // project points from before onto ribbon
         auto proj1 = r.getProjection(x1, y1);
         auto proj2 = r.getProjection(x2, y2);
         auto proj = proj2;
@@ -324,7 +338,7 @@ std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, do
         } else {
             s = s2;
         }
-        auto h2 = s.yaw() - M_PI_2;
+        auto h2 = s.yaw() - M_PI_2; // but which way???
         auto dx1 = cos(h2) * radius / 2;
         auto dy1 = sin(h2) * radius / 2;
 //        auto x3 = proj.first + proj.first < x ? dx1 : -dx1;

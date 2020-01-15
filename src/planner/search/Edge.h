@@ -44,9 +44,9 @@ public:
 
     Plan getPlan(const PlannerConfig& config);
 
-    std::shared_ptr<Vertex> start();
+    std::shared_ptr<Vertex> start() const;
 
-    std::shared_ptr<Vertex> end();
+    std::shared_ptr<Vertex> end() const;
 
     bool infeasible() const;
 

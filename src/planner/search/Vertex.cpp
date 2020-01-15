@@ -107,6 +107,7 @@ State Vertex::getNearestPointAsState() const {
 }
 
 double Vertex::f() {
+    assert(std::isfinite(currentCost() + approxToGo()));
     return currentCost() + approxToGo();
 }
 

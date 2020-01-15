@@ -40,7 +40,7 @@ double Edge::netTime() {
 
 void Edge::smooth(Map::SharedPtr map, const DynamicObstaclesManager& obstacles, double maxSpeed, double maxTurningRadius) {
     if (start()->isRoot()) return;
-    double parentCost = start()->parentEdge()->m_TrueCost; // should be up to date in A*, check for BIT*
+    double parentCost = start()->parentEdge()->trueCost(); // should be up to date in A*, check for BIT*
     auto smoothed = Vertex::connect(start()->parent(), end()->state());
     double smoothedCost = smoothed->parentEdge()->computeTrueCost(map, obstacles, maxSpeed, maxTurningRadius);
     if (smoothedCost < parentCost + m_TrueCost && smoothed->approxToGo() <= end()->approxToGo()) {
@@ -78,17 +78,21 @@ std::shared_ptr<Vertex> Edge::setEnd(const State &state) {
     return ptr;
 }
 
-std::shared_ptr<Vertex> Edge::start() {
+std::shared_ptr<Vertex> Edge::start() const {
     return m_Start;
 }
 
-std::shared_ptr<Vertex> Edge::end() {
+std::shared_ptr<Vertex> Edge::end() const {
     std::shared_ptr<Vertex> s(m_End);
     return s;
 }
 
 double Edge::trueCost() const {
     if (m_TrueCost == -1) throw std::logic_error("Fetching unset cached edge cost");
+    if (m_TrueCost < 0 || !std::isfinite(m_TrueCost)) {
+        std::cerr << "Invalid edge cost retrieved: " << m_TrueCost << "from edge between vertices\n\t" <<
+            start()->toString() << " and\n\t" << end()->toString() << std::endl;
+    }
     return m_TrueCost;
 }
 

@@ -63,7 +63,8 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
         }
         visualizeVertex(startV, "start");
         pushVertexQueue(startV);
-        // manually expand starting node to include states on nearby ribbons far enough away such that the
+        // manually expand starting node to include states on nearby ribbons far enough away such that the boat doesn't
+        // have to loop around
         expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles(), true);
         expandToCoverSpecificSamples(startV, otherRibbonSamples, m_Config.obstacles(), true);
         // On the first iteration add c_InitialSamples samples, otherwise just double them

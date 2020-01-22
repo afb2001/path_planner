@@ -63,6 +63,7 @@ void Executive::planLoop() {
     }
 
     cerr << "Starting plan loop" << endl;
+    State startState(-1);
 
     while (true) {
         double startTime = m_TrajectoryPublisher->getTime();
@@ -108,7 +109,7 @@ void Executive::planLoop() {
         vector<State> plan;
 
         // call the controller service to get the estimated state we'll be in after the planning time has elapsed
-        auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
+//        auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
 
         // if the state estimator returns an error naively do it ourselves
         if (startState.time == -1) {
@@ -133,9 +134,12 @@ void Executive::planLoop() {
         }
 
         if (!plan.empty()) {
-            m_TrajectoryPublisher->publishTrajectory(plan);
+            cerr << "Sending trajectory to controller" << endl;
+            startState = m_TrajectoryPublisher->publishTrajectory(plan);
+            cerr << "Received state from controller: " << startState.toString() << endl;
         } else {
             cerr << "Planner returned empty trajectory." << endl;
+            startState = State(-1);
         }
 
         // display the trajectory

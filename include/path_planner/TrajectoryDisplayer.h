@@ -11,6 +11,8 @@
 /**
  * Utility class which holds the code for displaying trajectories to /project11/display. It has a node handle, so
  * subclasses need not re-declare one.
+ *
+ * TODO! -- should change this design to composition, rather than inheritance
  */
 class TrajectoryDisplayer {
 public:

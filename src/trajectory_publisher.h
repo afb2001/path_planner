@@ -13,8 +13,10 @@ public:
     /**
      * Publish a trajectory. This is pretty much the point of this interface.
      * @param trajectory the trajectory to publish
+     * @return The state to plan from next, as predicted by a controller accepting the trajectory
      */
-    virtual void publishTrajectory(std::vector<State> trajectory) = 0;
+    virtual State publishTrajectory(std::vector<State> trajectory) = 0;
+
     virtual void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) = 0;
     /**
      * Alert the system that the planner has finished this iteration. This might deserve its own interface.
@@ -26,6 +28,8 @@ public:
      * @return an estimated state at desiredTime
      */
     virtual State getEstimatedState(double desiredTime) = 0;
+
+
 
     /**
      * Get the current time.

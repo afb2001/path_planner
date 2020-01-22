@@ -16,6 +16,7 @@
 #include <mpc/EstimateStateRequest.h>
 #include <mpc/EstimateStateResponse.h>
 #include <mpc/EstimateState.h>
+#include <mpc/UpdateReferenceTrajectory.h>
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
 #include "path_planner/TrajectoryDisplayer.h"
@@ -42,6 +43,7 @@ public:
 
     m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
     m_estimate_state_client = m_node_handle.serviceClient<mpc::EstimateState>("/mpc/estimate_state");
+    m_update_reference_trajectory_client = m_node_handle.serviceClient<mpc::UpdateReferenceTrajectory>("/mpc/update_reference_trajectory");
 
     m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
     m_reference_trajectory_pub = m_node_handle.advertise<path_planner::Trajectory>("/reference_trajectory",1);
@@ -187,14 +189,31 @@ public:
         m_Executive->updateDynamicObstacle(inmsg->mmsi, obstacle);
     }
 
-    void publishTrajectory(vector<State> trajectory) final
+//    void publishTrajectory(vector<State> trajectory) final
+//    {
+//        path_planner::Trajectory reference;
+//        for (State s : trajectory) {
+//            reference.states.push_back(getStateMsg(s));
+//        }
+//        reference.trajectoryNumber = ++m_TrajectoryCount;
+//        m_reference_trajectory_pub.publish(reference);
+//    }
+
+    State publishTrajectory(vector<State> trajectory) final
     {
         path_planner::Trajectory reference;
         for (State s : trajectory) {
             reference.states.push_back(getStateMsg(s));
         }
         reference.trajectoryNumber = ++m_TrajectoryCount;
-        m_reference_trajectory_pub.publish(reference);
+        mpc::UpdateReferenceTrajectoryRequest req;
+        mpc::UpdateReferenceTrajectoryResponse res;
+        req.trajectory = reference;
+        if (m_update_reference_trajectory_client.call(req, res)) {
+            return getState(res.state);
+        } else {
+            return State(-1);
+        }
     }
 
     void displayTrajectory(vector<State> trajectory, bool plannerTrajectory) override
@@ -208,11 +227,14 @@ public:
         mpc::EstimateStateResponse res;
         req.desiredTime = desiredTime;
         // loop while we're getting estimates from a stale trajectory
-        while (m_estimate_state_client.call(req, res)) {
+        for (int i = 0; m_estimate_state_client.call(req, res) && i < 10; i++) {
             if (res.trajectoryNumber == m_TrajectoryCount) {
                 auto s = getState(res.state);
                 displayPlannerStart(s);
                 return s;
+            }
+            else {
+                ros::Duration(0.01).sleep(); // rest a bit before trying again
             }
         }
         cerr << "EstimateState service call failed" << endl;
@@ -338,6 +360,7 @@ private:
 
     ros::ServiceClient m_lat_long_to_map_client;
     ros::ServiceClient m_estimate_state_client;
+    ros::ServiceClient m_update_reference_trajectory_client;
 
     dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Dynamic_Reconfigure_Server;
 

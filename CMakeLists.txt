@@ -78,7 +78,6 @@ target_link_libraries(planner path_planner_common dubins)
 
 add_library(executive
         src/executive/executive.cpp
-        src/executive/ExecutiveInternalsManager.cpp
         )
 
 target_link_libraries(executive planner path_planner_common)

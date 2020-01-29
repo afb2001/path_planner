@@ -22,14 +22,6 @@ public:
      * Alert the system that the planner has finished this iteration. This might deserve its own interface.
      */
     virtual void allDone() = 0;
-    /**
-     * Expose the state estimation service to the Executive. This might also deserve its own interface.
-     * @param desiredTime the desired time for the estimated state
-     * @return an estimated state at desiredTime
-     */
-    virtual State getEstimatedState(double desiredTime) = 0;
-
-
 
     /**
      * Get the current time.

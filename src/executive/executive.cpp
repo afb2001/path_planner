@@ -2,9 +2,7 @@
 #include <fstream>
 #include <wait.h>
 #include <future>
-#include <rosconsole/macros_generated.h>
 #include <memory>
-#include "ExecutiveInternalsManager.h"
 #include "executive.h"
 #include "../planner/SamplingBasedPlanner.h"
 #include "../planner/AStarPlanner.h"
@@ -16,16 +14,12 @@ using namespace std;
 Executive::Executive(TrajectoryPublisher *controlReceiver)
 {
     m_TrajectoryPublisher = controlReceiver;
-
     m_PlannerConfig.setNowFunction([&] { return m_TrajectoryPublisher->getTime(); });
-
-//    startThreads();
 }
 
 Executive::~Executive() {
     terminate();
     m_PlanningFuture.wait_for(chrono::seconds(2));
-//    m_TrajectoryPublishingFuture.wait_for(chrono::seconds(1));
 }
 
 double Executive::getCurrentTime()
@@ -37,8 +31,6 @@ double Executive::getCurrentTime()
 
 void Executive::updateCovered(double x, double y, double speed, double heading, double t)
 {
-//    m_InternalsManager.updateCurrent(x, y, speed, heading, t);
-//    m_InternalsManager.updateCovered();
     if ((m_LastHeading - heading) / m_LastUpdateTime <= c_CoverageHeadingRateMax) {
         m_RibbonManager.cover(x, y);
     }
@@ -153,134 +145,10 @@ void Executive::planLoop() {
     }
 }
 
-// fix the moving of start
-void Executive::requestPath()
-{
-    double start, end;
-    int sleeptime;
-
-//    m_InternalsManager.initialize();
-
-    while (m_Running)
-    {
-        // if m_Pause, block until !m_Pause
-        unique_lock<mutex> lk(m_PauseMutex);
-        m_PauseCv.wait(lk, [=]{return !m_Pause;});
-//        cerr << "requestPath unblocked (with the lock)" << endl;
-        lk.unlock();
-//        cerr << "requestPath released the lock" << endl;
-
-        if (m_RibbonManager.done())
-        {
-            this_thread::sleep_for(chrono::milliseconds(1000));
-            cerr << "Finished path; pausing" << endl;
-            pause();
-            continue;
-        }
-
-        m_TrajectoryPublisher->displayRibbons(m_RibbonManager);
-
-        if (m_MapMutex.try_lock()) {
-            if (m_NewMap) {
-                m_PlannerConfig.setMap(m_NewMap);
-            }
-            m_NewMap = nullptr;
-            m_MapMutex.unlock();
-        }
-
-        start = m_TrajectoryPublisher->getTime();
-        vector<State> plan;
-//        cerr << "ROS time is now " << m_TrajectoryPublisher->getTime() << endl;
-        auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
-        if (startState.time == -1) { // if the state estimator returns an error naively do it ourselves
-            startState.setEstimate(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds - m_LastState.time, m_LastState);
-        }
-//        cerr << "Calling planner with state " << startState.toString() << endl;
-        try {
-            // TODO! -- low-key race condition with the ribbon manager here but it might be fine
-            // NOTE: changed the time remaining from 0.95 to 0.7 to hopefully allow the controller to update
-            // its estimates of our trajectory
-            m_PlannerConfig.setObstacles(m_DynamicObstaclesManager);
-            plan = m_Planner->plan(m_RibbonManager, startState, m_PlannerConfig,
-                                   start + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
-        }
-        catch(const std::exception& e) {
-            cerr << "Exception thrown while planning:" << endl;
-            cerr << e.what() << endl;
-            cerr << "Pausing." << endl;
-            pause();
-        }
-        catch (...) {
-            cerr << "Unknown exception thrown while planning; pausing" << endl;
-            pause();
-            throw;
-        }
-
-//        cerr << "Setting new path of length " << plan.size() << endl;
-        if (!plan.empty()) {
-            m_TrajectoryPublisher->publishTrajectory(plan);
-        }
-        m_TrajectoryPublisher->displayTrajectory(plan, true);
-        end = m_TrajectoryPublisher->getTime();
-        sleeptime = (end - start <= c_PlanningTimeSeconds) ? ((int)((c_PlanningTimeSeconds - (end - start)) * 1000)) : 0;
-
-        this_thread::sleep_for(chrono::milliseconds(sleeptime));
-    }
-    cerr << "Planner thread exiting." << endl;
-}
-
-void Executive::addToCover(int x, int y)
-{
-    m_InternalsManager.addToCover(x, y);
-}
-
-void Executive::startPlanner(const string& mapFile, double latitude, double longitude)
-{
-    cerr << "Starting planner" << endl;
-
-    cerr << m_RibbonManager.dumpRibbons() << endl;
-
-    shared_ptr<Map> map;
-    try {
-        map = make_shared<GeoTiffMap>(mapFile, longitude, latitude);
-    }
-    catch (...) {
-        map = make_shared<Map>();
-    }
-    this->m_PlannerConfig.setMap(map);
-
-    m_Planner = std::unique_ptr<Planner>(new AStarPlanner);
-
-    // assume you've already set up path to cover
-//    vector<pair<double, double>> toCover;
-//    for (point p : m_InternalsManager.getCovered())
-//        toCover.emplace_back(p.x, p.y);
-//    m_Planner->addToCover(toCover);
-
-    cerr << "Planner is up and running" << endl;
-
-    // planner is running so the listener and updater threads should too
-    unPause();
-}
-
-void Executive::startThreads()
-{
-//    cerr << "Starting thread to publish to controller" << endl;
-//    m_TrajectoryPublishingFuture = async(launch::async, &Executive::sendAction, this);
-    cerr << "Starting thread to listen to planner" << endl;
-    m_PlanningFuture = async(launch::async, &Executive::requestPath, this);
-}
-
 void Executive::terminate()
 {
-//    if (!m_Running) return;
-//    m_Running = false;
-
     // cancel planner so thread can finish
     cancelPlanner();
-
-    // un-pause so threads can terminate
-//    unPause();
 }
 
 void Executive::pause()
@@ -300,11 +168,6 @@ void Executive::pause()
 //    m_TrajectoryPublisher->allDone();
 }
 
-
-bool Executive::plannerIsRunning() {
-    return m_Running;
-}
-
 void Executive::unPause() {
     m_PauseMutex.lock();
     m_Pause = false;
@@ -313,7 +176,6 @@ void Executive::unPause() {
 }
 
 void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
-//    m_InternalsManager.updateDynamicObstacle(mmsi, obstacle);
     m_DynamicObstaclesManager.update(mmsi, inventDistributions(obstacle));
 }
 
@@ -364,7 +226,6 @@ void Executive::setVehicleConfiguration(double maxSpeed, double turningRadius, d
                                         double coverageTurningRadius, int k) {
     m_PlannerConfig.setMaxSpeed(maxSpeed);
     m_PlannerConfig.setTurningRadius(turningRadius);
-//    m_PlannerConfig.setCoverageMaxSpeed(coverageMaxSpeed); // deprecated
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
     m_PlannerConfig.setBranchingFactor(k);
 }

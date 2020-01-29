@@ -13,9 +13,6 @@
 #include <fstream>
 #include <project11_transformations/LatLongToMap.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <mpc/EstimateStateRequest.h>
-#include <mpc/EstimateStateResponse.h>
-#include <mpc/EstimateState.h>
 #include <mpc/UpdateReferenceTrajectory.h>
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
@@ -42,11 +39,9 @@ public:
     m_Executive = new Executive(this);
 
     m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
-    m_estimate_state_client = m_node_handle.serviceClient<mpc::EstimateState>("/mpc/estimate_state");
     m_update_reference_trajectory_client = m_node_handle.serviceClient<mpc::UpdateReferenceTrajectory>("/mpc/update_reference_trajectory");
 
     m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
-    m_reference_trajectory_pub = m_node_handle.advertise<path_planner::Trajectory>("/reference_trajectory",1);
 
     m_position_sub = m_node_handle.subscribe("/position_map", 10, &PathPlanner::positionCallback, this);
     m_heading_sub = m_node_handle.subscribe("/heading", 10, &PathPlanner::headingCallback, this);
@@ -68,7 +63,7 @@ public:
     {
         publishControllerMessage("stop running");
         delete m_Executive;
-        std::cerr << strerror(errno) << endl;
+        std::cerr << strerror(errno) << std::endl;
     }
 
     // This is really only designed to work once right now
@@ -92,39 +87,30 @@ public:
 
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 
-        // transit mode
-        if (goal->path.poses.size() > 2) {
+        for (int i = 0; i + 1 < goal->path.poses.size(); i++) {
+            // assume points represent track-line pairs
+            geographic_msgs::GeoPoseStamped startPose = goal->path.poses[i];
+            geographic_msgs::GeoPoseStamped endPose = goal->path.poses[i + 1];
+            geometry_msgs::PointStamped::_point_type start;
+            geometry_msgs::PointStamped::_point_type end;
+
             project11_transformations::LatLongToMap::Request request;
             project11_transformations::LatLongToMap::Response response;
-            request.wgs84.position = goal->path.poses.back().pose.position;
+
+            // send to LatLongToMap
+            request.wgs84.position = startPose.pose.position;
             if (m_lat_long_to_map_client.call(request, response)) {
-                m_Executive->addToCover(response.map.point.x, response.map.point.y);
+                start = response.map.point;
             }
-        } else {
-            for (int i = 0; i + 1 < goal->path.poses.size(); i++) {
-                // assume points represent track-line pairs
-                geographic_msgs::GeoPoseStamped startPose = goal->path.poses[i];
-                geographic_msgs::GeoPoseStamped endPose = goal->path.poses[i + 1];
-                geometry_msgs::PointStamped::_point_type start;
-                geometry_msgs::PointStamped::_point_type end;
-
-                project11_transformations::LatLongToMap::Request request;
-                project11_transformations::LatLongToMap::Response response;
-
-                // send to LatLongToMap
-                request.wgs84.position = startPose.pose.position;
-                if (m_lat_long_to_map_client.call(request, response)) {
-                    start = response.map.point;
-                }
-                currentPath.emplace_back(start.x, start.y);
-                request.wgs84.position = endPose.pose.position;
-                if (m_lat_long_to_map_client.call(request, response)) {
-                    end = response.map.point;
-                }
-
-                m_Executive->addRibbon(start.x, start.y, end.x, end.y);
+            currentPath.emplace_back(start.x, start.y);
+            request.wgs84.position = endPose.pose.position;
+            if (m_lat_long_to_map_client.call(request, response)) {
+                end = response.map.point;
             }
+
+            m_Executive->addRibbon(start.x, start.y, end.x, end.y);
         }
+
 
         // start planner
         m_Executive->startPlanner();
@@ -132,13 +118,13 @@ public:
 
     void preemptCallback()
     {
-        cerr << "Canceling planner" << endl;
+        std::cerr << "Canceling planner" << std::endl;
         m_Preempted = true;
         m_action_server.setPreempted();
 
         // Should the executive stop now? Probably?
         m_Executive->pause();
-        publishControllerMessage("stop sending controls");
+        publishControllerMessage("terminate");
         clearDisplay();
     }
 
@@ -178,7 +164,7 @@ public:
             obstacle.x = response.map.point.x;
             obstacle.y = response.map.point.y;
         } else {
-            std::cerr << "Error: LatLongToMap failed" << endl;
+            std::cerr << "Error: LatLongToMap failed" << std::endl;
         }
 
         obstacle.heading = inmsg->cog;
@@ -189,17 +175,7 @@ public:
         m_Executive->updateDynamicObstacle(inmsg->mmsi, obstacle);
     }
 
-//    void publishTrajectory(vector<State> trajectory) final
-//    {
-//        path_planner::Trajectory reference;
-//        for (State s : trajectory) {
-//            reference.states.push_back(getStateMsg(s));
-//        }
-//        reference.trajectoryNumber = ++m_TrajectoryCount;
-//        m_reference_trajectory_pub.publish(reference);
-//    }
-
-    State publishTrajectory(vector<State> trajectory) final
+    State publishTrajectory(std::vector<State> trajectory) final
     {
         path_planner::Trajectory reference;
         for (State s : trajectory) {
@@ -216,36 +192,16 @@ public:
         }
     }
 
-    void displayTrajectory(vector<State> trajectory, bool plannerTrajectory) override
+    void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) override
     {
         TrajectoryDisplayer::displayTrajectory(trajectory, plannerTrajectory);
-    }
-
-    State getEstimatedState(double desiredTime) final
-    {
-        mpc::EstimateStateRequest req;
-        mpc::EstimateStateResponse res;
-        req.desiredTime = desiredTime;
-        // loop while we're getting estimates from a stale trajectory
-        for (int i = 0; m_estimate_state_client.call(req, res) && i < 10; i++) {
-            if (res.trajectoryNumber == m_TrajectoryCount) {
-                auto s = getState(res.state);
-                displayPlannerStart(s);
-                return s;
-            }
-            else {
-                ros::Duration(0.01).sleep(); // rest a bit before trying again
-            }
-        }
-        cerr << "EstimateState service call failed" << endl;
-        return State(-1);
     }
 
     void allDone() final
     {
         std::cerr << "Planner appears to have finished" << std::endl;
         m_ActionDone = true;
-        publishControllerMessage("stop sending controls");
+        publishControllerMessage("terminate");
     }
 
     void setSucceeded()
@@ -256,7 +212,7 @@ public:
         m_action_server.setSucceeded(result);
     }
 
-    void publishControllerMessage(string m)
+    void publishControllerMessage(std::string m)
     {
         std_msgs::String msg;
         msg.data = std::move(m);
@@ -350,7 +306,6 @@ private:
     geographic_msgs::GeoPoint m_origin;
 
     ros::Publisher m_controller_msgs_pub;
-    ros::Publisher m_reference_trajectory_pub;
 
     ros::Subscriber m_position_sub;
     ros::Subscriber m_heading_sub;
@@ -359,7 +314,6 @@ private:
     ros::Subscriber m_origin_sub;
 
     ros::ServiceClient m_lat_long_to_map_client;
-    ros::ServiceClient m_estimate_state_client;
     ros::ServiceClient m_update_reference_trajectory_client;
 
     dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Dynamic_Reconfigure_Server;
@@ -374,7 +328,7 @@ private:
 
 int main(int argc, char **argv)
 {
-    std::cerr << "Starting planner node" << endl;
+    std::cerr << "Starting planner node" << std::endl;
     ros::init(argc, argv, "path_planner");
     PathPlanner pp("path_planner_action");
     ros::spin();

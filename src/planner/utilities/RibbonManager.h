@@ -2,6 +2,7 @@
 #define SRC_RIBBONMANAGER_H
 
 #include <list>
+#include <vector>
 #include <path_planner/State.h>
 #include "Ribbon.h"
 extern "C" {

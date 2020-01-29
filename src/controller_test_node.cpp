@@ -82,7 +82,7 @@ public:
             State start(startPoint.x, startPoint.y, 0, c_MaxSpeed, time);
             State end(endPoint.x, endPoint.y, 0, 0, 0);
             start.setHeadingTowards(end);
-            cerr << "Adding line between\n" << start.toString() << " and\n" << end.toString() << endl;
+            std::cerr << "Adding line between\n" << start.toString() << " and\n" << end.toString() << std::endl;
             State current = start;
             auto d = start.distanceTo(end);
             for (int j = 0; j < d; j++){ // 2 m/s updated every half second is 1m of distance each iteration
@@ -93,12 +93,12 @@ public:
             time = current.time;
         }
 
-        cerr << "Publishing trajectory of length " << m_Trajectory.size() << " to controller" << endl;
+        std::cerr << "Publishing trajectory of length " << m_Trajectory.size() << " to controller" << std::endl;
 
         displayTrajectory(m_Trajectory, true);
         publishTrajectory(m_Trajectory);
 
-        auto t = async(launch::async, [&]{
+        auto t = async(std::launch::async, [&]{
             auto t = getTime();
 //            cerr << "Starting display loop at time " << t << endl;
             int i = 0;
@@ -127,14 +127,14 @@ public:
         if (m_lat_long_to_map_client.call(request, response)) {
             return response.map.point;
         } else {
-            cerr << "LatLongToMap failed" << endl;
+            std::cerr << "LatLongToMap failed" << std::endl;
             return response.map.point;
         }
     }
 
     void preemptCallback()
     {
-        cerr << "Canceling controller test run" << endl;
+        std::cerr << "Canceling controller test run" << std::endl;
         m_action_server.setPreempted();
         m_Preempted = true;
 
@@ -158,7 +158,7 @@ public:
         m_current_speed = inmsg->twist.linear.x; // this will change once /sog is a vector
     }
 
-    void publishTrajectory(vector<State> trajectory)
+    void publishTrajectory(std::vector<State> trajectory)
     {
         path_planner::Trajectory reference;
         for (State s : trajectory) {
@@ -181,7 +181,7 @@ public:
                 return s;
             }
         }
-        cerr << "EstimateState service call failed" << endl;
+        std::cerr << "EstimateState service call failed" << std::endl;
         return State(-1);
     }
 
@@ -195,7 +195,7 @@ public:
         publishControllerMessage("stop sending controls");
     }
 
-    void publishControllerMessage(string m)
+    void publishControllerMessage(std::string m)
     {
         std_msgs::String msg;
         msg.data = std::move(m);
@@ -260,7 +260,7 @@ public:
     }
 
     void displayDot(const State& s) {
-        cerr << "Displaying dot at state " << s.toString() << endl;
+        std::cerr << "Displaying dot at state " << s.toString() << std::endl;
         geographic_visualization_msgs::GeoVizItem geoVizItem;
         geoVizItem.id = "reference_tracker";
         geographic_visualization_msgs::GeoVizPointList displayPoints;
@@ -281,7 +281,7 @@ private:
     actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
     bool m_ActionDone = false, m_Preempted = false;
 
-    vector<State> m_Trajectory;
+    std::vector<State> m_Trajectory;
 
     // Since speed and heading are updated through different topics than position,
     // but we need them for state updates to the executive, keep the latest of each
@@ -306,7 +306,7 @@ private:
 
 int main(int argc, char **argv)
 {
-    std::cerr << "Starting controller test node" << endl;
+    std::cerr << "Starting controller test node" << std::endl;
     ros::init(argc, argv, "controller_test");
     ControllerTest pp("path_planner_action");
     ros::spin();

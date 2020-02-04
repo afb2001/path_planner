@@ -19,6 +19,7 @@
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
 #include "path_planner/TrajectoryDisplayer.h"
+#include "NodeBase.h"
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCInconsistentNamingInspection"
@@ -28,36 +29,14 @@
 /**
  * Node to act as interface between ROS and path planning system.
  */
-class ControllerTest : public TrajectoryDisplayer
+class ControllerTest : public NodeBase
 {
 public:
     explicit ControllerTest(std::string name):
-            m_action_server(m_node_handle, std::move(name), false)
-    {
-        m_current_speed = 3.0;
-        m_current_heading = 0;
+            NodeBase(name)
+    {}
 
-        m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
-        m_estimate_state_client = m_node_handle.serviceClient<mpc::EstimateState>("/mpc/estimate_state");
-
-        m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
-        m_reference_trajectory_pub = m_node_handle.advertise<path_planner::Trajectory>("/reference_trajectory",1);
-
-        m_position_sub = m_node_handle.subscribe("/position_map", 10, &ControllerTest::positionCallback, this);
-        m_heading_sub = m_node_handle.subscribe("/heading", 10, &ControllerTest::headingCallback, this);
-        m_speed_sub = m_node_handle.subscribe("/sog", 10, &ControllerTest::speedCallback, this);
-
-        m_action_server.registerGoalCallback(boost::bind(&ControllerTest::goalCallback, this));
-        m_action_server.registerPreemptCallback(boost::bind(&ControllerTest::preemptCallback, this));
-        m_action_server.start();
-    }
-
-    ~ControllerTest()
-    {
-        publishControllerMessage("stop running");
-    }
-
-    void goalCallback()
+    void goalCallback() override
     {
         auto goal = m_action_server.acceptNewGoal();
 
@@ -120,19 +99,7 @@ public:
         });
     }
 
-    geometry_msgs::Point convertToMap(geographic_msgs::GeoPoseStamped pose) {
-        project11_transformations::LatLongToMap::Request request;
-        project11_transformations::LatLongToMap::Response response;
-        request.wgs84.position = pose.pose.position;
-        if (m_lat_long_to_map_client.call(request, response)) {
-            return response.map.point;
-        } else {
-            std::cerr << "LatLongToMap failed" << std::endl;
-            return response.map.point;
-        }
-    }
-
-    void preemptCallback()
+    void preemptCallback() override
     {
         std::cerr << "Canceling controller test run" << std::endl;
         m_action_server.setPreempted();
@@ -143,19 +110,9 @@ public:
         clearDisplay();
     }
 
-    void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg)
+    void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg) override
     {
         if (m_ActionDone) allDone();
-    }
-
-    void headingCallback(const marine_msgs::NavEulerStamped::ConstPtr& inmsg)
-    {
-        m_current_heading = inmsg->orientation.heading * M_PI / 180.0;
-    }
-
-    void speedCallback(const geometry_msgs::TwistStamped::ConstPtr& inmsg)
-    {
-        m_current_speed = inmsg->twist.linear.x; // this will change once /sog is a vector
     }
 
     void publishTrajectory(std::vector<State> trajectory)
@@ -165,27 +122,17 @@ public:
             reference.states.push_back(getStateMsg(s));
         }
         reference.trajectoryNumber = ++m_TrajectoryCount;
-        m_reference_trajectory_pub.publish(reference);
-    }
-
-    State getEstimatedState(double desiredTime)
-    {
-        mpc::EstimateStateRequest req;
-        mpc::EstimateStateResponse res;
-        req.desiredTime = desiredTime;
-        // loop while we're getting estimates from a stale trajectory
-        while (m_estimate_state_client.call(req, res)) {
-            if (res.trajectoryNumber == m_TrajectoryCount) {
-                auto s = getState(res.state);
-                displayPlannerStart(s);
-                return s;
-            }
+        mpc::UpdateReferenceTrajectoryRequest req;
+        mpc::UpdateReferenceTrajectoryResponse res;
+        req.trajectory = reference;
+        if (m_update_reference_trajectory_client.call(req, res)) {
+            // success
+        } else {
+            std::cerr << "Controller failed to send state to test node" << std::endl;
         }
-        std::cerr << "EstimateState service call failed" << std::endl;
-        return State(-1);
     }
 
-    void allDone()
+    void allDone() override
     {
         m_ActionDone = false;
         path_planner::path_plannerResult result;
@@ -193,70 +140,6 @@ public:
         std::cerr << "The times in the trajectory have now all passed. Setting the succeeded bit in the action server." << std::endl;
 
         publishControllerMessage("stop sending controls");
-    }
-
-    void publishControllerMessage(std::string m)
-    {
-        std_msgs::String msg;
-        msg.data = std::move(m);
-        m_controller_msgs_pub.publish(msg);
-    }
-
-    void displayRibbons(const RibbonManager& ribbonManager) {
-
-        geographic_visualization_msgs::GeoVizItem geoVizItem;
-
-        for (const auto& r : ribbonManager.get()) {
-            geographic_visualization_msgs::GeoVizPointList displayPoints;
-            displayPoints.color.r = 1;
-            displayPoints.color.b = 0.5;
-            displayPoints.color.a = 0.6;
-            displayPoints.size = 15;
-            geographic_msgs::GeoPoint point;
-            displayPoints.points.push_back(convertToLatLong(r.startAsState()));
-            displayPoints.points.push_back(convertToLatLong(r.endAsState()));
-            geoVizItem.lines.push_back(displayPoints);
-        }
-        geoVizItem.id = "ribbons";
-        m_display_pub.publish(geoVizItem);
-    }
-
-    void displayPlannerStart(const State& state) {
-//        cerr << "Displaying state " << state.toString() << endl;
-        geographic_visualization_msgs::GeoVizItem geoVizItem;
-        geographic_visualization_msgs::GeoVizPolygon polygon;
-        geographic_visualization_msgs::GeoVizSimplePolygon simplePolygon;
-        State bow, sternPort, sternStarboard;
-        bow.setEstimate(3 / state.speed, state); //set bow 3m ahead of state
-        sternPort.setEstimate(-1 / state.speed, state);
-        sternStarboard.set(sternPort);
-        auto a = state.heading + M_PI_2;
-        auto dx = 1.5 * sin(a);
-        auto dy = 1.5 * cos(a);
-        sternPort.x += dx;
-        sternPort.y += dy;
-        sternStarboard.x -= dx;
-        sternStarboard.y -= dy;
-        simplePolygon.points.push_back(convertToLatLong(bow));
-        simplePolygon.points.push_back(convertToLatLong(sternPort));
-        simplePolygon.points.push_back(convertToLatLong(sternStarboard));
-        polygon.outer = simplePolygon;
-        polygon.edge_color.b = 1;
-        polygon.edge_color.a = 0.7;
-        polygon.fill_color = polygon.edge_color;
-        geoVizItem.polygons.push_back(polygon);
-        geoVizItem.id = "planner_start";
-        m_display_pub.publish(geoVizItem);
-    }
-
-    void clearDisplay() {
-        displayRibbons(RibbonManager());
-        TrajectoryDisplayer::displayTrajectory(std::vector<State>(), true);
-        geographic_visualization_msgs::GeoVizItem geoVizItem;
-        geoVizItem.id = "planner_start";
-        m_display_pub.publish(geoVizItem);
-        geoVizItem.id = "reference_tracker";
-        m_display_pub.publish(geoVizItem);
     }
 
     void displayDot(const State& s) {
@@ -275,31 +158,7 @@ public:
     }
 
 private:
-//    ros::NodeHandle m_node_handle;
-//    ros::Publisher m_display_pub;
-//    ros::ServiceClient m_map_to_lat_long_client;
-    actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
-    bool m_ActionDone = false, m_Preempted = false;
-
     std::vector<State> m_Trajectory;
-
-    // Since speed and heading are updated through different topics than position,
-    // but we need them for state updates to the executive, keep the latest of each
-    // to send when we get a new position
-    double m_current_speed;
-    double m_current_heading;
-
-    ros::Publisher m_controller_msgs_pub;
-    ros::Publisher m_reference_trajectory_pub;
-
-    ros::Subscriber m_position_sub;
-    ros::Subscriber m_heading_sub;
-    ros::Subscriber m_speed_sub;
-
-    ros::ServiceClient m_lat_long_to_map_client;
-    ros::ServiceClient m_estimate_state_client;
-
-    long m_TrajectoryCount = 1;
 
     static constexpr double c_MaxSpeed = 2.0;
 };

@@ -17,6 +17,7 @@
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
 #include "path_planner/TrajectoryDisplayer.h"
+#include "NodeBase.h"
 #include <path_planner/path_plannerConfig.h>
 #include <dynamic_reconfigure/server.h>
 
@@ -28,34 +29,18 @@
 /**
  * Node to act as interface between ROS and path planning system.
  */
-class PathPlanner: public TrajectoryDisplayer, public TrajectoryPublisher
+class PathPlanner: public NodeBase, public TrajectoryPublisher
 {
 public:
-    explicit PathPlanner(std::string name):
-    m_action_server(m_node_handle, std::move(name), false)
+    explicit PathPlanner(std::string name): NodeBase(std::move(name))
 {
-    m_current_speed = 3.0;
-    m_current_heading = 0;
     m_Executive = new Executive(this);
 
-    m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
-    m_update_reference_trajectory_client = m_node_handle.serviceClient<mpc::UpdateReferenceTrajectory>("/mpc/update_reference_trajectory");
-
-    m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
-
-    m_position_sub = m_node_handle.subscribe("/position_map", 10, &PathPlanner::positionCallback, this);
-    m_heading_sub = m_node_handle.subscribe("/heading", 10, &PathPlanner::headingCallback, this);
-    m_speed_sub = m_node_handle.subscribe("/sog", 10, &PathPlanner::speedCallback, this);
     m_contact_sub = m_node_handle.subscribe("/contact", 10, &PathPlanner::contactCallback, this);
     m_origin_sub = m_node_handle.subscribe("/origin", 1, &PathPlanner::originCallback, this);
 
-    m_action_server.registerGoalCallback(boost::bind(&PathPlanner::goalCallback, this));
-    m_action_server.registerPreemptCallback(boost::bind(&PathPlanner::preemptCallback, this));
-    m_action_server.start();
-
     dynamic_reconfigure::Server<path_planner::path_plannerConfig>::CallbackType f;
     f = boost::bind(&PathPlanner::reconfigureCallback, this, _1, _2);
-
     m_Dynamic_Reconfigure_Server.setCallback(f);
 }
 
@@ -67,7 +52,7 @@ public:
     }
 
     // This is really only designed to work once right now
-    void goalCallback()
+    void goalCallback() override
     {
         auto goal = m_action_server.acceptNewGoal();
 
@@ -116,7 +101,7 @@ public:
         m_Executive->startPlanner();
     }
 
-    void preemptCallback()
+    void preemptCallback() override
     {
         std::cerr << "Canceling planner" << std::endl;
         m_Preempted = true;
@@ -128,7 +113,7 @@ public:
         clearDisplay();
     }
 
-    void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg)
+    void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg) override
     {
         m_Executive->updateCovered(
                 inmsg->pose.position.x,
@@ -140,16 +125,6 @@ public:
 
         // need to set succeeded in action server in ROS callback thread for some reason
         if (m_ActionDone) setSucceeded();
-    }
-
-    void headingCallback(const marine_msgs::NavEulerStamped::ConstPtr& inmsg)
-    {
-        m_current_heading = inmsg->orientation.heading * M_PI / 180.0;
-    }
-
-    void speedCallback(const geometry_msgs::TwistStamped::ConstPtr& inmsg)
-    {
-        m_current_speed = inmsg->twist.linear.x; // this will change once /sog is a vector
     }
 
     void contactCallback(const marine_msgs::Contact::ConstPtr& inmsg)
@@ -212,13 +187,6 @@ public:
         m_action_server.setSucceeded(result);
     }
 
-    void publishControllerMessage(std::string m)
-    {
-        std_msgs::String msg;
-        msg.data = std::move(m);
-        m_controller_msgs_pub.publish(msg);
-    }
-
     void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
         m_Executive->refreshMap(config.planner_geotiff_map, m_origin.latitude, m_origin.longitude);
         m_Executive->setVehicleConfiguration(config.non_coverage_max_speed, config.non_coverage_turning_radius,
@@ -253,72 +221,15 @@ public:
         m_display_pub.publish(geoVizItem);
     }
 
-    void displayPlannerStart(const State& state) {
-        geographic_visualization_msgs::GeoVizItem geoVizItem;
-        geographic_visualization_msgs::GeoVizPolygon polygon;
-        geographic_visualization_msgs::GeoVizSimplePolygon simplePolygon;
-        State bow, sternPort, sternStarboard;
-        bow.setEstimate(3 / state.speed, state); //set bow 3m ahead of state
-        sternPort.setEstimate(-1 / state.speed, state);
-        sternStarboard.set(sternPort);
-        auto a = state.heading + M_PI_2;
-        auto dx = 1.5 * sin(a);
-        auto dy = 1.5 * cos(a);
-        sternPort.x += dx;
-        sternPort.y += dy;
-        sternStarboard.x -= dx;
-        sternStarboard.y -= dy;
-        simplePolygon.points.push_back(convertToLatLong(bow));
-        simplePolygon.points.push_back(convertToLatLong(sternPort));
-        simplePolygon.points.push_back(convertToLatLong(sternStarboard));
-        polygon.outer = simplePolygon;
-        polygon.edge_color.b = 1;
-        polygon.edge_color.a = 0.7;
-        polygon.fill_color = polygon.edge_color;
-        geoVizItem.polygons.push_back(polygon);
-        geoVizItem.id = "planner_start";
-        m_display_pub.publish(geoVizItem);
-    }
-
-    void clearDisplay() {
-        displayRibbons(RibbonManager());
-        TrajectoryDisplayer::displayTrajectory(std::vector<State>(), true);
-        geographic_visualization_msgs::GeoVizItem geoVizItem;
-        geoVizItem.id = "planner_start";
-        m_display_pub.publish(geoVizItem);
-    }
-
 private:
-    ros::NodeHandle m_node_handle;
-
-    actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
-    // Apparently the action server is supposed to be manipulated on the ROS thread, so I had to make some flags
-    // to get the done/preemption behavior I wanted. It seems like there should be a better way to do this but I don't
-    // know what it is.
-    bool m_ActionDone = false, m_Preempted = false;
-
-    // Since speed and heading are updated through different topics than position,
-    // but we need them for state updates to the executive, keep the latest of each
-    // to send when we get a new position
-    double m_current_speed;
-    double m_current_heading;
+    ros::NodeHandle m_node_handle; // TODO
 
     geographic_msgs::GeoPoint m_origin;
 
-    ros::Publisher m_controller_msgs_pub;
-
-    ros::Subscriber m_position_sub;
-    ros::Subscriber m_heading_sub;
-    ros::Subscriber m_speed_sub;
     ros::Subscriber m_contact_sub;
     ros::Subscriber m_origin_sub;
 
-    ros::ServiceClient m_lat_long_to_map_client;
-    ros::ServiceClient m_update_reference_trajectory_client;
-
     dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Dynamic_Reconfigure_Server;
-
-    long m_TrajectoryCount = 1;
 
     // handle on Executive
     Executive* m_Executive;

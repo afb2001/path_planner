@@ -1,0 +1,182 @@
+#ifndef SRC_NODEBASE_H
+#define SRC_NODEBASE_H
+
+#include <utility>
+#include "ros/ros.h"
+#include "geographic_msgs/GeoPath.h"
+#include "geometry_msgs/TwistStamped.h"
+#include "std_msgs/String.h"
+#include "marine_msgs/Contact.h"
+#include "marine_msgs/NavEulerStamped.h"
+#include <vector>
+#include "project11/gz4d_geo.h"
+#include "path_planner/path_plannerAction.h"
+#include "actionlib/server/simple_action_server.h"
+#include "path_planner/Trajectory.h"
+#include <fstream>
+#include <project11_transformations/LatLongToMap.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <mpc/EstimateStateRequest.h>
+#include <mpc/EstimateStateResponse.h>
+#include <mpc/EstimateState.h>
+#include "executive/executive.h"
+#include "trajectory_publisher.h"
+#include "path_planner/TrajectoryDisplayer.h"
+#include <mpc/UpdateReferenceTrajectory.h>
+
+/**
+ * Base class for nodes related to the path planner.
+ */
+class NodeBase : public TrajectoryDisplayer
+{
+public:
+    explicit NodeBase(std::string name):
+            m_action_server(m_node_handle, std::move(name), false)
+    {
+        m_current_speed = 0.01;
+        m_current_heading = 0;
+
+        m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
+
+        m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
+
+        m_update_reference_trajectory_client = m_node_handle.serviceClient<mpc::UpdateReferenceTrajectory>("/mpc/update_reference_trajectory");
+
+        m_position_sub = m_node_handle.subscribe("/position_map", 10, &NodeBase::positionCallback, this);
+        m_heading_sub = m_node_handle.subscribe("/heading", 10, &NodeBase::headingCallback, this);
+        m_speed_sub = m_node_handle.subscribe("/sog", 10, &NodeBase::speedCallback, this);
+
+        m_action_server.registerGoalCallback(boost::bind(&NodeBase::goalCallback, this));
+        m_action_server.registerPreemptCallback(boost::bind(&NodeBase::preemptCallback, this));
+        m_action_server.start();
+    }
+
+    ~NodeBase()
+    {
+        publishControllerMessage("terminate");
+    }
+
+    virtual void goalCallback() = 0;
+
+    virtual void preemptCallback() = 0;
+
+    geometry_msgs::Point convertToMap(geographic_msgs::GeoPoseStamped pose) {
+        project11_transformations::LatLongToMap::Request request;
+        project11_transformations::LatLongToMap::Response response;
+        request.wgs84.position = pose.pose.position;
+        if (m_lat_long_to_map_client.call(request, response)) {
+            return response.map.point;
+        } else {
+            std::cerr << "LatLongToMap failed" << std::endl;
+            return response.map.point;
+        }
+    }
+
+    virtual void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg) = 0;
+
+    void headingCallback(const marine_msgs::NavEulerStamped::ConstPtr& inmsg)
+    {
+        m_current_heading = inmsg->orientation.heading * M_PI / 180.0;
+    }
+
+    void speedCallback(const geometry_msgs::TwistStamped::ConstPtr& inmsg)
+    {
+        m_current_speed = inmsg->twist.linear.x; // this will change once /sog is a vector
+    }
+
+    virtual void allDone() = 0;
+
+    void publishControllerMessage(std::string m)
+    {
+        std_msgs::String msg;
+        msg.data = std::move(m);
+        m_controller_msgs_pub.publish(msg);
+    }
+
+    void displayRibbons(const RibbonManager& ribbonManager) {
+
+        geographic_visualization_msgs::GeoVizItem geoVizItem;
+
+        for (const auto& r : ribbonManager.get()) {
+            geographic_visualization_msgs::GeoVizPointList displayPoints;
+            displayPoints.color.r = 1;
+            displayPoints.color.b = 0.5;
+            displayPoints.color.a = 0.6;
+            displayPoints.size = 15;
+            geographic_msgs::GeoPoint point;
+            displayPoints.points.push_back(convertToLatLong(r.startAsState()));
+            displayPoints.points.push_back(convertToLatLong(r.endAsState()));
+            geoVizItem.lines.push_back(displayPoints);
+        }
+        geoVizItem.id = "ribbons";
+        m_display_pub.publish(geoVizItem);
+    }
+
+    void displayPlannerStart(const State& state) {
+//        cerr << "Displaying state " << state.toString() << endl;
+        geographic_visualization_msgs::GeoVizItem geoVizItem;
+        geographic_visualization_msgs::GeoVizPolygon polygon;
+        geographic_visualization_msgs::GeoVizSimplePolygon simplePolygon;
+        State bow, sternPort, sternStarboard;
+        bow.setEstimate(3 / state.speed, state); //set bow 3m ahead of state
+        sternPort.setEstimate(-1 / state.speed, state);
+        sternStarboard.set(sternPort);
+        auto a = state.heading + M_PI_2;
+        auto dx = 1.5 * sin(a);
+        auto dy = 1.5 * cos(a);
+        sternPort.x += dx;
+        sternPort.y += dy;
+        sternStarboard.x -= dx;
+        sternStarboard.y -= dy;
+        simplePolygon.points.push_back(convertToLatLong(bow));
+        simplePolygon.points.push_back(convertToLatLong(sternPort));
+        simplePolygon.points.push_back(convertToLatLong(sternStarboard));
+        polygon.outer = simplePolygon;
+        polygon.edge_color.b = 1;
+        polygon.edge_color.a = 0.7;
+        polygon.fill_color = polygon.edge_color;
+        geoVizItem.polygons.push_back(polygon);
+        geoVizItem.id = "planner_start";
+        m_display_pub.publish(geoVizItem);
+    }
+
+    void clearDisplay() {
+        displayRibbons(RibbonManager());
+        TrajectoryDisplayer::displayTrajectory(std::vector<State>(), true);
+        geographic_visualization_msgs::GeoVizItem geoVizItem;
+        geoVizItem.id = "planner_start";
+        m_display_pub.publish(geoVizItem);
+        geoVizItem.id = "reference_tracker";
+        m_display_pub.publish(geoVizItem);
+    }
+
+protected:
+    actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
+
+    // Apparently the action server is supposed to be manipulated on the ROS thread, so I had to make some flags
+    // to get the done/preemption behavior I wanted. It seems like there should be a better way to do this but I don't
+    // know what it is.
+    bool m_ActionDone = false, m_Preempted = false;
+
+    // Since speed and heading are updated through different topics than position,
+    // but we need them for state updates to the executive, keep the latest of each
+    // to send when we get a new position
+    double m_current_speed;
+    double m_current_heading;
+
+    ros::Publisher m_controller_msgs_pub;
+    ros::Publisher m_reference_trajectory_pub;
+
+    ros::Subscriber m_position_sub;
+    ros::Subscriber m_heading_sub;
+    ros::Subscriber m_speed_sub;
+
+    ros::ServiceClient m_lat_long_to_map_client;
+    ros::ServiceClient m_estimate_state_client;
+    ros::ServiceClient m_update_reference_trajectory_client;
+
+    long m_TrajectoryCount = 1;
+};
+
+
+#endif //SRC_NODEBASE_H

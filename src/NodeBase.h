@@ -1,25 +1,14 @@
 #ifndef SRC_NODEBASE_H
 #define SRC_NODEBASE_H
 
-#include <utility>
 #include "ros/ros.h"
-#include "geographic_msgs/GeoPath.h"
-#include "geometry_msgs/TwistStamped.h"
 #include "std_msgs/String.h"
-#include "marine_msgs/Contact.h"
-#include "marine_msgs/NavEulerStamped.h"
 #include <vector>
-#include "project11/gz4d_geo.h"
 #include "path_planner/path_plannerAction.h"
 #include "actionlib/server/simple_action_server.h"
 #include "path_planner/Trajectory.h"
-#include <fstream>
 #include <project11_transformations/LatLongToMap.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <mpc/EstimateStateRequest.h>
-#include <mpc/EstimateStateResponse.h>
-#include <mpc/EstimateState.h>
-#include "executive/executive.h"
 #include "trajectory_publisher.h"
 #include "path_planner/TrajectoryDisplayer.h"
 #include <mpc/UpdateReferenceTrajectory.h>

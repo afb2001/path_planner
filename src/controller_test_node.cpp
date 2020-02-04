@@ -74,7 +74,7 @@ public:
 
         std::cerr << "Publishing trajectory of length " << m_Trajectory.size() << " to controller" << std::endl;
 
-        displayTrajectory(m_Trajectory, true);
+        m_TrajectoryDisplayer.displayTrajectory(m_Trajectory, true);
         publishTrajectory(m_Trajectory);
 
         auto t = async(std::launch::async, [&]{

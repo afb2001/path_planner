@@ -27,7 +27,7 @@
 /**
  * Base class for nodes related to the path planner.
  */
-class NodeBase : public TrajectoryDisplayer
+class NodeBase
 {
 public:
     explicit NodeBase(std::string name):
@@ -37,8 +37,10 @@ public:
         m_current_heading = 0;
 
         m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
+        m_node_handle.advertise<geographic_visualization_msgs::GeoVizItem>("/project11/display",1);
 
         m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
+        m_display_pub = m_node_handle.advertise<geographic_visualization_msgs::GeoVizItem>("/project11/display",1);
 
         m_update_reference_trajectory_client = m_node_handle.serviceClient<mpc::UpdateReferenceTrajectory>("/mpc/update_reference_trajectory");
 
@@ -49,6 +51,8 @@ public:
         m_action_server.registerGoalCallback(boost::bind(&NodeBase::goalCallback, this));
         m_action_server.registerPreemptCallback(boost::bind(&NodeBase::preemptCallback, this));
         m_action_server.start();
+
+        m_TrajectoryDisplayer = TrajectoryDisplayer(m_node_handle, &m_display_pub);
     }
 
     ~NodeBase()
@@ -142,7 +146,7 @@ public:
 
     void clearDisplay() {
         displayRibbons(RibbonManager());
-        TrajectoryDisplayer::displayTrajectory(std::vector<State>(), true);
+        m_TrajectoryDisplayer.displayTrajectory(std::vector<State>(), true);
         geographic_visualization_msgs::GeoVizItem geoVizItem;
         geoVizItem.id = "planner_start";
         m_display_pub.publish(geoVizItem);
@@ -150,7 +154,27 @@ public:
         m_display_pub.publish(geoVizItem);
     }
 
+    double getTime() const {
+        return m_TrajectoryDisplayer.getTime();
+    }
+
+    path_planner::StateMsg getStateMsg(const State& state) {
+        return m_TrajectoryDisplayer.getStateMsg(state);
+    }
+
+    State getState(const path_planner::StateMsg& stateMsg) {
+        return m_TrajectoryDisplayer.getState(stateMsg);
+    }
+
+    geographic_msgs::GeoPoint convertToLatLong(const State& state) {
+        return m_TrajectoryDisplayer.convertToLatLong(state);
+    }
+
 protected:
+    ros::NodeHandle m_node_handle;
+
+    TrajectoryDisplayer m_TrajectoryDisplayer;
+
     actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
 
     // Apparently the action server is supposed to be manipulated on the ROS thread, so I had to make some flags
@@ -165,14 +189,13 @@ protected:
     double m_current_heading;
 
     ros::Publisher m_controller_msgs_pub;
-    ros::Publisher m_reference_trajectory_pub;
+    ros::Publisher m_display_pub;
 
     ros::Subscriber m_position_sub;
     ros::Subscriber m_heading_sub;
     ros::Subscriber m_speed_sub;
 
     ros::ServiceClient m_lat_long_to_map_client;
-    ros::ServiceClient m_estimate_state_client;
     ros::ServiceClient m_update_reference_trajectory_client;
 
     long m_TrajectoryCount = 1;

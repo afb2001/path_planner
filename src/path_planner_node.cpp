@@ -120,7 +120,7 @@ public:
                 inmsg->pose.position.y,
                 m_current_speed,
                 m_current_heading,
-                TrajectoryDisplayer::getTime());
+                m_TrajectoryDisplayer.getTime());
 //                inmsg->header.stamp.toNSec() / 1.0e9);
 
         // need to set succeeded in action server in ROS callback thread for some reason
@@ -169,7 +169,7 @@ public:
 
     void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) override
     {
-        TrajectoryDisplayer::displayTrajectory(trajectory, plannerTrajectory);
+        m_TrajectoryDisplayer.displayTrajectory(trajectory, plannerTrajectory);
     }
 
     void allDone() final
@@ -199,7 +199,7 @@ public:
     }
 
     double getTime() const override {
-        return TrajectoryDisplayer::getTime();
+        return m_TrajectoryDisplayer.getTime();
     }
 
     void displayRibbons(const RibbonManager& ribbonManager) override {

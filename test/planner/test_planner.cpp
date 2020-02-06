@@ -341,7 +341,7 @@ TEST(Benchmarks, RibbonCoverAlongItselfBenchmark) {
                 ribbonManager.add(s1.x, s1.y, s2.x, s2.y);
                 s1.setHeadingTowards(s2);
                 while (s1.distanceTo(s2) > 0.1) {
-                    s1.setEstimate(0.1 / 2.5, s1);
+                    s1 = s1.push(0.1 / 2.5);
                 }
             }
         }

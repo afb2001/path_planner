@@ -71,8 +71,8 @@ std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getS
 }
 
 bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) {
-    return vertex->state().time > m_StartStateTime + Plan::timeHorizon() ||
-            (vertex->allCovered() && vertex->state().time > m_StartStateTime + Plan::timeMinimum());
+    return vertex->state().time() > m_StartStateTime + Plan::timeHorizon() ||
+            (vertex->allCovered() && vertex->state().time() > m_StartStateTime + Plan::timeMinimum());
 }
 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, const DynamicObstaclesManager& obstacles) {
@@ -82,7 +82,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
     if (!sourceVertex->allCovered()) {
         auto s = sourceVertex->getNearestPointAsState();
         if (sourceVertex->state().distanceTo(s) > Edge::dubinsIncrement()) {
-            s.speed = m_Config.maxSpeed();
+            s.speed() = m_Config.maxSpeed();
             // TODO! -- what heading for points?
             auto destinationVertex = Vertex::connect(sourceVertex, s, m_Config.turningRadius(), false);
             destinationVertex->parentEdge()->computeTrueCost(m_Config);
@@ -193,15 +193,15 @@ std::function<bool(const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vert
 std::vector<State> SamplingBasedPlanner::plan(const RibbonManager&, const State& start, PlannerConfig config,
                                               double timeRemaining) {
     m_Config = config;
-    m_StartStateTime = start.time;
+    m_StartStateTime = start.time();
     m_Samples.clear();
     m_VertexQueue.clear();
     double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
     double magnitude = m_Config.maxSpeed() * Plan::timeHorizon();
-    minX = start.x - magnitude;
-    maxX = start.x + magnitude;
-    minY = start.y - magnitude;
-    maxY = start.y + magnitude;
+    minX = start.x() - magnitude;
+    maxX = start.x() + magnitude;
+    minY = start.y() - magnitude;
+    maxY = start.y() + magnitude;
 
     StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
     addSamples(generator, 1000);

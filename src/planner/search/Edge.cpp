@@ -19,11 +19,11 @@ double Edge::computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesMa
 }
 
 double Edge::computeApproxCost(double maxSpeed, double maxTurningRadius) {
-    if (start()->state().colocated(end()->state())) {
+    if (start()->state().isCoLocated(end()->state())) {
         m_ApproxCost = 0;
     } else {
-        double q0[3] = {start()->state().x, start()->state().y, start()->state().yaw()};
-        double q1[3] = {end()->state().x, end()->state().y, end()->state().yaw()};
+        double q0[3] = {start()->state().x(), start()->state().y(), start()->state().yaw()};
+        double q1[3] = {end()->state().x(), end()->state().y(), end()->state().yaw()};
         int err = dubins_shortest_path(&dubinsPath, q0, q1, maxTurningRadius);
         if (err != EDUBOK) {
             std::cerr << "Encountered an error in the Dubins library" << std::endl;
@@ -35,7 +35,7 @@ double Edge::computeApproxCost(double maxSpeed, double maxTurningRadius) {
 }
 
 double Edge::netTime() {
-    return end()->state().time - start()->state().time;
+    return end()->state().time() - start()->state().time();
 }
 
 void Edge::smooth(Map::SharedPtr map, const DynamicObstaclesManager& obstacles, double maxSpeed, double maxTurningRadius) {
@@ -59,12 +59,12 @@ Plan Edge::getPlan(const PlannerConfig& config) {
     int visCount = int(1.0 / Edge::dubinsIncrement()); // counter to reduce visualization frequency
     while (lengthSoFar < length) {
         dubins_path_sample(&dubinsPath, lengthSoFar, q);
-        plan1.append(State(q[0], q[1], M_PI_2 - q[2], end()->state().speed, lengthSoFar / end()->state().speed + start()->state().time));
+        plan1.append(State(q[0], q[1], M_PI_2 - q[2], end()->state().speed(), lengthSoFar / end()->state().speed() + start()->state().time()));
         if (config.visualizations() && visCount-- == 0) {
             visCount = int(1.0 / Edge::dubinsIncrement());
             // should really put visualizeVertex somewhere accessible
             config.visualizationStream() << "State: (" << q[0] << " " << q[1] << " " << q[2] << " " << config.maxSpeed() <<
-                                         " " << start()->state().time + (lengthSoFar / config.maxSpeed()) << "), f: " << 0 << ", g: " << 0 << ", h: " <<
+                                         " " << start()->state().time() + (lengthSoFar / config.maxSpeed()) << "), f: " << 0 << ", g: " << 0 << ", h: " <<
                                          0 << " plan" << std::endl;
         }
         lengthSoFar += Edge::dubinsIncrement();
@@ -106,15 +106,15 @@ bool Edge::infeasible() const {
 }
 
 double Edge::computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesManager& obstacles) {
-    return computeTrueCost(map, obstacles, end()->state().speed, end()->turningRadius());
+    return computeTrueCost(map, obstacles, end()->state().speed(), end()->turningRadius());
 }
 
 double Edge::computeApproxCost() {
-    return computeApproxCost(end()->state().speed, end()->turningRadius());
+    return computeApproxCost(end()->state().speed(), end()->turningRadius());
 }
 
 double Edge::computeTrueCost(const PlannerConfig& config) {
-    if (start()->state().colocated(end()->state())) {
+    if (start()->state().isCoLocated(end()->state())) {
         std::cerr << "Computing cost of edge between two co-located states is likely an error" << std::endl;
     }
     double maxSpeed, maxTurningRadius;
@@ -132,7 +132,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     double lengthSoFar = 0;
     double length = dubins_path_length(&dubinsPath);
     // truncate longer edges than 30 seconds // TODO! -- use actual horizon variable
-    auto remainingTime = 30 + 1 + config.startStateTime() - start()->state().time;
+    auto remainingTime = 30 + 1 + config.startStateTime() - start()->state().time();
     if (length > maxSpeed * remainingTime) length = maxSpeed * remainingTime;
 
     double dynamicDistance = 0, toCoverDistance = 0;
@@ -154,7 +154,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
             // should really put visualizeVertex somewhere accessible
             // use start H because it isn't worth it to calculate current H
             config.visualizationStream() << "State: (" << q[0] << " " << q[1] << " " << q[2] << " " << maxSpeed <<
-                " " << start()->state().time + timeSoFar << "), f: " << gSoFar + startH << ", g: " << gSoFar << ", h: " <<
+                " " << start()->state().time() + timeSoFar << "), f: " << gSoFar + startH << ", g: " << gSoFar << ", h: " <<
                 startH << " trajectory" << std::endl;
         }
         if (config.map()->getUnblockedDistance(q[0], q[1]) <= Edge::dubinsIncrement()) {
@@ -166,11 +166,11 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
         if (dynamicDistance > Edge::dubinsIncrement()) {
             dynamicDistance -= Edge::dubinsIncrement();
         } else {
-            dynamicDistance = config.obstacles().distanceToNearestPossibleCollision(q[0], q[1], start()->state().speed,
-                                                                           start()->state().time +
+            dynamicDistance = config.obstacles().distanceToNearestPossibleCollision(q[0], q[1], start()->state().speed(),
+                                                                           start()->state().time() +
                                                                            (lengthSoFar / maxSpeed));
             if (dynamicDistance <= Edge::dubinsIncrement()) {
-                collisionPenalty += config.obstacles().collisionExists(q[0], q[1], start()->state().time + (lengthSoFar / maxSpeed)) *
+                collisionPenalty += config.obstacles().collisionExists(q[0], q[1], start()->state().time() + (lengthSoFar / maxSpeed)) *
                                     Edge::collisionPenalty();
                 dynamicDistance = 0;
             }
@@ -204,11 +204,11 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
 //    assert(fabs(end()->state().x - q[0]) < Edge::dubinsIncrement() &&
 //        fabs(end()->state().y - q[1]) < Edge::dubinsIncrement());
     // set state to be at the end of where we collision checked
-    end()->state().x = q[0]; end()->state().y = q[1]; end()->state().yaw(q[2]);
+    end()->state().x() = q[0]; end()->state().y() = q[1]; end()->state().yaw(q[2]);
 
 
     // set end's state's time
-    end()->state().time = start()->state().time + length / maxSpeed;
+    end()->state().time() = start()->state().time() + length / maxSpeed;
 
     if (!m_UseRibbons) {
         // remove duplicates for efficiency for the next bit
@@ -239,10 +239,10 @@ void Edge::computeBrownPath(const PlannerConfig& config, const Ribbon& r) {
     auto h = start.yaw() + M_PI_2;
     // Get points one radius away from start in the directions perpendicular to its heading.
     // These are centers of circles on which start is tangent
-    auto x1 = start.x + cos(h) * radius;
-    auto x2 = start.x - cos(h) * radius;
-    auto y1 = start.y + sin(h) * radius;
-    auto y2 = start.y - sin(h) * radius;
+    auto x1 = start.x() + cos(h) * radius;
+    auto x2 = start.x() - cos(h) * radius;
+    auto y1 = start.y() + sin(h) * radius;
+    auto y2 = start.y() - sin(h) * radius;
 
     auto proj1 = r.getProjection(x1, y1);
     auto proj2 = r.getProjection(x2, y2);
@@ -290,7 +290,7 @@ void Edge::computeBrownPath(const PlannerConfig& config, const Ribbon& r) {
 
     // project that back onto the ribbon
     auto projFinal = r.getProjection(x8, y8);
-    State final(projFinal.first, projFinal.second, s.heading, 0, 0);
+    State final(projFinal.first, projFinal.second, s.heading(), 0, 0);
 
     // done. that's the state.
     end()->state() = final;

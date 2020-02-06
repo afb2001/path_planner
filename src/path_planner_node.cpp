@@ -132,16 +132,16 @@ public:
 
         request.wgs84.position = inmsg->position;
         if (m_lat_long_to_map_client.call(request, response)) {
-            obstacle.x = response.map.point.x;
-            obstacle.y = response.map.point.y;
+            obstacle.x() = response.map.point.x;
+            obstacle.y() = response.map.point.y;
         } else {
             std::cerr << "Error: LatLongToMap failed" << std::endl;
         }
 
-        obstacle.heading = inmsg->cog;
-        obstacle.speed = inmsg->sog;
+        obstacle.heading() = inmsg->cog;
+        obstacle.speed() = inmsg->sog;
 
-        obstacle.time = inmsg->header.stamp.toNSec() / 1.0e9;
+        obstacle.time() = inmsg->header.stamp.toNSec() / 1.0e9;
 
         m_Executive->updateDynamicObstacle(inmsg->mmsi, obstacle);
     }
@@ -159,7 +159,7 @@ public:
         if (m_update_reference_trajectory_client.call(req, res)) {
             return getState(res.state);
         } else {
-            return State(-1);
+            return State();
         }
     }
 

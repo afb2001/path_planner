@@ -55,7 +55,7 @@ void Executive::planLoop() {
     }
 
     cerr << "Starting plan loop" << endl;
-    State startState(-1);
+    State startState;
 
     while (true) {
         double startTime = m_TrajectoryPublisher->getTime();
@@ -104,8 +104,8 @@ void Executive::planLoop() {
 //        auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
 
         // if the state estimator returns an error naively do it ourselves
-        if (startState.time == -1) {
-            startState.setEstimate(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds - m_LastState.time, m_LastState);
+        if (startState.time() == -1) {
+            startState = m_LastState.push(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds - m_LastState.time());
         }
 
         try {
@@ -131,7 +131,7 @@ void Executive::planLoop() {
             cerr << "Received state from controller: " << startState.toString() << endl;
         } else {
             cerr << "Planner returned empty trajectory." << endl;
-            startState = State(-1);
+            startState = State();
         }
 
         // display the trajectory
@@ -209,12 +209,12 @@ void Executive::addRibbon(double x1, double y1, double x2, double y2) {
 
 std::vector<Distribution> Executive::inventDistributions(State obstacle) {
     std::vector<Distribution> distributions;
-    double mean[2] = {obstacle.x, obstacle.y};
+    double mean[2] = {obstacle.x(), obstacle.y()};
     double covariance[2][2] = {{0, 5},{5, 0}};
-    distributions.emplace_back(mean, covariance, obstacle.heading, obstacle.time);
-    obstacle.setEstimate(1, obstacle);
-    mean[0] = obstacle.x; mean[1] = obstacle.y;
-    distributions.emplace_back(mean, covariance, obstacle.heading, obstacle.time);
+    distributions.emplace_back(mean, covariance, obstacle.heading(), obstacle.time());
+    obstacle = obstacle.push(1);
+    mean[0] = obstacle.x(); mean[1] = obstacle.y();
+    distributions.emplace_back(mean, covariance, obstacle.heading(), obstacle.time());
     return distributions;
 }
 

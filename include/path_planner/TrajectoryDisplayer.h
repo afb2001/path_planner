@@ -83,8 +83,8 @@ public:
         assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
         project11_transformations::MapToLatLong::Request request;
         project11_transformations::MapToLatLong::Response response;
-        request.map.point.x = state.x;
-        request.map.point.y = state.y;
+        request.map.point.x = state.x();
+        request.map.point.y = state.y();
         m_map_to_lat_long_client.call(request, response);
         return response.wgs84.position;
     }
@@ -92,22 +92,22 @@ public:
     path_planner::StateMsg getStateMsg(const State& state) {
         assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
         path_planner::StateMsg stateMsg;
-        stateMsg.x = state.x;
-        stateMsg.y = state.y;
-        stateMsg.heading = state.heading;
-        stateMsg.speed = state.speed;
-        stateMsg.time = state.time;
+        stateMsg.x = state.x();
+        stateMsg.y = state.y();
+        stateMsg.heading = state.heading();
+        stateMsg.speed = state.speed();
+        stateMsg.time = state.time();
         return stateMsg;
     }
 
     State getState(const path_planner::StateMsg& stateMsg) {
         assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
         State state;
-        state.x = stateMsg.x;
-        state.y = stateMsg.y;
-        state.heading = stateMsg.heading;
-        state.speed = stateMsg.speed;
-        state.time = stateMsg.time;
+        state.x() = stateMsg.x;
+        state.y() = stateMsg.y;
+        state.heading() = stateMsg.heading;
+        state.speed() = stateMsg.speed;
+        state.time() = stateMsg.time;
         return state;
     }
 protected:

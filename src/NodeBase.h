@@ -111,16 +111,16 @@ public:
         geographic_visualization_msgs::GeoVizPolygon polygon;
         geographic_visualization_msgs::GeoVizSimplePolygon simplePolygon;
         State bow, sternPort, sternStarboard;
-        bow.setEstimate(3 / state.speed, state); //set bow 3m ahead of state
-        sternPort.setEstimate(-1 / state.speed, state);
-        sternStarboard.set(sternPort);
-        auto a = state.heading + M_PI_2;
+        bow = state.push(3 / state.speed()); //set bow 3m ahead of state
+        sternPort = state.push( -1 / state.speed());
+        sternStarboard = sternPort;
+        auto a = state.heading() + M_PI_2;
         auto dx = 1.5 * sin(a);
         auto dy = 1.5 * cos(a);
-        sternPort.x += dx;
-        sternPort.y += dy;
-        sternStarboard.x -= dx;
-        sternStarboard.y -= dy;
+        sternPort.x() += dx;
+        sternPort.y() += dy;
+        sternStarboard.x() -= dx;
+        sternStarboard.y() -= dy;
         simplePolygon.points.push_back(convertToLatLong(bow));
         simplePolygon.points.push_back(convertToLatLong(sternPort));
         simplePolygon.points.push_back(convertToLatLong(sternStarboard));

@@ -1,219 +1,154 @@
 #ifndef OBJECTPAR_H
 #define OBJECTPAR_H
 
-//#include <robust_dubins/RobustDubins_Problem.h>
-//#include <robust_dubins/RobustDubins.h>
 #include "string"
 #include "iostream"
 #include "cmath"
 
-//#include "path_planner/StateMsg.h"
-
-
-struct point{
-    int x, y;
-    point()
-    :x(0),y(0) {}
-
-    point(int x,int y)
-    :x(x),y(y) {}
-
-    bool operator==(const point &s) const
-    {
-        return x == s.x && y == s.y;
-    }
-
-    std::string toString()
-    {
-        return std::to_string(x) + " " + std::to_string(y);
-    }
-};
-
-namespace std
-{
-
-template <>
-struct hash<point>
-{
-    size_t operator()(const point &c) const
-    {
-        int x = c.x, y = c.y;
-        unsigned long value = 0;
-        for (int i = 0; i < 4; i++)
-        {
-            if (!x)
-                break;
-            value += value * 31 + (x & 8);
-            x = x >> 8;
-        }
-        for (int i = 0; i < 4; i++)
-        {
-            if (!y)
-                break;
-            value += value * 31 + (y & 8);
-            y = y >> 8;
-        }
-        return value;
-    }
-};
-}
 
 /**
  * This class represents a state of the vehicle in five dimensions: x, y, heading, speed, time.
- * TODO! -- add expected units
+ * Units: meters, radians east of north, m/s, seconds
  */
 class State
 {
 
   public:
-    // x, y in meters, heading in radians east of north, speed in m/s, time in seconds
-    double x, y, heading, speed, time;
+    double x() const { return m_Pose[0]; }
+    double& x() { return m_Pose[0]; }
+    void setX(double x) { m_Pose[0] = x; }
+
+    double y() const { return m_Pose[1]; }
+    double& y() {return m_Pose[1]; }
+    void setY(double y) { m_Pose[1] = y; }
+
+    double heading() const { return m_Pose[2]; }
+    double& heading() { return m_Pose[2]; }
+    void setHeading(double heading) { m_Pose[2] = heading; }
+
+    double speed() const { return m_Pose[3]; }
+    double& speed() { return m_Pose[3]; }
+    void setSpeed(double speed) { m_Pose[3] = speed; }
+
+    double time() const { return m_Time; }
+    double& time() { return m_Time; }
+    void setTime(double time) { m_Time = time; }
+
+    double* pose() { return m_Pose; }
+
     /**
- * Construct a State.
- * @param x
- * @param y
- * @param heading
- * @param speed
- * @param t
- */
+     * Construct a State.
+     * @param x
+     * @param y
+     * @param heading
+     * @param speed
+     * @param t
+     */
     State(double x, double y, double heading, double speed, double t)
-        : x(x), y(y), heading(heading), speed(speed), time(t){};
-    State(int value)
-        : x(value), y(value), heading(value), speed(value), time(value){};
-    State()
-        : x(-1), y(-1), heading(-1), speed(-1), time(-1){};
-//    State(const path_planner::StateMsg& other)
-//        : State(other.x, other.y, other.heading, other.speed, other.time) {};
-
-    void set(double &newx, double &newy, double &newheading, double &newspeed, double &newtime)
     {
-        x = newx;
-        y = newy;
-        heading = newheading;
-        speed = newspeed;
-        time = newtime;
+        setX(x);
+        setY(y);
+        setHeading(heading);
+        setSpeed(speed);
+        setTime(t);
     }
 
-    void set(State other)
-    {
-        x = other.x;
-        y = other.y;
-        heading = other.heading;
-        speed = other.speed;
-        time = other.time;
-    }
+    State() = default;
 
-//    void set(path_planner::StateMsg other)
-//    {
-//        x = other.x;
-//        y = other.y;
-//        heading = other.heading;
-//        speed = other.speed;
-//        time = other.time;
-//    }
-
-    void setEstimate(double timeInterval, const State& object)
-    {
-        double displacement = timeInterval * object.speed;
-        x = object.x + sin(object.heading) * displacement;
-        y = object.y + cos(object.heading) * displacement;
-        heading = object.heading;
-        speed = object.speed;
-        time = object.time + timeInterval;
-         
+    /**
+     * Push this state forward for some amount of time (distance moved depends on speed).
+     * @param timeInterval
+     * @return the resultant state
+     */
+    State push(double timeInterval) const {
+        State s;
+        double displacement = timeInterval * speed();
+        s.x() = x() + sin(heading()) * displacement;
+        s.y() = y() + cos(heading()) * displacement;
+        s.heading() = heading();
+        s.speed() = speed();
+        s.time() = time() + timeInterval;
+        return s;
     }
 
     /**
      * Pushes a state forward some distance. Doesn't affect time.
      * @param distance
      */
-    void push(double distance) {
-        x += cos(yaw()) * distance;
-        y += sin(yaw()) * distance;
+    void move(double distance) {
+        x() += cos(yaw()) * distance;
+        y() += sin(yaw()) * distance;
     }
-
-//    explicit operator path_planner::StateMsg()
-//    {
-//        path_planner::StateMsg state;
-//        state.x = x;
-//        state.y = y;
-//        state.heading = heading;
-//        state.speed = speed;
-//        state.time = time;
-//        return state;
-//    }
-
-    /**
-     * Get the score of another state.
-     *
-     * This is meant for doing MPC.
-     *
-     * Note: squared distance
-     *
-     * TODO! -- should include heading distance
-     */
-    double getDistanceScore(const State &other) const
-    {
-        double timeDistance = time - other.time;
-        double headingDistance = 0; // fabs(fmod((heading - other.heading), 2 * M_PI) / 4);
-        double speedDifference =  0; // fabs(speed - other.speed) / 2;
-        double displacement = timeDistance * other.speed;
-        double dx = x - (other.x + sin(other.heading)*displacement);
-        double dy = y - (other.y + cos(other.heading)*displacement);
-        return (dx * dx + dy * dy) + headingDistance + speedDifference; // how do you score headings??
-    }
-
-//    std::string toString()
-//    {
-//        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(time);
-//    }
 
     std::string toString() const
     {
-        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading*180/M_PI) + " " + std::to_string(speed) + " " + std::to_string(time);
+        return std::to_string(x()) + " " +
+               std::to_string(y()) + " " +
+               std::to_string(heading()*180/M_PI) + " " +
+               std::to_string(speed()) + " " +
+               std::to_string(time());
     }
 
     std::string toStringRad() const
     {
-        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(heading) + " " + std::to_string(speed) + " " + std::to_string(time);
-    }
-
-    void print()
-    {
-        std::cout << x << " " << y << " " << heading << " " << speed << " " << time << std::endl;
-    }
-
-    void printerror()
-    {
-        std::cerr << x << " " << y << " " << heading << " " << speed << " " << time << std::endl;
+        return std::to_string(x()) + " " +
+               std::to_string(y()) + " " +
+               std::to_string(heading()) + " " +
+               std::to_string(speed()) + " " +
+               std::to_string(time());
     }
 
     // from the Go version of State:
 
+    /**
+     * Get the direction (heading) towards another state.
+     * @param other
+     * @return the heading
+     */
     double headingTo(const State& other) const {
-        return headingTo(other.x, other.y);
+        return headingTo(other.x(), other.y());
     }
 
+    /**
+     * Get the direction (heading) towards a point.
+     * @param p
+     * @return the heading
+     */
     double headingTo(const std::pair<double, double> p) const {
         return headingTo(p.first, p.second);
     }
 
+    /**
+     * Get the direction (heading) towards a point.
+     * @param x1
+     * @param y1
+     * @return the heading
+     */
     double headingTo(double x1, double y1) const {
-        double dx = x1 - this->x;
-        double dy = y1 - this->y;
+        double dx = x1 - this->x();
+        double dy = y1 - this->y();
         double h = M_PI_2 - atan2(dy, dx); // TODO! -- is this correct?
         if (h < 0) h += 2 * M_PI;
         return h;
     }
 
+    /**
+     * Sets this state's heading to point towards the other state.
+     * @param other
+     */
     void setHeadingTowards(const State& other) {
-        heading = headingTo(other);
-        if (heading < 0) heading += 2 * M_PI;
+        heading() = headingTo(other);
+        if (heading() < 0) heading() += 2 * M_PI;
     }
 
+    /**
+     * Sets this state's heading towards the point.
+     * @param x1
+     * @param y1
+     */
     void setHeadingTowards(double x1, double y1) {
-        heading = headingTo(x1, y1);
-        if (heading < 0) heading += 2 * M_PI;
+        heading() = headingTo(x1, y1);
+        if (heading() < 0) heading() += 2 * M_PI;
     }
 
     /**
@@ -221,7 +156,7 @@ class State
      * @return
      */
     double yaw() const {
-        double h = M_PI_2 - heading;
+        double h = M_PI_2 - heading();
         if (h < 0) h += 2 * M_PI;
         return h;
     }
@@ -232,65 +167,81 @@ class State
      * @return
      */
     double yaw(double yaw1) {
-        heading = M_PI_2 - yaw1;
+        heading() = M_PI_2 - yaw1;
     }
 
+    /**
+     * Get the time difference between states.
+     * @param other
+     * @return the time until other
+     */
     double timeUntil(const State& other) const {
-        return other.time - time;
+        return other.time() - time();
     }
 
     inline bool operator==(const State& rhs) const {
-        return x == rhs.x &&
-                y == rhs.y &&
-                heading == rhs.heading &&
-                speed == rhs.speed &&
-                time == rhs.time;
+        return x() == rhs.x() &&
+                y() == rhs.y() &&
+                heading() == rhs.heading() &&
+                speed() == rhs.speed() &&
+                time() == rhs.time();
     }
 
-    bool colocated(const State& rhs) const {
-        return x == rhs.x &&
-               y == rhs.y &&
-               heading == rhs.heading;
+    /**
+     * Determine whether two states share the same pose (ignores speed).
+     * @param rhs
+     * @return
+     */
+    bool isCoLocated(const State& rhs) const {
+        return x() == rhs.x() &&
+               y() == rhs.y() &&
+               heading() == rhs.heading();
     }
 
+    /**
+     * Get the Euclidean distance to the other state.
+     * @param other
+     * @return
+     */
     double distanceTo(const State& other) const {
-        return distanceTo(other.x, other.y);
+        return distanceTo(other.x(), other.y());
     }
 
+    /**
+     * Get the Euclidean distance to the point.
+     * @param x1
+     * @param y1
+     * @return
+     */
     double distanceTo(double x1, double y1) const {
-        return sqrt((this->x - x1)*(this->x - x1) + (this->y - y1)*(this->y - y1));
+        return sqrt((this->x() - x1)*(this->x() - x1) + (this->y() - y1)*(this->y() - y1));
     }
 
+    /**
+     * Interpolate (or extrapolate) between this state and other to the desired time.
+     * @param other
+     * @param desiredTime
+     * @return
+     */
     State interpolate(const State& other, double desiredTime) const {
-        auto dt = other.time - time;
-        auto dx = (other.x - x) / dt;
-        auto dy = (other.y - y) / dt;
-        auto dh = (other.heading - heading) / dt;
-        auto ds = (other.speed - speed) / dt;
-        dt = desiredTime - time;
+        auto dt = other.time() - time();
+        auto dx = (other.x() - x()) / dt;
+        auto dy = (other.y() - y()) / dt;
+        auto dh = (other.heading() - heading()) / dt;
+        auto ds = (other.speed() - speed()) / dt;
+        dt = desiredTime - time();
         State s = *this;
-        s.x += dx * dt;
-        s.y += dy * dt;
-        s.heading += dh * dt;
-        s.speed += ds * dt;
-        s.time = desiredTime;
+        s.x() += dx * dt;
+        s.y() += dy * dt;
+        s.heading() += dh * dt;
+        s.speed() += ds * dt;
+        s.time() = desiredTime;
         return s;
     }
 
-//    double dubinsDistanceTo(double x2, double y2, double yaw2, double turningRadius) const {
-//        RobustDubins::Problem problem;
-//        problem.set_stateInitial(x, y, yaw());
-//        problem.set_stateFinal(x2, y2, yaw2);
-//        problem.set_minTurningRadius(turningRadius);
-//        RobustDubins::Solver solver;
-//        solver.set_problemStatement(problem);
-//        solver.solve();
-//        return solver.get_optimalPath().get_cost();
-//    }
-//
-//    double dubinsDistanceTo(const State& other, double turningRadius) const {
-//        return dubinsDistanceTo(other.x, other.y, other.yaw(), turningRadius);
-//    }
+private:
+    double m_Pose [4] = {0, 0, 0, 0};
+    double m_Time = -1;
 };
 
 #endif

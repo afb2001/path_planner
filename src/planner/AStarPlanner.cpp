@@ -28,25 +28,25 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
                                       double timeRemaining) {
     m_Config = std::move(config); // gotta do this before we can call now()
     double endTime = timeRemaining + now();
-    m_Config.setStartStateTime(start.time);
+    m_Config.setStartStateTime(start.time());
 //    std::cerr << "Starting to plan" << std::endl;
     m_RibbonManager = ribbonManager;
     m_RibbonManager.changeHeuristicIfTooManyRibbons(); // make sure ribbon heuristic is calculable
     m_ExpandedCount = 0;
     m_IterationCount = 0;
-    m_StartStateTime = start.time;
+    m_StartStateTime = start.time();
     m_Samples.clear();
     double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
     double magnitude = m_Config.maxSpeed() * Plan::timeHorizon();
-    minX = start.x - magnitude;
-    maxX = start.x + magnitude;
-    minY = start.y - magnitude;
-    maxY = start.y + magnitude;
+    minX = start.x() - magnitude;
+    maxX = start.x() + magnitude;
+    minY = start.y() - magnitude;
+    maxY = start.y() + magnitude;
     StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
     auto startV = Vertex::makeRoot(start, m_RibbonManager);
-    startV->state().speed = m_Config.maxSpeed(); // state's speed is used to compute h so need to use max
+    startV->state().speed() = m_Config.maxSpeed(); // state's speed is used to compute h so need to use max
     startV->computeApproxToGo();
-    startV->state().speed = start.speed; // change the speed back to the current speed (not sure it matters)
+    startV->state().speed() = start.speed(); // change the speed back to the current speed (not sure it matters)
     m_BestVertex = nullptr;
     auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
     auto otherRibbonSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());
@@ -124,7 +124,7 @@ void AStarPlanner::expandToCoverSpecificSamples(Vertex::SharedPtr root, const st
     if (m_Config.coverageTurningRadius() > 0) {
         for (auto s : samples) {
 //            std::cerr << "Expanding to cover " << s.toString() << std::endl;
-            s.speed = m_Config.maxSpeed();
+            s.speed() = m_Config.maxSpeed();
             auto destinationVertex = Vertex::connect(root, s, m_Config.coverageTurningRadius(), coverageAllowed);
             destinationVertex->parentEdge()->computeTrueCost(m_Config);
             pushVertexQueue(destinationVertex);

@@ -55,10 +55,10 @@ public:
             auto d = start.distanceTo(end);
             for (int j = 0; j < d; j++){ // 2 m/s updated every half second is 1m of distance each iteration
                 m_Trajectory.push_back(current);
-                current.setEstimate(0.5 * j, start);
+                current = start.push(0.5 * j);
             }
             m_Trajectory.push_back(current);
-            time = current.time;
+            time = current.time();
         }
 
         std::cerr << "Publishing trajectory of length " << m_Trajectory.size() << " to controller" << std::endl;
@@ -72,7 +72,7 @@ public:
             int i = 0;
             while (i < m_Trajectory.size()) {
                 t = getTime();
-                while (i < m_Trajectory.size() && m_Trajectory[i].time < t) i++;
+                while (i < m_Trajectory.size() && m_Trajectory[i].time() < t) i++;
                 if (i > 0) displayPlannerStart(m_Trajectory[i - 1]);
                 sleep(1);
                 if (m_Preempted) {

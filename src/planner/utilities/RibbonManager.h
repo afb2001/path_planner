@@ -76,7 +76,7 @@ private:
     double dubinsDistance(double x, double y, double h, const State& s) const {
         if (m_TurningRadius == -1) throw std::logic_error("Cannot compute ribbon dubins distance with unset turning radius");
         DubinsPath dubinsPath;
-        double q1[] = {x, y, h}, q2[] = {s.x, s.y, s.yaw()};
+        double q1[] = {x, y, h}, q2[] = {s.x(), s.y(), s.yaw()};
         dubins_shortest_path(&dubinsPath, q1, q2, m_TurningRadius);
         return dubins_path_length(&dubinsPath);
     }

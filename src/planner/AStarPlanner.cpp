@@ -46,7 +46,8 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
     auto startV = Vertex::makeRoot(start, m_RibbonManager);
     startV->state().speed() = m_Config.maxSpeed(); // state's speed is used to compute h so need to use max
     startV->computeApproxToGo();
-    startV->state().speed() = start.speed(); // change the speed back to the current speed (not sure it matters)
+//     assume we can get up to max speed instantly
+//    startV->state().speed() = start.speed(); // change the speed back to the current speed (not sure it matters)
     m_BestVertex = nullptr;
     auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
     auto otherRibbonSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());

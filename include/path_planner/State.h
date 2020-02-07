@@ -98,8 +98,6 @@ class State
                std::to_string(time());
     }
 
-    // from the Go version of State:
-
     /**
      * Get the direction (heading) towards another state.
      * @param other

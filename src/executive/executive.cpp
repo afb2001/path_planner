@@ -11,9 +11,9 @@
 
 using namespace std;
 
-Executive::Executive(TrajectoryPublisher *controlReceiver)
+Executive::Executive(TrajectoryPublisher *trajectoryPublisher)
 {
-    m_TrajectoryPublisher = controlReceiver;
+    m_TrajectoryPublisher = trajectoryPublisher;
     m_PlannerConfig.setNowFunction([&] { return m_TrajectoryPublisher->getTime(); });
 }
 
@@ -49,7 +49,8 @@ void Executive::planLoop() {
         if (m_PlannerCancelled) {
             cerr << "Planner initialization timed out. Cancel flag is still set.\n" <<
                 "This is likely the result of a race condition I haven't gotten around to fixing yet.\n" <<
-                "You're gonna have to restart the planner node if you want to keep using it." << endl;
+                "You're gonna have to restart the planner node if you want to keep using it.\n" <<
+                "If this happens systematically, know that I'm sorry." << endl;
             return;
         }
     }
@@ -172,7 +173,7 @@ void Executive::unPause() {
     m_PauseMutex.lock();
     m_Pause = false;
     m_PauseMutex.unlock();
-    m_PauseCv.notify_all();
+//    m_PauseCv.notify_all();
 }
 
 void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {

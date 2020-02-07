@@ -3,6 +3,10 @@
 
 #include <cmath>
 
+/**
+ * Class that holds the representation of a truncated Gaussian distribution. This was written to model dynamic
+ * obstacles for the path planner.
+ */
 class Distribution {
 public:
     Distribution(const double (&mean)[2], const double (&covariance)[2][2], double heading, double time);

@@ -126,10 +126,16 @@ void Executive::planLoop() {
             throw;
         }
 
+        // calculate remaining time (to sleep)
+        double endTime = m_TrajectoryPublisher->getTime();
+        int sleepTime = (endTime - startTime <= c_PlanningTimeSeconds) ? ((int)((c_PlanningTimeSeconds - (endTime - startTime)) * 1000)) : 0;
+
+        this_thread::sleep_for(chrono::milliseconds(sleepTime));
+
         if (!plan.empty()) {
-            cerr << "Sending trajectory to controller" << endl;
+//            cerr << "Sending trajectory to controller" << endl;
             startState = m_TrajectoryPublisher->publishTrajectory(plan);
-            cerr << "Received state from controller: " << startState.toString() << endl;
+//            cerr << "Received state from controller: " << startState.toString() << endl;
         } else {
             cerr << "Planner returned empty trajectory." << endl;
             startState = State();
@@ -137,12 +143,6 @@ void Executive::planLoop() {
 
         // display the trajectory
         m_TrajectoryPublisher->displayTrajectory(plan, true);
-
-        // calculate remaining time (to sleep)
-        double endTime = m_TrajectoryPublisher->getTime();
-        int sleepTime = (endTime - startTime <= c_PlanningTimeSeconds) ? ((int)((c_PlanningTimeSeconds - (endTime - startTime)) * 1000)) : 0;
-
-        this_thread::sleep_for(chrono::milliseconds(sleepTime));
     }
 }
 

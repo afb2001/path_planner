@@ -23,6 +23,7 @@ public:
 //                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
 
 protected:
+    int m_IterationCount = 0;
 
     std::function<bool(std::shared_ptr<Vertex> v1, std::shared_ptr<Vertex> v2)> getVertexComparator() override;
 
@@ -30,9 +31,10 @@ protected:
 
     std::shared_ptr<Vertex> aStar(const DynamicObstaclesManager& obstacles, double endTime);
 
-    void expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples, const DynamicObstaclesManager& obstacles);
+    void expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples,
+                                      const DynamicObstaclesManager& obstacles, bool coverageAllowed);
 
-    static constexpr double c_InitialSamples = 1024;
+    static constexpr double c_InitialSamples = 100;
 
 private:
 //    std::vector<State> plan(const State& start, DynamicObstaclesManager dynamicObstacles, double timeRemaining);

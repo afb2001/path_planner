@@ -9,18 +9,25 @@
 #include "project11_transformations/MapToLatLong.h"
 
 /**
- * Utility class which holds the code for displaying trajectories to /project11/display. It has a node handle, so
- * subclasses need not re-declare one.
+ * Utility class which holds the code for displaying trajectories to /project11/display.
  */
 class TrajectoryDisplayer {
 public:
     /**
-     * Initialize a TrajectoryDisplayer. This sets up a ROS service client for map_to_wgs84 and a publisher for
+     * Initialize a TrajectoryDisplayer. This sets up a ROS service client for map_to_wgs84. It expects a publisher to
      * /project11/display.
      */
+    TrajectoryDisplayer(ros::NodeHandle& nodeHandle, ros::Publisher* displayPub) {
+        m_map_to_lat_long_client = nodeHandle.serviceClient<project11_transformations::MapToLatLong>("map_to_wgs84");
+        m_display_pub = displayPub;
+    }
+
+    /**
+     * Default constructor to allow for automatic construction. You should assign to your instance using the other
+     * constructor if you're going to use it.
+     */
     TrajectoryDisplayer() {
-        m_map_to_lat_long_client = m_node_handle.serviceClient<project11_transformations::MapToLatLong>("map_to_wgs84");
-        m_display_pub = m_node_handle.advertise<geographic_visualization_msgs::GeoVizItem>("/project11/display",1);
+        m_display_pub = nullptr;
     }
 
     /**
@@ -30,6 +37,7 @@ public:
      * @param plannerTrajectory flag determining color and id
      */
     void displayTrajectory(const std::vector<State>& trajectory, bool plannerTrajectory) {
+        assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
         geographic_visualization_msgs::GeoVizPointList displayPoints;
         displayPoints.color.b = 1;
         if (!plannerTrajectory) {
@@ -60,7 +68,7 @@ public:
             geoVizItem.id = "controller_trajectory";
         }
         geoVizItem.lines.push_back(displayPoints);
-        m_display_pub.publish(geoVizItem);
+        m_display_pub->publish(geoVizItem);
     }
 
     /**
@@ -71,38 +79,39 @@ public:
         return ((double)ros::Time::now().toNSec()) / 1e9;
     };
 
-protected:
     geographic_msgs::GeoPoint convertToLatLong(const State& state) {
+        assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
         project11_transformations::MapToLatLong::Request request;
         project11_transformations::MapToLatLong::Response response;
-        request.map.point.x = state.x;
-        request.map.point.y = state.y;
+        request.map.point.x = state.x();
+        request.map.point.y = state.y();
         m_map_to_lat_long_client.call(request, response);
         return response.wgs84.position;
     }
 
     path_planner::StateMsg getStateMsg(const State& state) {
+        assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
         path_planner::StateMsg stateMsg;
-        stateMsg.x = state.x;
-        stateMsg.y = state.y;
-        stateMsg.heading = state.heading;
-        stateMsg.speed = state.speed;
-        stateMsg.time = state.time;
+        stateMsg.x = state.x();
+        stateMsg.y = state.y();
+        stateMsg.heading = state.heading();
+        stateMsg.speed = state.speed();
+        stateMsg.time = state.time();
         return stateMsg;
     }
 
     State getState(const path_planner::StateMsg& stateMsg) {
+        assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
         State state;
-        state.x = stateMsg.x;
-        state.y = stateMsg.y;
-        state.heading = stateMsg.heading;
-        state.speed = stateMsg.speed;
-        state.time = stateMsg.time;
+        state.x() = stateMsg.x;
+        state.y() = stateMsg.y;
+        state.heading() = stateMsg.heading;
+        state.speed() = stateMsg.speed;
+        state.time() = stateMsg.time;
         return state;
     }
-
-    ros::NodeHandle m_node_handle;
-    ros::Publisher m_display_pub;
+protected:
+    ros::Publisher* m_display_pub;
     ros::ServiceClient m_map_to_lat_long_client;
 };
 

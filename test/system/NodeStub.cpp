@@ -23,11 +23,11 @@ void NodeStub::allDone() {
 
 State NodeStub::getEstimatedState(double desiredTime) {
     cerr << "NodeStub called to estimate state at time " << desiredTime << endl;
-    State s(-1);
+    State s;
     // crudely estimate the state
     for (auto it = m_LastTrajectory.begin(); it != m_LastTrajectory.end(); it++) {
-        if (it->time == desiredTime) return *it;
-        if (it->time > desiredTime) {
+        if (it->time() == desiredTime) return *it;
+        if (it->time() > desiredTime) {
             if (it == m_LastTrajectory.begin()) {
                 s = *it;
             } else {
@@ -37,8 +37,8 @@ State NodeStub::getEstimatedState(double desiredTime) {
         }
     }
     if (!m_LastTrajectory.empty()) {
-        if (s.time == -1) s = m_LastTrajectory.back();
-        s.setEstimate(desiredTime - s.time, s);
+        if (s.time() == -1) s = m_LastTrajectory.back();
+        s = s.push(desiredTime - s.time());
     }
     return s;
 }

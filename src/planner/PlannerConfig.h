@@ -34,13 +34,13 @@ public:
         m_TurningRadius = turningRadius;
     }
 
-    double coverageMaxSpeed() const {
-        return m_CoverageMaxSpeed;
-    }
-
-    void setCoverageMaxSpeed(double coverageMaxSpeed) {
-        m_CoverageMaxSpeed = coverageMaxSpeed;
-    }
+//    double coverageMaxSpeed() const {
+//        return m_CoverageMaxSpeed;
+//    }
+//
+//    void setCoverageMaxSpeed(double coverageMaxSpeed) {
+//        m_CoverageMaxSpeed = coverageMaxSpeed;
+//    }
 
     double coverageTurningRadius() const {
         return m_CoverageTurningRadius;
@@ -102,6 +102,14 @@ public:
         m_Visualizer = visualizer;
     }
 
+    double startStateTime() const {
+        return m_StartStateTime;
+    }
+
+    void setStartStateTime(double startStateTime) {
+        m_StartStateTime = startStateTime;
+    }
+
 private:
     int m_BranchingFactor = 9;
     double m_MaxSpeed = 2.5, m_TurningRadius = 8, m_CoverageMaxSpeed = 2.5, m_CoverageTurningRadius = 16;
@@ -112,6 +120,7 @@ private:
     DynamicObstaclesManager m_Obstacles;
     std::ostream* m_Output;
     std::function<double()> m_NowFunction;
+    double m_StartStateTime;
 
 };
 

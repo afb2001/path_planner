@@ -218,6 +218,28 @@ TEST(UnitTests, RibbonManagerGetNearestEndpointTest) {
     EXPECT_DOUBLE_EQ(s.x, 2.6625366957003918);
 }
 
+TEST(UnitTests, RibbonManagerFindNearStatesOnRibbonsTest) {
+    RibbonManager ribbonManager;
+    ribbonManager.add(10, 10, 20, 10);
+    ribbonManager.add(2.6625366957003918, 60, 7.8363094365852275, 60);
+    auto s1 = State(10.1, 9.9, M_PI_2, 2.5, 1);
+    auto states = ribbonManager.findNearStatesOnRibbons(s1, 8);
+    for (const auto& s : states) std::cerr << s.toString() << std::endl;
+//    double q0[3] = {10.1, 9.9, M_PI_2};
+    auto v1 = Vertex::makeRoot(s1, ribbonManager);
+    for (auto& s : states) {
+        s.speed = 2.5;
+//        double q1[3] = {s.x, s.y, s.yaw()};
+//        DubinsPath dubinsPath;
+//        int err = dubins_shortest_path(&dubinsPath, q0, q1, 8);
+        auto v2 = Vertex::connect(v1, s, 8, true);
+        v2->parentEdge()->computeApproxCost();
+        v2->parentEdge()->computeTrueCost(plannerConfig);
+        auto p = v2->parentEdge()->getPlan(plannerConfig);
+        cerr << p.toString() << endl;
+    }
+}
+
 TEST(Benchmarks, RibbonsTSPBenhcmark) {
     auto overallStart = std::chrono::system_clock::now();
     StateGenerator generator(-5000, -5000, 5000, 5000, 0, 0, 19);
@@ -319,7 +341,7 @@ TEST(Benchmarks, RibbonCoverAlongItselfBenchmark) {
                 ribbonManager.add(s1.x, s1.y, s2.x, s2.y);
                 s1.setHeadingTowards(s2);
                 while (s1.distanceTo(s2) > 0.1) {
-                    s1.setEstimate(0.1 / 2.5, s1);
+                    s1 = s1.push(0.1 / 2.5);
                 }
             }
         }
@@ -340,7 +362,7 @@ TEST(UnitTests, MakePlanTest) {
     auto e = v2->parentEdge();
     auto a = e->computeApproxCost(1, 2);
     EXPECT_DOUBLE_EQ(a, 5);
-    auto plan = e->getPlan();
+    auto plan = e->getPlan(plannerConfig);
     EXPECT_TRUE(plan.getRef().front() == s1);
     EXPECT_GE(plan.getRef().back().y, 4.5); // because of plan density
 }
@@ -547,21 +569,21 @@ TEST(UnitTests, EmptyVertexQueueTest) {
 //}
 
 TEST(UnitTests, ExpandTest1Ribbons) {
-    State start(0, 0, 0, 2.5, 1);
+    StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 9);
+    State start = generator.generate();
+    start.time = 1;
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 0, 30);
     DynamicObstaclesManager obstacles;
     auto root = Vertex::makeRoot(start, ribbonManager);
     AStarPlanner planner;
     planner.setConfig(plannerConfig);
-    StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
     planner.addSamples(generator, 1000);
     planner.expand(root, obstacles);
     double fPrev = 0;
     for (int i = 0; i < 20; i++) { // k + 1, at the time of this writing
         auto v = planner.popVertexQueue();
-//        cerr << "Popped vertex at " << v->state().toString() << endl;
-//        cerr << "g = " << v->currentCost() << ", h = " << v->approxToGo() << ", f = " << v->f() << endl;
+        cerr << v->toString() << endl;
         EXPECT_LE(fPrev, v->f());
         fPrev = v->f();
     }
@@ -795,6 +817,31 @@ TEST(PlannerTests, RHRSAStarSeparateThreadTest) {
 }
 
 TEST(PlannerTests, VisualizationTest) {
+    RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitKRibbons, 8, 2);
+    ribbonManager.add(0, 20, 20, 20);
+    ribbonManager.add(0, 40, 20, 40);
+    ribbonManager.add(0, 60, 20, 60);
+    ribbonManager.add(0, 80, 20, 80);
+    ribbonManager.add(0, 100, 20, 100);
+    AStarPlanner planner;
+    State start(0, 0, 0, 2.5, 1);
+    PlannerConfig config(&cerr);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_visualizations"));
+    config.setVisualizer(&visualizer);
+    config.setVisualizations(true);
+    config.setNowFunction([] () -> double {
+        struct timespec t{};
+        clock_gettime(CLOCK_REALTIME, &t);
+        return t.tv_sec + t.tv_nsec * 1e-9;
+    });
+    config.setMap(make_shared<Map>());
+    config.setObstacles(DynamicObstaclesManager());
+    config.setBranchingFactor(4);
+    auto plan = planner.plan(ribbonManager, start, config, 0.95);
+    EXPECT_FALSE(plan.empty());
+}
+
+TEST(PlannerTests, VisualizationLongerTest) {
     RibbonManager ribbonManager(RibbonManager::TspDubinsNoSplitKRibbons, 8, 2);
     ribbonManager.add(0, 20, 20, 20);
     ribbonManager.add(0, 40, 20, 40);
@@ -814,7 +861,61 @@ TEST(PlannerTests, VisualizationTest) {
     });
     config.setMap(make_shared<Map>());
     config.setObstacles(DynamicObstaclesManager());
-    auto plan = planner.plan(ribbonManager, start, config, 0.95);
+    std::thread t ([&]{
+        while(!ribbonManager.done()) {
+            ribbonManager.cover(start.x, start.y);
+            auto plan = planner.plan(ribbonManager, start, config, 0.95);
+            ASSERT_FALSE(plan.empty());
+            start = plan[1];
+            ASSERT_LT(start.time, 60);
+            cerr << "Remaining " << ribbonManager.dumpRibbons() << endl;
+            cerr << start.toString() << endl;
+        }
+    });
+    t.join();
+}
+
+TEST(PlannerTests, RandomVisualizationTest) {
+    RibbonManager ribbonManager(RibbonManager::MaxDistance, 8, 2);
+    ribbonManager.add(0, 20, 20, 20);
+    ribbonManager.add(0, 40, 20, 40);
+    ribbonManager.add(0, 60, 20, 60);
+    ribbonManager.add(0, 80, 20, 80);
+    ribbonManager.add(0, 100, 20, 100);
+    AStarPlanner planner;
+    State start(0, 0, 0, 2.5, 1);
+    PlannerConfig config(&cerr);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_visualizations"));
+    config.setVisualizer(&visualizer);
+    config.setVisualizations(true);
+    config.setNowFunction([] () -> double {
+        struct timespec t{};
+        clock_gettime(CLOCK_REALTIME, &t);
+        return t.tv_sec + t.tv_nsec * 1e-9;
+    });
+    config.setMap(make_shared<Map>());
+    config.setObstacles(DynamicObstaclesManager());
+    StateGenerator generator(-10, 30, 0, 120, 2.5, 2.5, 9);
+    for (int i = 0; i < 10; i++) {
+        auto plan = planner.plan(ribbonManager, generator.generate(), config, 0.95);
+        ASSERT_FALSE(plan.empty());
+    }
+}
+
+TEST(PlannerTests, RandomPointsTest) {
+    // written for profiling
+    RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitKRibbons, 8, 2);
+    ribbonManager.add(0, 20, 20, 20);
+    ribbonManager.add(0, 40, 20, 40);
+    ribbonManager.add(0, 60, 20, 60);
+    ribbonManager.add(0, 80, 20, 80);
+    ribbonManager.add(0, 100, 20, 100);
+    AStarPlanner planner;
+    StateGenerator generator(-10, 30, 0, 120, 2.5, 2.5, 9);
+    for (int i = 0; i < 10; i++) {
+        auto plan = planner.plan(ribbonManager, generator.generate(), plannerConfig, 9.95);
+        ASSERT_FALSE(plan.empty());
+    }
 }
 
 

@@ -40,6 +40,8 @@ protected:
     std::vector<State> m_Samples;
     int m_ExpandedCount = 0;
 
+    Vertex::SharedPtr m_BestVertex;
+
 //    int m_K;
 
 //    bool m_UseRibbons = false;
@@ -52,6 +54,10 @@ protected:
     virtual int k() const;
 
     void visualizeVertex(Vertex::SharedPtr v, const std::string& tag);
+
+    void visualizeRibbons(const RibbonManager& ribbonManager);
+
+    bool vertexQueueEmpty() const;
 
 private:
     std::vector<std::shared_ptr<Vertex>> m_VertexQueue;

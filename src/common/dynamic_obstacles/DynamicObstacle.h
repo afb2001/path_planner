@@ -5,13 +5,40 @@
 #include "Distribution.h"
 #include <vector>
 
+/**
+ * Models information about a dynamic obstacle. Specifically it holds a time series of distributions describing the
+ * obstacle's position and heading.
+ */
 class DynamicObstacle {
 public:
+    /**
+     * Construct a dynamic obstacle with default width and length.
+     * @param distributions
+     */
     explicit DynamicObstacle(const std::vector<Distribution>& distributions);
+
+    /**
+     * Construct a dynamic obstacle.
+     * @param distributions
+     * @param length
+     * @param width
+     */
     DynamicObstacle(const std::vector<Distribution>& distributions, double length, double width);
 
+    /**
+     * Update the distributions describing this dynamic obstacle.
+     * @param distributions
+     */
     void update(const std::vector<Distribution>& distributions);
 
+    /**
+     * Find the shortest distance from a point to the edge of the distribution at the specified time.
+     * @param x
+     * @param y
+     * @param speed
+     * @param time
+     * @return
+     */
     double distanceToEdge(double x, double y, double speed, double time) const;
 
     /**

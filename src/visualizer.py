@@ -51,6 +51,11 @@ class Obs:
         self.children = []
 
 
+class Ribbons:
+    def __init__(self):
+        self.ribbons = []
+
+
 class PLOT:
     def __init__(self, blocked, xlim, ylim, goal, in_file_name):
         self.display = None
@@ -76,6 +81,7 @@ class PLOT:
         self.obs = []
         self.starts = []
         self.startIndex = 0
+        self.ribbons = []
         # declare stuff defined in on_init
         self.w, self.h, self.scaleW, self.scaleH, self.startW, self.startH = 0, 0, 0, 0, 0, 0
         self.curr_x, self.curr_y, self.start_heading, self.index = 0, 0, 0, 0
@@ -184,7 +190,11 @@ class PLOT:
                     self.update_start_index(1)
             elif event.key == pygame.K_BACKSPACE or event.key == pygame.K_b:
                 if self.obs[self.index].tag == "start":
-                    self.update_start_index(-1)
+                    self.startIndex -= 1
+                    if self.startIndex < 0:
+                        self.startIndex = 0
+                    elif self.startIndex >= len(self.starts):
+                        self.startIndex = len(self.starts) - 1
                 self.index -= 1
                 if self.index < 0:
                     self.index = 0
@@ -219,19 +229,19 @@ class PLOT:
     def update_information(self, x, y, heading, h, cost, tag):
         if tag == "trajectory" or tag == "sample":
             obs = Obs(x, y, heading, cost + h, tag)
-            if len(self.obs) == 0 or self.obs[len(self.obs) - 1].tag != tag:
+            if len(self.obs) == 0 or self.obs[-1].tag != tag:
                 self.obs.append(obs)
             else:
-                self.obs[len(self.obs) - 1].children.append(obs)
+                self.obs[-1].children.append(obs)
         elif tag == "plan":
-            if self.obs[len(self.obs) - 1].tag == "plan":
+            if self.obs[-1].tag == "plan":
                 obs = Obs(x, y, heading, cost + h, tag)
-                self.obs[len(self.obs) - 1].children.append(obs)
+                self.obs[-1].children.append(obs)
             else:
                 self.obs.append(Obs(x, y, heading, cost + h, tag))
         else:
             self.obs.append(Obs(x, y, heading, cost + h, tag))
-        if cost < 500 and tag == "vertex":
+        if tag == "vertex":
             self.maxColor = max(self.maxColor, cost + h, 1)
             self.minColor = min(self.minColor, cost + h)
 
@@ -240,6 +250,8 @@ class PLOT:
         if cost >= 500:
             return Color_BLACK
         else:
+            if not (self.minColor <= cost <= self.maxColor):
+                print ("bad cost: ", cost, self.minColor, self.maxColor)
             assert self.minColor <= cost <= self.maxColor
             r, g, b = colorsys.hsv_to_rgb(1 - ((cost - self.minColor) / self.maxColor), 0.9, 0.75)
             return r * 255, g * 255, b * 255
@@ -362,21 +374,33 @@ class PLOT:
         self.minColor = 1000000
         self.index = 0
         self.obs = []
+        addingRibbons = False
         for line in input_lines:
             for c in "():,":  # drop extra characters
                 line = line.replace(c, "")
             line = line.split(' ')
+            if line == "End Ribbons":
+                addingRibbons = False
+                continue
+            elif line == "Ribbons":
+                addingRibbons = True
+                self.ribbons.append(Ribbons())
+                continue
+            if addingRibbons:
+                # ribbon mode means input will look different, hence the flag
+                self.ribbons[-1].append([float(line[1]), float(line[2]), float(line[4]), float(line[5])])
+
             # if len(line) < 3 or line[0].strip().lower() != 'planner' or line[1].strip().lower() != 'visualization:':
             #     continue
             # if line[2].strip().lower() == 'done':
             #     continue  # ignore "done" for now
-                # break
+            # break
             # if len(line) > 18 and line[18].strip().lower() != 'vis2':
             #     continue
             xobs = (float(line[1]))
             yobs = (float(line[2]))
             hobs = (float(line[3]))
-            costobs = (float(line[7]))
+            costobs = (float(line[9]))
             heauristicobs = (float(line[11]))
             tag = line[12].strip().lower()
             if tag == "start":
@@ -390,22 +414,22 @@ def dist(x, x1, y, y1):
 
 if __name__ == "__main__":
 
-    map_file_name = goal_file_name = None
+    map_file_name = goal_file_name = input_file_name = None
     if len(sys.argv) == 4 and sys.argv[1] == "-test":
         base_name = sys.argv[2]
         map_file_name = base_name + ".map"
         goal_file_name = base_name + ".goal"
+        input_file_name = sys.argv[3]
 
-    elif len(sys.argv) == 4:
+    elif len(sys.argv) == 3:
         map_file_name = sys.argv[1]
-        goal_file_name = sys.argv[2]
+        # goal_file_name = sys.argv[2]
+        input_file_name = sys.argv[2]
 
-    if len(sys.argv) != 4:
+    else:
         print 'Usage: "./step_by_step.py mapfile goalfile inputfile" or\n       ' \
               '"./step_by_step.py -test testname inputfile"\n'
         exit(0)
-
-    input_file_name = sys.argv[3]
 
     with open(map_file_name, "r") as map_file:
         map_contents = map_file.readlines()

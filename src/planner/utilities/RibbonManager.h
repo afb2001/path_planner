@@ -2,6 +2,7 @@
 #define SRC_RIBBONMANAGER_H
 
 #include <list>
+#include <vector>
 #include <path_planner/State.h>
 #include "Ribbon.h"
 extern "C" {
@@ -29,10 +30,18 @@ public:
 
     bool done() const;
 
-    double approximateDistanceUntilDone(double x, double y, double yaw);
+    double approximateDistanceUntilDone(double x, double y, double yaw) const;
 
-    double minDistanceFrom(double x, double y);
+    void changeHeuristicIfTooManyRibbons();
 
+    double minDistanceFrom(double x, double y) const;
+
+    /**
+     * Get the end point of a ribbon nearest to the given state, or the other end of a ribbon when the state is close to
+     * one end
+     * @param state
+     * @return
+     */
     State getNearestEndpointAsState(const State& state) const;
 
 //    RibbonManager& operator=(const RibbonManager& other);
@@ -44,6 +53,8 @@ public:
     const std::list<Ribbon>& get() const;
 
     std::vector<State> findStatesOnRibbonsOnCircle(const State& center, double radius) const;
+
+    std::vector<State> findNearStatesOnRibbons(const State& start, double radius) const;
 private:
     Heuristic m_Heuristic;
     double m_TurningRadius = -1;
@@ -62,10 +73,10 @@ private:
     static double distance(double x1, double y1, double x2, double y2) {
         return sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2));
     }
-    double dubinsDistance(double x, double y, double h, const State& s) {
+    double dubinsDistance(double x, double y, double h, const State& s) const {
         if (m_TurningRadius == -1) throw std::logic_error("Cannot compute ribbon dubins distance with unset turning radius");
         DubinsPath dubinsPath;
-        double q1[] = {x, y, h}, q2[] = {s.x, s.y, s.yaw()};
+        double q1[] = {x, y, h}, q2[] = {s.x(), s.y(), s.yaw()};
         dubins_shortest_path(&dubinsPath, q1, q2, m_TurningRadius);
         return dubins_path_length(&dubinsPath);
     }
@@ -77,12 +88,12 @@ private:
     static double tspPointRobotNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, std::pair<double, double> point);
 
     double tspDubinsNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, double x,
-                                      double y, double yaw);
+                                      double y, double yaw) const;
 
-    double tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, std::pair<double, double> point);
+    double tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, std::pair<double, double> point) const;
 
     double tspDubinsNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, double x,
-                                    double y, double yaw);
+                                    double y, double yaw) const;
 };
 
 

@@ -6,6 +6,8 @@
 #include "../../common/dynamic_obstacles/DynamicObstaclesManager.h"
 #include "../utilities/Path.h"
 #include "../utilities/Plan.h"
+#include "../PlannerConfig.h"
+#include "../utilities/Ribbon.h"
 
 extern "C" {
 #include "dubins.h"
@@ -29,19 +31,22 @@ public:
 
     double computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesManager& obstacles, double maxSpeed, double maxTurningRadius);
     double computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesManager& obstacles);
+    double computeTrueCost(const PlannerConfig& config);
 
     double trueCost() const;
 
     double computeApproxCost(double maxSpeed, double maxTurningRadius);
     double computeApproxCost();
 
+    void computeBrownPath(const PlannerConfig& config, const Ribbon& r);
+
     void smooth(Map::SharedPtr map, const DynamicObstaclesManager& obstacles, double maxSpeed, double maxTurningRadius);
 
-    Plan getPlan();
+    Plan getPlan(const PlannerConfig& config);
 
-    std::shared_ptr<Vertex> start();
+    std::shared_ptr<Vertex> start() const;
 
-    std::shared_ptr<Vertex> end();
+    std::shared_ptr<Vertex> end() const;
 
     bool infeasible() const;
 

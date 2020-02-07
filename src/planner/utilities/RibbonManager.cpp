@@ -25,10 +25,10 @@ bool RibbonManager::done() const {
     return m_Ribbons.empty();
 }
 
-double RibbonManager::approximateDistanceUntilDone(double x, double y, double yaw) {
-    if (done()) return 0;
+double RibbonManager::approximateDistanceUntilDone(double x, double y, double yaw) const {
+   if (done()) return 0;
     // if we're above the danger threshold just give max distance
-    if (m_Ribbons.size() > c_RibbonCountDangerThreshold) return maxDistance(x, y);
+//    if (m_Ribbons.size() > c_RibbonCountDangerThreshold) return maxDistance(x, y);
     switch (m_Heuristic) {
         // Modified max distance heuristic
         case MaxDistance: {
@@ -68,7 +68,7 @@ double RibbonManager::tspPointRobotNoSplitAllRibbons(std::list<Ribbon> ribbonsLe
 }
 
 double RibbonManager::tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar,
-                                                   std::pair<double, double> point) {
+                                                   std::pair<double, double> point) const {
     if (ribbonsLeft.empty()) return distanceSoFar;
     auto min = DBL_MAX;
     auto comp = [&] (const Ribbon& r1, const Ribbon& r2) {
@@ -97,7 +97,7 @@ double RibbonManager::tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft
 
 
 double RibbonManager::tspDubinsNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, double x,
-                                                 double y, double yaw) {
+                                                 double y, double yaw) const{
     // Depth-first TSP solution
 //    std::cerr << "Computing TSP solution from " << x << ", " << y << std::endl;
     if (ribbonsLeft.empty()) return distanceSoFar;
@@ -108,16 +108,16 @@ double RibbonManager::tspDubinsNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, 
         auto start = r.startAsState();
         auto end = r.endAsState();
         min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
-            dubinsDistance(x, y, yaw, start), end.x, end.y, end.yaw()));
+            dubinsDistance(x, y, yaw, start), end.x(), end.y(), end.yaw()));
         min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
-            dubinsDistance(x, y, yaw, end), start.x, start.y, start.yaw()));
+            dubinsDistance(x, y, yaw, end), start.x(), start.y(), start.yaw()));
         it = ribbonsLeft.insert(it, r);
     }
     return min;
 }
 
 double RibbonManager::tspDubinsNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, double x, double y,
-                                               double yaw) {
+                                               double yaw) const {
     if (ribbonsLeft.empty()) return distanceSoFar;
     auto min = DBL_MAX;
     auto comp = [&] (const Ribbon& r1, const Ribbon& r2) {
@@ -135,15 +135,15 @@ double RibbonManager::tspDubinsNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, do
         auto start = r.startAsState();
         auto end = r.endAsState();
         min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
-                                                                 dubinsDistance(x, y, yaw, start), end.x, end.y, end.yaw()));
+                                                                 dubinsDistance(x, y, yaw, start), end.x(), end.y(), end.yaw()));
         min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
-                                                                 dubinsDistance(x, y, yaw, end), start.x, start.y, start.yaw()));
+                                                                 dubinsDistance(x, y, yaw, end), start.x(), start.y(), start.yaw()));
         it = ribbonsLeft.insert(it, r);
     }
     return min;
 }
 
-double RibbonManager::minDistanceFrom(double x, double y) {
+double RibbonManager::minDistanceFrom(double x, double y) const {
     if (m_Ribbons.empty()) return 0;
     auto min = DBL_MAX;
     for (const auto& r : m_Ribbons) {
@@ -165,14 +165,15 @@ void RibbonManager::add(const Ribbon& r, std::list<Ribbon>::iterator i) {
 State RibbonManager::getNearestEndpointAsState(const State& state) const {
     if (done()) throw std::logic_error("Attempting to get nearest endpoint when there are no ribbons");
     auto min = DBL_MAX;
-    State ret(0);
+    State ret;
     for (const auto& r : m_Ribbons) {
         auto s = r.startAsState();
         auto d = state.distanceTo(s);
         if (d < min) {
-            if (d < Ribbon::minLength() && r.contains(state.x, state.y, r.getProjection(state.x, state.y))) {
+            if (d < Ribbon::minLength()){ // && r.contains(state.x(), state.y(), r.getProjection(state.x(), state.y))) {
+                // we actually want the state at the other end of the ribbon
                 ret = r.endAsState();
-                ret.heading = s.heading;
+                ret.heading() = s.heading();
             } else {
                 ret = s;
             }
@@ -181,9 +182,10 @@ State RibbonManager::getNearestEndpointAsState(const State& state) const {
         s = r.endAsState();
         d = state.distanceTo(s);
         if (d < min) {
-            if (d < Ribbon::minLength() && r.contains(state.x, state.y, r.getProjection(state.x, state.y))) {
+            if (d < Ribbon::minLength()){ // && r.contains(state.x(), state.y(), r.getProjection(state.x(), state.y))) {
+                // we actually want the state at the other end of the ribbon
                 ret = r.startAsState();
-                ret.heading = s.heading;
+                ret.heading() = s.heading();
             } else {
                 ret = s;
             }
@@ -221,13 +223,13 @@ void RibbonManager::projectOntoNearestRibbon(State& state) const {
     auto min = DBL_MAX;
     auto ribbon = Ribbon::empty();
     for (const auto& r : m_Ribbons) {
-        auto d = r.distance(state.x, state.y);
+        auto d = r.distance(state.x(), state.y());
         if (d < min) {
             min = d;
             ribbon = r;
         }
     }
-    state = ribbon.getProjectionAsState(state.x, state.y);
+    state = ribbon.getProjectionAsState(state.x(), state.y());
 }
 
 double RibbonManager::maxDistance(double x, double y) const {
@@ -278,17 +280,110 @@ std::vector<State> RibbonManager::findStatesOnRibbonsOnCircle(const State& cente
         // EDIT -- put them back in (they're the if (r.contains(...)) checks)
         if (r.contains(x1, y1, r.getProjection(x1, y1))) {
             // give each intersecting point both headings
-            states.emplace_back(x1, y1, start.heading, start.speed, 0);
-            states.emplace_back(x1, y1, end.heading, end.speed, 0);
+            states.emplace_back(x1, y1, start.heading(), start.speed(), 0);
+            states.emplace_back(x1, y1, end.heading(), end.speed(), 0);
         }
         // if it's a tangent line then they will be the same point
         if (x1 != x2 && y1 != y2) {
             if (r.contains(x1, y1, r.getProjection(x2, y2))) {
-                states.emplace_back(x2, y2, start.heading, start.speed, 0);
-                states.emplace_back(x2, y2, end.heading, end.speed, 0);
+                states.emplace_back(x2, y2, start.heading(), start.speed(), 0);
+                states.emplace_back(x2, y2, end.heading(), end.speed(), 0);
             }
         }
     }
     return states;
+}
+
+std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, double radius) const {
+    // This might not be right for all scenarios
+    std::vector<State> states;
+    auto h = start.yaw() + M_PI_2;
+    // get points one radius away from start in the directions perpendicular to its heading
+    auto x1 = start.x() + cos(h) * radius;
+    auto x2 = start.x() - cos(h) * radius;
+    auto y1 = start.y() + sin(h) * radius;
+    auto y2 = start.y() - sin(h) * radius;
+
+    for (const Ribbon& r : m_Ribbons) {
+
+        // check if ribbon is anywhere near current state (within 2*r)
+        auto startProj = r.getProjection(start.x(), start.y());
+        { // scope to clearly mark usage of poorly named "d"
+            double d;
+            if (r.containsProjection(startProj)) {
+                d = start.distanceTo(startProj.first, startProj.second);
+            } else {
+                d = fmin(start.distanceTo(r.start().first, r.start().second),
+                         start.distanceTo(r.end().first, r.end().second));
+            }
+            if (d > 2 * radius) continue;
+        }
+
+        // project points from before onto ribbon
+        auto proj1 = r.getProjection(x1, y1);
+        auto proj2 = r.getProjection(x2, y2);
+        auto proj = proj2;
+        auto x = x2; auto y = y2;
+        if (r.containsProjection(proj1)) {
+            proj = proj1;
+            x = x1; y = y1;
+        }
+
+        // go another half radius out
+        auto s1 = r.startAsState();
+        auto s2 = r.endAsState();
+        State s;
+        if (s1.distanceTo(start) < s2.distanceTo(start)) {
+            s = s1;
+        } else {
+            s = s2;
+        }
+        auto h2 = s.yaw() - M_PI_2; // but which way???
+        auto dx1 = cos(h2) * radius / 2;
+        auto dy1 = sin(h2) * radius / 2;
+//        auto x3 = proj.first + proj.first < x ? dx1 : -dx1;
+        auto x3 = proj.first + dx1;
+//        auto y3 = proj.second = proj.second < y ? dy1 : -dy1;
+        auto y3 = proj.second + dy1;
+//        auto x4 = proj2.first = proj2.first < x2 ? dx1 : -dx1;
+//        auto y4 = proj2.second = proj2.second < y2 ? dy1 : -dy1;
+
+        // extend that ahead until it reaches the circle around (x1, y1)
+        // sqrt(a^2 - r^2)
+        auto a = dx1 * dx1 + dy1 * dy1;
+        auto rSquared = radius * radius;
+        auto b = sqrt(rSquared - a);
+        auto h3 = s.yaw();
+        auto x5 = x3 + b * cos(h3);
+        auto y5 = y3 + b * sin(h3);
+//        auto x6 = x4 + b * cos(h3);
+//        auto y6 = y4 + b * sin(h3);
+
+        // go one radius along the line from (x1, y1) to that point
+        auto x7 = x5 - x;
+        auto y7 = y5 - y;
+        auto h4 = atan(y7 / x7);
+        auto x8 = x5 + radius * cos(h4);
+        auto y8 = y5 + radius * sin(h4);
+
+        // project that back onto the ribbon
+        auto projFinal = r.getProjection(x8, y8);
+
+        // IT'S BACKWARDS! Ahhhh // alright I think I got it but I gotta go study
+
+        // done. that's the state. If it's close by add it to the list
+        if (distance(projFinal, start.x(), start.y()) < 2 * radius){
+            states.emplace_back(projFinal.first, projFinal.second, s.heading(), 0, 0);
+//            std::cerr << "Found Brown path to state " << states.back().toString() << " from " << start.toString() << std::endl;
+//            states.back().push(0.1); // push the state along the ribbon a tiny bit to fix rounding errors
+        }
+    }
+    return states;
+}
+
+void RibbonManager::changeHeuristicIfTooManyRibbons() {
+    if (m_Ribbons.size() > c_RibbonCountDangerThreshold) {
+        m_Heuristic = MaxDistance;
+    }
 }
 

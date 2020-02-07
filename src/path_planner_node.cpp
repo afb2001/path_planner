@@ -1,24 +1,19 @@
-#include <utility>
 #include "ros/ros.h"
 #include "geographic_msgs/GeoPath.h"
 #include "geometry_msgs/TwistStamped.h"
-#include "std_msgs/String.h"
 #include "marine_msgs/Contact.h"
 #include "marine_msgs/NavEulerStamped.h"
 #include <vector>
 #include "project11/gz4d_geo.h"
 #include "path_planner/path_plannerAction.h"
-#include "actionlib/server/simple_action_server.h"
 #include "path_planner/Trajectory.h"
-#include <fstream>
 #include <project11_transformations/LatLongToMap.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <mpc/EstimateStateRequest.h>
-#include <mpc/EstimateStateResponse.h>
-#include <mpc/EstimateState.h>
+#include <mpc/UpdateReferenceTrajectory.h>
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
 #include "path_planner/TrajectoryDisplayer.h"
+#include "NodeBase.h"
 #include <path_planner/path_plannerConfig.h>
 #include <dynamic_reconfigure/server.h>
 
@@ -30,35 +25,18 @@
 /**
  * Node to act as interface between ROS and path planning system.
  */
-class PathPlanner: public TrajectoryDisplayer, public TrajectoryPublisher
+class PathPlanner: public NodeBase, public TrajectoryPublisher
 {
 public:
-    explicit PathPlanner(std::string name):
-    m_action_server(m_node_handle, std::move(name), false)
+    explicit PathPlanner(std::string name): NodeBase(std::move(name))
 {
-    m_current_speed = 3.0;
-    m_current_heading = 0;
     m_Executive = new Executive(this);
 
-    m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
-    m_estimate_state_client = m_node_handle.serviceClient<mpc::EstimateState>("/mpc/estimate_state");
-
-    m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
-    m_reference_trajectory_pub = m_node_handle.advertise<path_planner::Trajectory>("/reference_trajectory",1);
-
-    m_position_sub = m_node_handle.subscribe("/position_map", 10, &PathPlanner::positionCallback, this);
-    m_heading_sub = m_node_handle.subscribe("/heading", 10, &PathPlanner::headingCallback, this);
-    m_speed_sub = m_node_handle.subscribe("/sog", 10, &PathPlanner::speedCallback, this);
     m_contact_sub = m_node_handle.subscribe("/contact", 10, &PathPlanner::contactCallback, this);
     m_origin_sub = m_node_handle.subscribe("/origin", 1, &PathPlanner::originCallback, this);
 
-    m_action_server.registerGoalCallback(boost::bind(&PathPlanner::goalCallback, this));
-    m_action_server.registerPreemptCallback(boost::bind(&PathPlanner::preemptCallback, this));
-    m_action_server.start();
-
     dynamic_reconfigure::Server<path_planner::path_plannerConfig>::CallbackType f;
     f = boost::bind(&PathPlanner::reconfigureCallback, this, _1, _2);
-
     m_Dynamic_Reconfigure_Server.setCallback(f);
 }
 
@@ -66,11 +44,11 @@ public:
     {
         publishControllerMessage("stop running");
         delete m_Executive;
-        std::cerr << strerror(errno) << endl;
+        std::cerr << strerror(errno) << std::endl;
     }
 
     // This is really only designed to work once right now
-    void goalCallback()
+    void goalCallback() override
     {
         auto goal = m_action_server.acceptNewGoal();
 
@@ -90,74 +68,59 @@ public:
 
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 
-        // transit mode
-        if (goal->path.poses.size() > 2) {
+        for (int i = 0; i + 1 < goal->path.poses.size(); i++) {
+            // assume points represent track-line pairs
+            geographic_msgs::GeoPoseStamped startPose = goal->path.poses[i];
+            geographic_msgs::GeoPoseStamped endPose = goal->path.poses[i + 1];
+            geometry_msgs::PointStamped::_point_type start;
+            geometry_msgs::PointStamped::_point_type end;
+
             project11_transformations::LatLongToMap::Request request;
             project11_transformations::LatLongToMap::Response response;
-            request.wgs84.position = goal->path.poses.back().pose.position;
+
+            // send to LatLongToMap
+            request.wgs84.position = startPose.pose.position;
             if (m_lat_long_to_map_client.call(request, response)) {
-                m_Executive->addToCover(response.map.point.x, response.map.point.y);
+                start = response.map.point;
             }
-        } else {
-            for (int i = 0; i + 1 < goal->path.poses.size(); i++) {
-                // assume points represent track-line pairs
-                geographic_msgs::GeoPoseStamped startPose = goal->path.poses[i];
-                geographic_msgs::GeoPoseStamped endPose = goal->path.poses[i + 1];
-                geometry_msgs::PointStamped::_point_type start;
-                geometry_msgs::PointStamped::_point_type end;
-
-                project11_transformations::LatLongToMap::Request request;
-                project11_transformations::LatLongToMap::Response response;
-
-                // send to LatLongToMap
-                request.wgs84.position = startPose.pose.position;
-                if (m_lat_long_to_map_client.call(request, response)) {
-                    start = response.map.point;
-                }
-                currentPath.emplace_back(start.x, start.y);
-                request.wgs84.position = endPose.pose.position;
-                if (m_lat_long_to_map_client.call(request, response)) {
-                    end = response.map.point;
-                }
-
-                m_Executive->addRibbon(start.x, start.y, end.x, end.y);
+            currentPath.emplace_back(start.x, start.y);
+            request.wgs84.position = endPose.pose.position;
+            if (m_lat_long_to_map_client.call(request, response)) {
+                end = response.map.point;
             }
+
+            m_Executive->addRibbon(start.x, start.y, end.x, end.y);
         }
+
 
         // start planner
         m_Executive->startPlanner();
     }
 
-    void preemptCallback()
+    void preemptCallback() override
     {
-        cerr << "Canceling planner" << endl;
+        std::cerr << "Canceling planner" << std::endl;
+        m_Preempted = true;
         m_action_server.setPreempted();
 
         // Should the executive stop now? Probably?
         m_Executive->pause();
-        publishControllerMessage("stop sending controls");
+        publishControllerMessage("terminate");
         clearDisplay();
     }
 
-    void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg)
+    void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg) override
     {
         m_Executive->updateCovered(
                 inmsg->pose.position.x,
                 inmsg->pose.position.y,
                 m_current_speed,
                 m_current_heading,
-                TrajectoryDisplayer::getTime());
+                m_TrajectoryDisplayer.getTime());
 //                inmsg->header.stamp.toNSec() / 1.0e9);
-    }
 
-    void headingCallback(const marine_msgs::NavEulerStamped::ConstPtr& inmsg)
-    {
-        m_current_heading = inmsg->orientation.heading * M_PI / 180.0;
-    }
-
-    void speedCallback(const geometry_msgs::TwistStamped::ConstPtr& inmsg)
-    {
-        m_current_speed = inmsg->twist.linear.x; // this will change once /sog is a vector
+        // need to set succeeded in action server in ROS callback thread for some reason
+        if (m_ActionDone) setSucceeded();
     }
 
     void contactCallback(const marine_msgs::Contact::ConstPtr& inmsg)
@@ -169,66 +132,55 @@ public:
 
         request.wgs84.position = inmsg->position;
         if (m_lat_long_to_map_client.call(request, response)) {
-            obstacle.x = response.map.point.x;
-            obstacle.y = response.map.point.y;
+            obstacle.x() = response.map.point.x;
+            obstacle.y() = response.map.point.y;
         } else {
-            std::cerr << "Error: LatLongToMap failed" << endl;
+            std::cerr << "Error: LatLongToMap failed" << std::endl;
         }
 
-        obstacle.heading = inmsg->cog;
-        obstacle.speed = inmsg->sog;
+        obstacle.heading() = inmsg->cog;
+        obstacle.speed() = inmsg->sog;
 
-        obstacle.time = inmsg->header.stamp.toNSec() / 1.0e9;
+        obstacle.time() = inmsg->header.stamp.toNSec() / 1.0e9;
 
         m_Executive->updateDynamicObstacle(inmsg->mmsi, obstacle);
     }
 
-    void publishTrajectory(vector<State> trajectory) final
+    State publishTrajectory(std::vector<State> trajectory) final
     {
         path_planner::Trajectory reference;
         for (State s : trajectory) {
             reference.states.push_back(getStateMsg(s));
         }
         reference.trajectoryNumber = ++m_TrajectoryCount;
-        m_reference_trajectory_pub.publish(reference);
-    }
-
-    void displayTrajectory(vector<State> trajectory, bool plannerTrajectory) override
-    {
-        TrajectoryDisplayer::displayTrajectory(trajectory, plannerTrajectory);
-    }
-
-    State getEstimatedState(double desiredTime) final
-    {
-        mpc::EstimateStateRequest req;
-        mpc::EstimateStateResponse res;
-        req.desiredTime = desiredTime;
-        // loop while we're getting estimates from a stale trajectory
-        while (m_estimate_state_client.call(req, res)) {
-            if (res.trajectoryNumber == m_TrajectoryCount) {
-                auto s = getState(res.state);
-                displayPlannerStart(s);
-                return s;
-            }
+        mpc::UpdateReferenceTrajectoryRequest req;
+        mpc::UpdateReferenceTrajectoryResponse res;
+        req.trajectory = reference;
+        if (m_update_reference_trajectory_client.call(req, res)) {
+            return getState(res.state);
+        } else {
+            return State();
         }
-        cerr << "EstimateState service call failed" << endl;
-        return State(-1);
+    }
+
+    void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) override
+    {
+        m_TrajectoryDisplayer.displayTrajectory(trajectory, plannerTrajectory);
     }
 
     void allDone() final
     {
         std::cerr << "Planner appears to have finished" << std::endl;
-        path_planner::path_plannerResult result;
-        m_action_server.setSucceeded(result);
-
-        publishControllerMessage("stop sending controls");
+        m_ActionDone = true;
+        publishControllerMessage("terminate");
     }
 
-    void publishControllerMessage(string m)
+    void setSucceeded()
     {
-        std_msgs::String msg;
-        msg.data = std::move(m);
-        m_controller_msgs_pub.publish(msg);
+        std::cerr << "Setting succeeded bit in action server." << std::endl;
+        m_ActionDone = false;
+        path_planner::path_plannerResult result;
+        m_action_server.setSucceeded(result);
     }
 
     void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
@@ -243,7 +195,7 @@ public:
     }
 
     double getTime() const override {
-        return TrajectoryDisplayer::getTime();
+        return m_TrajectoryDisplayer.getTime();
     }
 
     void displayRibbons(const RibbonManager& ribbonManager) override {
@@ -265,68 +217,15 @@ public:
         m_display_pub.publish(geoVizItem);
     }
 
-    void displayPlannerStart(const State& state) {
-        geographic_visualization_msgs::GeoVizItem geoVizItem;
-        geographic_visualization_msgs::GeoVizPolygon polygon;
-        geographic_visualization_msgs::GeoVizSimplePolygon simplePolygon;
-        State bow, sternPort, sternStarboard;
-        bow.setEstimate(3 / state.speed, state); //set bow 3m ahead of state
-        sternPort.setEstimate(-1 / state.speed, state);
-        sternStarboard.set(sternPort);
-        auto a = state.heading + M_PI_2;
-        auto dx = 1.5 * sin(a);
-        auto dy = 1.5 * cos(a);
-        sternPort.x += dx;
-        sternPort.y += dy;
-        sternStarboard.x -= dx;
-        sternStarboard.y -= dy;
-        simplePolygon.points.push_back(convertToLatLong(bow));
-        simplePolygon.points.push_back(convertToLatLong(sternPort));
-        simplePolygon.points.push_back(convertToLatLong(sternStarboard));
-        polygon.outer = simplePolygon;
-        polygon.edge_color.b = 1;
-        polygon.edge_color.a = 0.7;
-        polygon.fill_color = polygon.edge_color;
-        geoVizItem.polygons.push_back(polygon);
-        geoVizItem.id = "planner_start";
-        m_display_pub.publish(geoVizItem);
-    }
-
-    void clearDisplay() {
-        displayRibbons(RibbonManager());
-        TrajectoryDisplayer::displayTrajectory(std::vector<State>(), true);
-        geographic_visualization_msgs::GeoVizItem geoVizItem;
-        geoVizItem.id = "planner_start";
-        m_display_pub.publish(geoVizItem);
-    }
-
 private:
-    ros::NodeHandle m_node_handle;
-    actionlib::SimpleActionServer<path_planner::path_plannerAction> m_action_server;
-
-    // Since speed and heading are updated through different topics than position,
-    // but we need them for state updates to the executive, keep the latest of each
-    // to send when we get a new position
-    double m_current_speed;
-    double m_current_heading;
+    ros::NodeHandle m_node_handle; // TODO
 
     geographic_msgs::GeoPoint m_origin;
 
-    ros::Publisher m_controller_msgs_pub;
-    ros::Publisher m_reference_trajectory_pub;
-
-    ros::Subscriber m_position_sub;
-    ros::Subscriber m_heading_sub;
-    ros::Subscriber m_speed_sub;
     ros::Subscriber m_contact_sub;
     ros::Subscriber m_origin_sub;
 
-    ros::ServiceClient m_lat_long_to_map_client;
-    ros::ServiceClient m_estimate_state_client;
-
     dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Dynamic_Reconfigure_Server;
-
-    long m_TrajectoryCount = 1;
 
     // handle on Executive
     Executive* m_Executive;
@@ -336,7 +235,7 @@ private:
 
 int main(int argc, char **argv)
 {
-    std::cerr << "Starting planner node" << endl;
+    std::cerr << "Starting planner node" << std::endl;
     ros::init(argc, argv, "path_planner");
     PathPlanner pp("path_planner_action");
     ros::spin();

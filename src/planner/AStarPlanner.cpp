@@ -28,23 +28,29 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
                                       double timeRemaining) {
     m_Config = std::move(config); // gotta do this before we can call now()
     double endTime = timeRemaining + now();
-    std::cerr << "Starting to plan" << std::endl;
+    m_Config.setStartStateTime(start.time());
+//    std::cerr << "Starting to plan" << std::endl;
     m_RibbonManager = ribbonManager;
+    m_RibbonManager.changeHeuristicIfTooManyRibbons(); // make sure ribbon heuristic is calculable
     m_ExpandedCount = 0;
-    m_StartStateTime = start.time;
+    m_IterationCount = 0;
+    m_StartStateTime = start.time();
     m_Samples.clear();
     double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
     double magnitude = m_Config.maxSpeed() * Plan::timeHorizon();
-    minX = start.x - magnitude;
-    maxX = start.x + magnitude;
-    minY = start.y - magnitude;
-    maxY = start.y + magnitude;
+    minX = start.x() - magnitude;
+    maxX = start.x() + magnitude;
+    minY = start.y() - magnitude;
+    maxY = start.y() + magnitude;
     StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
     auto startV = Vertex::makeRoot(start, m_RibbonManager);
+    startV->state().speed() = m_Config.maxSpeed(); // state's speed is used to compute h so need to use max
     startV->computeApproxToGo();
-    visualizeVertex(startV, "start");
-    shared_ptr<Vertex> bestVertex(nullptr);
+//     assume we can get up to max speed instantly
+//    startV->state().speed() = start.speed(); // change the speed back to the current speed (not sure it matters)
+    m_BestVertex = nullptr;
     auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
+    auto otherRibbonSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());
 //    if (m_UseRibbons) {
 //        for (const auto& s : m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_CoverageTurningRadius * 2 + 1)) {
 //            m_Samples.push_back(s);
@@ -52,44 +58,55 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
 //    }
     while (now() < endTime) {
         clearVertexQueue();
+        if (m_BestVertex && m_BestVertex->f() <= startV->f()) {
+            *m_Config.output() << "Found best possible plan, assuming heuristic admissibility" << std::endl;
+            break;
+        }
+        visualizeVertex(startV, "start");
         pushVertexQueue(startV);
-        // manually expand starting node to include states on nearby ribbons far enough away such that the
-        expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles());
-        // On the first iteration add INITIAL_SAMPLES samples, otherwise just double them
+        // manually expand starting node to include states on nearby ribbons far enough away such that the boat doesn't
+        // have to loop around
+        expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles(), true);
+        expandToCoverSpecificSamples(startV, otherRibbonSamples, m_Config.obstacles(), true);
+        // On the first iteration add c_InitialSamples samples, otherwise just double them
         if (m_Samples.size() < c_InitialSamples) addSamples(generator, c_InitialSamples);
-        else addSamples(generator, c_InitialSamples); // linearly increase samples
+        else addSamples(generator); // linearly increase samples (changed to not double)
         auto v = aStar(m_Config.obstacles(), endTime);
-        if (!bestVertex || (v && v->f() < bestVertex->f())) {
+        if (!m_BestVertex || (v && v->f() < m_BestVertex->f())) {
 //            if (v) *m_Output << "Found a plan with final fvalue " << v->f() << std::endl;
 //            else *m_Output << "Returned from A* with no plan" << std::endl;
             // found a (better) plan
-            bestVertex = v;
-            visualizeVertex(v, "goal");
+            m_BestVertex = v;
+            if (v) visualizeVertex(v, "goal");
         }
+        m_IterationCount++;
     }
-    *m_Config.output() << m_Samples.size() << " total samples, " << m_ExpandedCount << " expanded" << std::endl;
-    if (!bestVertex) {
+    // Add expected final cost, total accrued cost (not here)
+    *m_Config.output() << m_Samples.size() << " total samples, " << m_ExpandedCount << " expanded in "
+        << m_IterationCount << " iterations" << std::endl;
+    if (!m_BestVertex) {
         *m_Config.output() << "Failed to find a plan" << std::endl;
         return std::vector<State>();
     } else {
 //        *m_Output << "Best Plan " << bestVertex->ribbonManager().dumpRibbons() << std::endl; // "Best Plan Ribbons: "
-        return tracePlan(bestVertex, false, m_Config.obstacles()).get();
+        return tracePlan(m_BestVertex, false, m_Config.obstacles()).get();
     }
 }
 
 shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles, double endTime) {
     auto vertex = popVertexQueue();
     while (now() < endTime) {
-        if (goalCondition(vertex)) {
+        // with filter on vertex queue this second check is unnecessary
+        if (goalCondition(vertex) && (!m_BestVertex || vertex->f() < m_BestVertex->f())) {
 //            *m_Output << "Found goal: " << vertex->toString() << std::endl;
             return vertex;
         }
 //        *m_Output << "Expanding vertex at " << vertex->state().toString() << std::endl;
-        visualizeVertex(vertex, "vertex");
+//        visualizeVertex(vertex, "vertex");
         expand(vertex, obstacles);
 
         // should probably check if vertex queue is empty but expand should always push some on
-
+        if (vertexQueueEmpty()) return Vertex::SharedPtr(nullptr);
         vertex = popVertexQueue();
     }
     return shared_ptr<Vertex>(nullptr);
@@ -103,12 +120,14 @@ shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles,
 //    m_CoverageTurningRadius = coverageTurningRadius;
 //}
 
-void AStarPlanner::expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples, const DynamicObstaclesManager& obstacles) {
+void AStarPlanner::expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples,
+                                                const DynamicObstaclesManager& obstacles, bool coverageAllowed) {
     if (m_Config.coverageTurningRadius() > 0) {
         for (auto s : samples) {
-            s.speed = m_Config.coverageMaxSpeed();
-            auto destinationVertex = Vertex::connect(root, s, m_Config.coverageTurningRadius(), true);
-            destinationVertex->parentEdge()->computeTrueCost(m_Config.map(), obstacles);
+//            std::cerr << "Expanding to cover " << s.toString() << std::endl;
+            s.speed() = m_Config.maxSpeed();
+            auto destinationVertex = Vertex::connect(root, s, m_Config.coverageTurningRadius(), coverageAllowed);
+            destinationVertex->parentEdge()->computeTrueCost(m_Config);
             pushVertexQueue(destinationVertex);
         }
     }

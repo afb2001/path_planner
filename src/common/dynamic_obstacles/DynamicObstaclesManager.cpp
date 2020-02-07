@@ -3,11 +3,11 @@
 #include <algorithm>
 
 double DynamicObstaclesManager::collisionExists(const State &s) const{
-    return collisionExists(s.x, s.y, s.time);
+    return collisionExists(s.x(), s.y(), s.time());
 }
 
 double DynamicObstaclesManager::distanceToNearestPossibleCollision(const State &s) const {
-    return distanceToNearestPossibleCollision(s.x, s.y, s.speed, s.time);
+    return distanceToNearestPossibleCollision(s.x(), s.y(), s.speed(), s.time());
 }
 
 double DynamicObstaclesManager::distanceToNearestPossibleCollision(double x, double y, double speed, double time) const {

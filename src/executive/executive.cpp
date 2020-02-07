@@ -55,11 +55,13 @@ void Executive::planLoop() {
         }
     }
 
-    cerr << "Starting plan loop" << endl;
+//    cerr << "Starting plan loop" << endl;
     State startState;
 
     while (true) {
         double startTime = m_TrajectoryPublisher->getTime();
+
+//        std::cerr << "Top of plan loop" << std::endl;
 
         unique_lock<mutex> lock(m_CancelLock);
         if (m_PlannerCancelled) {
@@ -68,6 +70,8 @@ void Executive::planLoop() {
             break;
         }
         lock.unlock();
+
+//        std::cerr << "Checking ribbons" << std::endl;
 
         if (m_RibbonManager.done()) {
             // tell the node we're done
@@ -89,6 +93,8 @@ void Executive::planLoop() {
          */
         m_TrajectoryPublisher->displayRibbons(m_RibbonManager);
 
+//        std::cerr << "Displayed ribbons" << std::endl;
+
         // copy the map pointer if it's been set (don't wait for the mutex because it may be a while)
         if (m_MapMutex.try_lock()) {
             if (m_NewMap) {
@@ -104,6 +110,7 @@ void Executive::planLoop() {
         // call the controller service to get the estimated state we'll be in after the planning time has elapsed
 //        auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
 
+//        std::cerr << "Checking start state" << std::endl;
         // if the state estimator returns an error naively do it ourselves
         if (startState.time() == -1) {
             startState = m_LastState.push(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds - m_LastState.time());

@@ -73,7 +73,7 @@ public:
 
     static double getCurrentTime();
 
-    void setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed, double coverageTurningRadius, int k);
+    void setVehicleConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double lineWidth, int k);
 
     void setPlannerVisualization(bool visualize, const std::string& visualizationFilePath);
 

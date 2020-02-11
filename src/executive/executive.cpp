@@ -237,11 +237,12 @@ void Executive::clearRibbons() {
     m_RibbonManager = RibbonManager(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons, m_PlannerConfig.turningRadius(), 2);
 }
 
-void Executive::setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed,
-                                        double coverageTurningRadius, int k) {
+void Executive::setVehicleConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed,
+        double lineWidth, int k) {
     m_PlannerConfig.setMaxSpeed(maxSpeed);
     m_PlannerConfig.setTurningRadius(turningRadius);
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
+    m_PlannerConfig.setLineWidth(lineWidth);
     m_PlannerConfig.setBranchingFactor(k);
 }
 

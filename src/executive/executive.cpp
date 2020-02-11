@@ -234,7 +234,7 @@ std::vector<Distribution> Executive::inventDistributions(State obstacle) {
 
 void Executive::clearRibbons() {
     std::lock_guard<std::mutex> lock(m_RibbonManagerMutex);
-    m_RibbonManager = RibbonManager();
+    m_RibbonManager = RibbonManager(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons, m_PlannerConfig.turningRadius(), 2);
 }
 
 void Executive::setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed,

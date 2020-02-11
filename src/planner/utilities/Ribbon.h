@@ -51,7 +51,7 @@ private:
     double m_StartX, m_StartY, m_EndX, m_EndY;
 
     // Ribbon width (on one side, so really half the full width)
-    static constexpr double c_RibbonWidth = 1.5;
+    static constexpr double c_RibbonWidth = 2;
     // It might be a good idea for this to be the same as ribbon width. If it's smaller, you'll need to take another
     // look at the edge cost toCoverDistance calculation (should subtract ribbon width).
     // Intuitively, I think they should be the same, since you can cover a line going along it or across it.

@@ -32,6 +32,7 @@ double Executive::getCurrentTime()
 void Executive::updateCovered(double x, double y, double speed, double heading, double t)
 {
     if ((m_LastHeading - heading) / m_LastUpdateTime <= c_CoverageHeadingRateMax) {
+        std::lock_guard<std::mutex> lock(m_RibbonManagerMutex);
         m_RibbonManager.cover(x, y);
     }
     m_LastUpdateTime = t; m_LastHeading = heading;
@@ -44,41 +45,44 @@ void Executive::planLoop() {
     auto planner = std::unique_ptr<Planner>(new AStarPlanner);
 
     { // new scope to use RAII and not mess with later "lock" variable
-        unique_lock<mutex> lock(m_CancelLock);
-        m_CancelCV.wait_for(lock, chrono::seconds(2), [=] { return !m_PlannerCancelled; });
-        if (m_PlannerCancelled) {
+        unique_lock<mutex> lock(m_PlannerStateMutex);
+        m_CancelCV.wait_for(lock, chrono::seconds(2), [=] { return m_PlannerState != PlannerState::Cancelled; });
+        if (m_PlannerState == PlannerState::Cancelled) {
             cerr << "Planner initialization timed out. Cancel flag is still set.\n" <<
-                "This is likely the result of a race condition I haven't gotten around to fixing yet.\n" <<
-                "You're gonna have to restart the planner node if you want to keep using it.\n" <<
-                "If this happens systematically, know that I'm sorry." << endl;
+                "This is likely the result of a race condition I thought I fixed.\n" <<
+                "You're gonna have to restart the planner node if you want to keep using it.\n" << endl;
             return;
         }
+        m_PlannerState = PlannerState::Running;
     }
 
 //    cerr << "Starting plan loop" << endl;
     State startState;
+
 
     while (true) {
         double startTime = m_TrajectoryPublisher->getTime();
 
 //        std::cerr << "Top of plan loop" << std::endl;
 
-        unique_lock<mutex> lock(m_CancelLock);
-        if (m_PlannerCancelled) {
-            m_PlannerCancelled = false;
+        unique_lock<mutex> lock(m_PlannerStateMutex);
+        if (m_PlannerState == PlannerState::Cancelled) {
             lock.unlock();
             break;
         }
         lock.unlock();
 
 //        std::cerr << "Checking ribbons" << std::endl;
-
-        if (m_RibbonManager.done()) {
-            // tell the node we're done
-            cerr << "Finished covering ribbons" << endl;
-            m_TrajectoryPublisher->allDone();
-            break;
+        {
+            std::lock_guard<std::mutex> lock1(m_RibbonManagerMutex);
+            if (m_RibbonManager.done()) {
+                // tell the node we're done
+                cerr << "Finished covering ribbons" << endl;
+                m_TrajectoryPublisher->allDone();
+                break;
+            }
         }
+
 
         // display ribbons
         // seg fault has occurred in this call and I have no idea how (trace below)
@@ -91,7 +95,10 @@ void Executive::planLoop() {
             #2  0x00007f3c17078483 in Executive::planLoop (this=0x558293696800)
                 at /home/abrown/project11/catkin_ws/src/path_planner/src/executive/executive.cpp:86
          */
-        m_TrajectoryPublisher->displayRibbons(m_RibbonManager);
+        {
+            std::lock_guard<std::mutex> lock1(m_RibbonManagerMutex);
+            m_TrajectoryPublisher->displayRibbons(m_RibbonManager);
+        }
 
 //        std::cerr << "Displayed ribbons" << std::endl;
 
@@ -120,7 +127,13 @@ void Executive::planLoop() {
             // TODO! -- low-key data race with the ribbon manager here but it might be fine
             // its estimates of our trajectory
             m_PlannerConfig.setObstacles(m_DynamicObstaclesManager);
-            plan = planner->plan(m_RibbonManager, startState, m_PlannerConfig,
+            // trying to fix seg fault by eliminating concurrent access to ribbon manager (idk what the real problem is)
+            RibbonManager ribbonManagerCopy;
+            {
+                std::lock_guard<std::mutex> lock(m_RibbonManagerMutex);
+                ribbonManagerCopy = m_RibbonManager;
+            }
+            plan = planner->plan(ribbonManagerCopy, startState, m_PlannerConfig,
                                    startTime + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
         } catch(const std::exception& e) {
             cerr << "Exception thrown while planning:" << endl;
@@ -151,6 +164,10 @@ void Executive::planLoop() {
         // display the trajectory
         m_TrajectoryPublisher->displayTrajectory(plan, true);
     }
+
+    unique_lock<mutex> lock2(m_PlannerStateMutex);
+    m_PlannerState = PlannerState::Inactive;
+    m_CancelCV.notify_all(); // do I need this?
 }
 
 void Executive::terminate()
@@ -161,19 +178,7 @@ void Executive::terminate()
 
 void Executive::pause()
 {
-    m_PauseMutex.lock();
-    if (m_Pause) {
-        m_PauseMutex.unlock();
-        return;
-    }
     cancelPlanner();
-    m_Pause = true;
-    m_PauseMutex.unlock();
-
-//    if (!m_Running) return;
-
-    // tell the node we achieved the goal
-//    m_TrajectoryPublisher->allDone();
 }
 
 void Executive::unPause() {
@@ -212,6 +217,7 @@ void Executive::refreshMap(std::string pathToMapFile, double latitude, double lo
 }
 
 void Executive::addRibbon(double x1, double y1, double x2, double y2) {
+    std::lock_guard<std::mutex> lock(m_RibbonManagerMutex);
     m_RibbonManager.add(x1, y1, x2, y2);
 }
 
@@ -227,6 +233,7 @@ std::vector<Distribution> Executive::inventDistributions(State obstacle) {
 }
 
 void Executive::clearRibbons() {
+    std::lock_guard<std::mutex> lock(m_RibbonManagerMutex);
     m_RibbonManager = RibbonManager();
 }
 
@@ -247,8 +254,9 @@ void Executive::startPlanner() {
 }
 
 void Executive::cancelPlanner() {
-    std::unique_lock<mutex> lock(m_CancelLock);
-    m_PlannerCancelled = true;
+    std::unique_lock<mutex> lock(m_PlannerStateMutex);
+    if (m_PlannerState == PlannerState::Running)
+        m_PlannerState = PlannerState::Cancelled;
 }
 
 void Executive::setPlannerVisualization(bool visualize, const std::string& visualizationFilePath) {

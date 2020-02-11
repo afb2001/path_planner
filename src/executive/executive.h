@@ -81,10 +81,17 @@ public:
 
 private:
 
-    bool m_PlannerCancelled = false;
-    std::mutex m_CancelLock;
+    enum PlannerState {
+        Inactive,
+        Running,
+        Cancelled,
+    };
+
+    PlannerState m_PlannerState = PlannerState::Inactive;
+    std::mutex m_PlannerStateMutex;
     std::condition_variable m_CancelCV;
 
+    std::mutex m_RibbonManagerMutex;
     RibbonManager m_RibbonManager;
     double m_LastUpdateTime = 1;
     double m_LastHeading = 0; // TODO! -- use moving average or something

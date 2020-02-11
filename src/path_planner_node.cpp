@@ -56,7 +56,7 @@ public:
         publishControllerMessage("start running");
 
         // if executive is already running, shut it down
-        m_Executive->pause();
+        m_Executive->cancelPlanner();
 //        return;
         publishControllerMessage("start sending controls");
 
@@ -104,7 +104,7 @@ public:
         m_action_server.setPreempted();
 
         // Should the executive stop now? Probably?
-        m_Executive->pause();
+        m_Executive->cancelPlanner();
         publishControllerMessage("terminate");
         clearDisplay();
     }
@@ -199,6 +199,8 @@ public:
     }
 
     void displayRibbons(const RibbonManager& ribbonManager) override {
+
+        std::cerr << ribbonManager.dumpRibbons() << std::endl;
 
         geographic_visualization_msgs::GeoVizItem geoVizItem;
 

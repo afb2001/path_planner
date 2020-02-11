@@ -54,10 +54,10 @@ public:
             State current = start;
             auto d = start.distanceTo(end);
             for (int j = 0; j < d; j++){ // 2 m/s updated every half second is 1m of distance each iteration
-                m_Trajectory.push_back(current);
                 current = start.push(0.5 * j);
+                m_Trajectory.push_back(current);
             }
-            m_Trajectory.push_back(current);
+//            m_Trajectory.push_back(current);
             time = current.time();
         }
 

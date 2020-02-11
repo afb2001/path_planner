@@ -200,7 +200,7 @@ public:
 
     void displayRibbons(const RibbonManager& ribbonManager) override {
 
-        std::cerr << ribbonManager.dumpRibbons() << std::endl;
+//        std::cerr << ribbonManager.dumpRibbons() << std::endl;
 
         geographic_visualization_msgs::GeoVizItem geoVizItem;
 

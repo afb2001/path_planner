@@ -237,12 +237,21 @@ void Executive::clearRibbons() {
     m_RibbonManager = RibbonManager(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons, m_PlannerConfig.turningRadius(), 2);
 }
 
-void Executive::setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed,
-                                        double coverageTurningRadius, int k) {
+void Executive::setVehicleConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed,
+        double lineWidth, int k, int heuristic) {
     m_PlannerConfig.setMaxSpeed(maxSpeed);
     m_PlannerConfig.setTurningRadius(turningRadius);
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
+    RibbonManager::setRibbonWidth(lineWidth);
     m_PlannerConfig.setBranchingFactor(k);
+    switch (heuristic) {
+        case 0: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::MaxDistance); cerr << "Max distance" << endl; break;
+        case 1: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitAllRibbons); cerr << "PR All" << endl;  break;
+        case 2: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons); cerr << "PR K" << endl; break;
+        case 3: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspDubinsNoSplitAllRibbons); cerr << "Dubins All" << endl; break;
+        case 4: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspDubinsNoSplitKRibbons); cerr << "Dubins K" << endl; break;
+        default: cerr << "Unknown heuristic. Ignoring." << endl; break;
+    }
 }
 
 void Executive::startPlanner() {

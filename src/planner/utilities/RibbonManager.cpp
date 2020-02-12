@@ -387,3 +387,7 @@ void RibbonManager::changeHeuristicIfTooManyRibbons() {
     }
 }
 
+void RibbonManager::setHeuristic(Heuristic heuristic) {
+    m_Heuristic = heuristic;
+}
+

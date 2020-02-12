@@ -1,6 +1,8 @@
 #include <sstream>
 #include "Ribbon.h"
 
+double Ribbon::RibbonWidth = 1.5;
+
 Ribbon::Ribbon(double startX, double startY, double endX, double endY)
     : m_StartX(startX), m_StartY(startY), m_EndX(endX), m_EndY(endY){}
 
@@ -19,7 +21,7 @@ Ribbon Ribbon::empty() {
 }
 
 bool Ribbon::covered() const {
-    return squaredLength() < c_MinSquaredLength;
+    return squaredLength() < minLength() * minLength();
 }
 
 double Ribbon::length() const {
@@ -37,7 +39,7 @@ std::pair<double, double> Ribbon::end() const {
 bool Ribbon::contains(double x, double y, const std::pair<double, double>& projected) const {
     if (!containsProjection(projected)) return false;
     auto d = distance(x, y);
-    return d < c_RibbonWidth;
+    return d < RibbonWidth;
 }
 
 std::string Ribbon::toString() const {
@@ -48,7 +50,10 @@ std::string Ribbon::toString() const {
 }
 
 double Ribbon::minLength() {
-    return c_MinLength;
+    // It might be a good idea for this to be the same as ribbon width. If it's smaller, you'll need to take another
+    // look at the edge cost toCoverDistance calculation (should subtract ribbon width).
+    // Intuitively, I think they should be the same, since you can cover a line going along it or across it.
+    return RibbonWidth;
 }
 
 State Ribbon::startAsState() const {

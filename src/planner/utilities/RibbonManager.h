@@ -56,6 +56,8 @@ public:
 
     std::vector<State> findNearStatesOnRibbons(const State& start, double radius) const;
 
+    void setHeuristic(Heuristic heuristic);
+
     static void setRibbonWidth(double lineWidth) { Ribbon::RibbonWidth = lineWidth; }
 private:
     Heuristic m_Heuristic;

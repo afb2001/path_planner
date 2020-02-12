@@ -186,7 +186,7 @@ public:
     void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
         m_Executive->refreshMap(config.planner_geotiff_map, m_origin.latitude, m_origin.longitude);
         m_Executive->setVehicleConfiguration(config.non_coverage_turning_radius, config.coverage_turning_radius,
-                config.max_speed, config.line_width, config.branching_factor);
+                config.max_speed, config.line_width, config.branching_factor, config.heuristic);
         m_Executive->setPlannerVisualization(config.dump_visualization, config.visualization_file);
     }
 

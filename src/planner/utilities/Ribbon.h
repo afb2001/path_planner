@@ -11,6 +11,10 @@
  */
 class Ribbon {
 public:
+    // Ribbon width (on one side, so really half the full width).
+    // I tried to stay away from public static members but it'd be much more work to avoid it here.
+    static double RibbonWidth;
+
     Ribbon(double startX, double startY, double endX, double endY);
 
     Ribbon split(double x, double y);
@@ -49,14 +53,6 @@ public:
 
 private:
     double m_StartX, m_StartY, m_EndX, m_EndY;
-
-    // Ribbon width (on one side, so really half the full width)
-    static constexpr double c_RibbonWidth = 2;
-    // It might be a good idea for this to be the same as ribbon width. If it's smaller, you'll need to take another
-    // look at the edge cost toCoverDistance calculation (should subtract ribbon width).
-    // Intuitively, I think they should be the same, since you can cover a line going along it or across it.
-    static constexpr double c_MinLength = c_RibbonWidth;
-    static constexpr double c_MinSquaredLength = c_MinLength * c_MinLength;
 
     // use a tolerance to compensate for floating point errors that were happening
     static constexpr double c_Tolerance = 1e-5;

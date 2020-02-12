@@ -242,7 +242,7 @@ void Executive::setVehicleConfiguration(double turningRadius, double coverageTur
     m_PlannerConfig.setMaxSpeed(maxSpeed);
     m_PlannerConfig.setTurningRadius(turningRadius);
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
-    m_PlannerConfig.setLineWidth(lineWidth);
+    RibbonManager::setRibbonWidth(lineWidth);
     m_PlannerConfig.setBranchingFactor(k);
 }
 

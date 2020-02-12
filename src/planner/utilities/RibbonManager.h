@@ -55,6 +55,10 @@ public:
     std::vector<State> findStatesOnRibbonsOnCircle(const State& center, double radius) const;
 
     std::vector<State> findNearStatesOnRibbons(const State& start, double radius) const;
+
+    void setHeuristic(Heuristic heuristic);
+
+    static void setRibbonWidth(double lineWidth) { Ribbon::RibbonWidth = lineWidth; }
 private:
     Heuristic m_Heuristic;
     double m_TurningRadius = -1;
@@ -62,17 +66,6 @@ private:
 
     std::list<Ribbon> m_Ribbons;
 
-    static constexpr int c_RibbonCountDangerThreshold = 5;
-
-    static double distance(std::pair<double, double> p1, std::pair<double, double> p2) {
-        return distance(p1.first, p1.second, p2.first, p2.second);
-    }
-    static double distance(std::pair<double, double> p, double x, double y){
-        return distance(p.first, p.second, x, y);
-    }
-    static double distance(double x1, double y1, double x2, double y2) {
-        return sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2));
-    }
     double dubinsDistance(double x, double y, double h, const State& s) const {
         if (m_TurningRadius == -1) throw std::logic_error("Cannot compute ribbon dubins distance with unset turning radius");
         DubinsPath dubinsPath;
@@ -85,8 +78,6 @@ private:
 
     double maxDistance(double x, double y) const;
 
-    static double tspPointRobotNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, std::pair<double, double> point);
-
     double tspDubinsNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, double x,
                                       double y, double yaw) const;
 
@@ -94,6 +85,19 @@ private:
 
     double tspDubinsNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, double x,
                                     double y, double yaw) const;
+
+    static constexpr int c_RibbonCountDangerThreshold = 5;
+    static double distance(std::pair<double, double> p1, std::pair<double, double> p2) {
+        return distance(p1.first, p1.second, p2.first, p2.second);
+    }
+    static double distance(std::pair<double, double> p, double x, double y){
+        return distance(p.first, p.second, x, y);
+    }
+    static double distance(double x1, double y1, double x2, double y2) {
+        return sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2));
+    }
+
+    static double tspPointRobotNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, std::pair<double, double> point);
 };
 
 

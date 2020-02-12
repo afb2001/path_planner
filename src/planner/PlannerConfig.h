@@ -112,7 +112,7 @@ public:
 
 private:
     int m_BranchingFactor = 9;
-    double m_MaxSpeed = 2.5, m_TurningRadius = 8, m_CoverageMaxSpeed = 2.5, m_CoverageTurningRadius = 16;
+    double m_MaxSpeed = 2.5, m_TurningRadius = 8, m_CoverageTurningRadius = 16;
     bool m_Visualizations = false;
     Visualizer::UniquePtr* m_Visualizer;
     std::ostream** m_VisualizationStream = nullptr; // pointer to a pointer so we can change streams across copies

@@ -108,6 +108,7 @@ shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles,
         // should probably check if vertex queue is empty but expand should always push some on
         if (vertexQueueEmpty()) return Vertex::SharedPtr(nullptr);
         vertex = popVertexQueue();
+        if (m_ExpandedCount >= m_Samples.size()) break; // probably can't find a good plan in these samples so add more
     }
     return shared_ptr<Vertex>(nullptr);
 }

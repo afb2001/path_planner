@@ -391,3 +391,14 @@ void RibbonManager::setHeuristic(Heuristic heuristic) {
     m_Heuristic = heuristic;
 }
 
+void RibbonManager::coverBetween(double x1, double y1, double x2, double y2) {
+    double theta = atan((y2 - y1) / (x2 - x1));
+    do {
+        cover(x1, y1);
+        x1 += Ribbon::minLength() * cos(theta) / 2; // so we don't overshoot
+        y1 += Ribbon::minLength() * sin(theta) / 2;
+        std::cerr << "Getting distance between " << x1 << ", " << y1 << " and " << x2 << ", " << y2 << std::endl;
+    } while (distance(x1, y1, x2, y2) > Ribbon::minLength());
+    cover(x2, y2);
+}
+

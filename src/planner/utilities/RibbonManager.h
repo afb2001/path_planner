@@ -28,6 +28,8 @@ public:
 
     void cover(double x, double y);
 
+    void coverBetween(double x1, double y1, double x2, double y2);
+
     bool done() const;
 
     double approximateDistanceUntilDone(double x, double y, double yaw) const;

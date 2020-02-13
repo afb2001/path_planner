@@ -133,6 +133,10 @@ void Executive::planLoop() {
                 std::lock_guard<std::mutex> lock(m_RibbonManagerMutex);
                 ribbonManagerCopy = m_RibbonManager;
             }
+            // cover up to the state that we're planning from. Will require more work if we can go more than the min
+            // ribbon length in 1s
+            ribbonManagerCopy.coverBetween(m_LastState.x(), m_LastState.y(), startState.x(), startState.y());
+//            ribbonManagerCopy.cover(startState.x(), startState.y());
             plan = planner->plan(ribbonManagerCopy, startState, m_PlannerConfig,
                                    startTime + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
         } catch(const std::exception& e) {

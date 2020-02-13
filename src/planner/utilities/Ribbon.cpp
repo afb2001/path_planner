@@ -53,7 +53,8 @@ double Ribbon::minLength() {
     // It might be a good idea for this to be the same as ribbon width. If it's smaller, you'll need to take another
     // look at the edge cost toCoverDistance calculation (should subtract ribbon width).
     // Intuitively, I think they should be the same, since you can cover a line going along it or across it.
-    return RibbonWidth;
+    // EDIT: it should be twice as large, because the width is only on one side (true width is twice the value)
+    return 2 * RibbonWidth;
 }
 
 State Ribbon::startAsState() const {

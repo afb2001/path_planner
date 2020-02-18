@@ -157,7 +157,9 @@ public:
         mpc::UpdateReferenceTrajectoryResponse res;
         req.trajectory = reference;
         if (m_update_reference_trajectory_client.call(req, res)) {
-            return getState(res.state);
+            auto s = getState(res.state);
+            displayPlannerStart(s);
+            return s;
         } else {
             return State();
         }

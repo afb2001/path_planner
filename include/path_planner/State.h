@@ -222,16 +222,22 @@ class State
      * @return
      */
     State interpolate(const State& other, double desiredTime) const {
+//        std::cerr << "Interpolating between " << other.toString() << " and " << toString() << std::endl;
         auto dt = other.time() - time();
         auto dx = (other.x() - x()) / dt;
         auto dy = (other.y() - y()) / dt;
-        auto dh = (other.heading() - heading()) / dt;
+        auto h1 = other.heading();
+        auto h2 = heading();
+        // assume the headings have changed the closer way, not all the way around the other way
+        static constexpr double twoPi = 2 * M_PI;
+        auto dh = (fmod(fmod((h1 - h2), twoPi) + 3 * M_PI, twoPi) - M_PI) / dt;
         auto ds = (other.speed() - speed()) / dt;
         dt = desiredTime - time();
         State s = *this;
         s.x() += dx * dt;
         s.y() += dy * dt;
-        s.heading() += dh * dt;
+        s.heading() = h2 + (dh * dt);
+        if (s.heading() >= twoPi) s.heading() -= twoPi;
         s.speed() += ds * dt;
         s.time() = desiredTime;
         return s;

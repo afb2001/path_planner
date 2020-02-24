@@ -37,27 +37,34 @@ public:
      * @param plannerTrajectory flag determining color and id
      */
     void displayTrajectory(const std::vector<State>& trajectory, bool plannerTrajectory) {
+        displayTrajectory(trajectory, plannerTrajectory, true);
+    }
+
+    /**
+     * Display a trajectory to /project11/display. Map coordinates are converted into lat/long with the map_to_wgs84
+     * service.
+     * @param trajectory the trajectory to display
+     * @param plannerTrajectory flag determining color and id
+     * @param achievable whether this trajectory is achievable
+     */
+    void displayTrajectory(const std::vector<State>& trajectory, bool plannerTrajectory, bool achievable) {
         assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
         geographic_visualization_msgs::GeoVizPointList displayPoints;
         displayPoints.color.b = 1;
         if (!plannerTrajectory) {
-//            std::cerr << "Displaying controller trajectory of length " << trajectory.size();
-//            if (!trajectory.empty()) {
-//                std::cerr << " starting at " << trajectory.front().toString() << std::endl;
-//            } else {
-//                std::cerr << std::endl;
-//            }
-
-            displayPoints.color.g = 1;
             displayPoints.color.a = 0.8;
             displayPoints.size = 10;
+            if (achievable) {
+                displayPoints.color.g = 1;
+            } else {
+                displayPoints.color.b = 0;
+                displayPoints.color.r = 1;
+            }
         } else {
             displayPoints.color.a = 1;
             displayPoints.size = 3.0;
         }
-//        std::cerr << "Displaying controller trajectory: " << std::endl;
         for (const State& s : trajectory) {
-//            std::cerr << s.toString() << std::endl;
             geographic_msgs::GeoPoint point;
             displayPoints.points.push_back(convertToLatLong(s));
         }

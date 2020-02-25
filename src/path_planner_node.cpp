@@ -175,6 +175,7 @@ public:
         std::cerr << "Planner appears to have finished" << std::endl;
         m_ActionDone = true;
         publishControllerMessage("terminate");
+        clearDisplay();
     }
 
     void setSucceeded()

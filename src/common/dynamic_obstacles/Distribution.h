@@ -2,6 +2,7 @@
 #define SRC_DISTRIBUTION_H
 
 #include <cmath>
+#include <cassert>
 
 /**
  * Class that holds the representation of a truncated Gaussian distribution. This was written to model dynamic
@@ -64,6 +65,7 @@ private:
     static double density(const double (&mean)[2], const double (&covariance)[2][2], const double (&x)[2]) {
         static const double inv2Pi = 0.1591549430918953; // square and square root cancel out
         double det = covariance[0][0] * covariance[1][1] - covariance[0][1] * covariance[1][0];
+        assert(std::isfinite(det) && det > 0);
         double inverseCovariance[2][2] = {
                 {covariance[1][1] / det, -covariance[0][1] / det},
                 {-covariance[1][0] / det, covariance[0][0] / det}
@@ -72,10 +74,12 @@ private:
         double intermediate[2] = { xMinusMean[0] * inverseCovariance[0][0] + xMinusMean[1] * inverseCovariance[0][1],
                                    xMinusMean[1] * inverseCovariance[1][0] + xMinusMean[1] * inverseCovariance[1][1]};
         double quadform = intermediate[0] * xMinusMean[0] + intermediate[1] * xMinusMean[1]; // (x - mu)T * Sigma^-1 * (x - mu)
+        assert(std::isfinite(quadform) && quadform >= 0);
         double mahalanobisDistance = sqrt(quadform);
         // Truncate distribution at two "standard deviations" (generalized to multivariate case by Mahalanobis distance)
         if (mahalanobisDistance > 2) return 0;
         double norm = inv2Pi / sqrt(det);
+        assert(std::isfinite(norm));
         return norm * exp(-0.5 * quadform);
     }
 };

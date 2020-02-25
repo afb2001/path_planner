@@ -228,7 +228,7 @@ void Executive::addRibbon(double x1, double y1, double x2, double y2) {
 std::vector<Distribution> Executive::inventDistributions(State obstacle) {
     std::vector<Distribution> distributions;
     double mean[2] = {obstacle.x(), obstacle.y()};
-    double covariance[2][2] = {{0, 5},{5, 0}};
+    double covariance[2][2] = {{1, 0},{0, 1}};
     distributions.emplace_back(mean, covariance, obstacle.heading(), obstacle.time());
     obstacle = obstacle.push(1);
     mean[0] = obstacle.x(); mean[1] = obstacle.y();

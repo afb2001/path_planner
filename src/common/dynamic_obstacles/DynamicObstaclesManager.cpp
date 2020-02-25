@@ -1,6 +1,7 @@
 #include <cfloat>
 #include "DynamicObstaclesManager.h"
 #include <algorithm>
+#include <cassert>
 
 double DynamicObstaclesManager::collisionExists(const State &s) const{
     return collisionExists(s.x(), s.y(), s.time());
@@ -23,6 +24,7 @@ double DynamicObstaclesManager::collisionExists(double x, double y, double time)
     double sum = 0;
     for (const auto& o : m_Obstacles) {
         sum += o.second.collisionDensityAt(x, y, time);
+        assert(std::isfinite(sum));
     }
     return sum;
 }

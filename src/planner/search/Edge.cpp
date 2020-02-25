@@ -90,7 +90,7 @@ std::shared_ptr<Vertex> Edge::end() const {
 double Edge::trueCost() const {
     if (m_TrueCost == -1) throw std::logic_error("Fetching unset cached edge cost");
     if (m_TrueCost < 0 || !std::isfinite(m_TrueCost)) {
-        std::cerr << "Invalid edge cost retrieved: " << m_TrueCost << "from edge between vertices\n\t" <<
+        std::cerr << "Invalid edge cost retrieved: " << m_TrueCost << " from edge between vertices\n\t" <<
             start()->toString() << " and\n\t" << end()->toString() << std::endl;
     }
     return m_TrueCost;
@@ -119,6 +119,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     }
     double maxSpeed, maxTurningRadius;
     maxSpeed = config.maxSpeed();
+    assert(maxSpeed > 0);
     if (end()->coverageAllowed()) {
         maxTurningRadius = config.coverageTurningRadius();
     } else {
@@ -170,6 +171,9 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
                                                                            start()->state().time() +
                                                                            (lengthSoFar / maxSpeed));
             if (dynamicDistance <= Edge::dubinsIncrement()) {
+                assert(std::isfinite(maxSpeed));
+                assert(std::isfinite(lengthSoFar / maxSpeed));
+                assert(std::isfinite(config.obstacles().collisionExists(q[0], q[1], start()->state().time() + (lengthSoFar / maxSpeed))));
                 collisionPenalty += config.obstacles().collisionExists(q[0], q[1], start()->state().time() + (lengthSoFar / maxSpeed)) *
                                     Edge::collisionPenalty();
                 dynamicDistance = 0;
@@ -223,6 +227,9 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
             }
         }
     }
+    assert(std::isfinite(netTime()));
+    assert(std::isfinite(collisionPenalty));
+    m_CollisionPenalty = collisionPenalty;
     m_TrueCost = netTime() * Edge::timePenalty() + collisionPenalty;
 
     end()->setCurrentCost();

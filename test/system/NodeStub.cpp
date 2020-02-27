@@ -3,28 +3,14 @@
 using std::cerr;
 using std::endl;
 
-void NodeStub::publishTrajectory(std::vector<State> trajectory) {
+State NodeStub::publishTrajectory(std::vector<State> trajectory) {
     m_LastTrajectory = std::move(trajectory);
     cerr << "NodeStub published trajectory: \n";
 //    for (auto s : trajectory) cerr << s.toString() << endl;
 //    cerr << endl;
-}
-
-void NodeStub::displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) {
-//    cerr << "NodeStub displayed" << (plannerTrajectory? " planner " : " controller ") <<  "trajectory: \n";
-//    for (auto s : trajectory) cerr << s.toString() << endl;
-//    cerr << endl;
-}
-
-void NodeStub::allDone() {
-    m_AllDoneCalled = true;
-    cerr << "NodeStub allDone called" << endl;
-}
-
-State NodeStub::getEstimatedState(double desiredTime) {
-    cerr << "NodeStub called to estimate state at time " << desiredTime << endl;
     State s;
     // crudely estimate the state
+    auto desiredTime = getTime() + 1;
     for (auto it = m_LastTrajectory.begin(); it != m_LastTrajectory.end(); it++) {
         if (it->time() == desiredTime) return *it;
         if (it->time() > desiredTime) {
@@ -41,6 +27,17 @@ State NodeStub::getEstimatedState(double desiredTime) {
         s = s.push(desiredTime - s.time());
     }
     return s;
+}
+
+void NodeStub::displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) {
+//    cerr << "NodeStub displayed" << (plannerTrajectory? " planner " : " controller ") <<  "trajectory: \n";
+//    for (auto s : trajectory) cerr << s.toString() << endl;
+//    cerr << endl;
+}
+
+void NodeStub::allDone() {
+    m_AllDoneCalled = true;
+    cerr << "NodeStub allDone called" << endl;
 }
 
 std::vector<State> NodeStub::lastTrajectory() const {

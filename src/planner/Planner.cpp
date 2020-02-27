@@ -51,6 +51,9 @@ Plan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, const Dynam
 //    }
     for (auto cur = v; !cur->isRoot(); cur = cur->parent()) {
         branch.push_back(cur->parentEdge());
+        if (cur->parentEdge()->getSavedCollisionPenalty() > 0) {
+            std::cerr << "Collision possible in returned plan (penalty = " << cur->parentEdge()->collisionPenalty() << ")" << std::endl;
+        }
     }
 
     Plan plan;

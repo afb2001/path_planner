@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <robust_dubins/RobustDubins.h>
-#include "../../src/planner/utilities/Plan.h"
+#include "../../src/common/Plan.h"
 #include "../../src/planner/utilities/StateGenerator.h"
 #include "../../src/planner/search/Vertex.h"
 #include "../../src/planner/utilities/Path.h"

@@ -5,7 +5,7 @@
 #include "../../common/map/Map.h"
 #include "../../common/dynamic_obstacles/DynamicObstaclesManager.h"
 #include "../utilities/Path.h"
-#include "../utilities/Plan.h"
+#include "../../common/Plan.h"
 #include "../PlannerConfig.h"
 #include "../utilities/Ribbon.h"
 
@@ -35,14 +35,14 @@ public:
 
     double trueCost() const;
 
-    double computeApproxCost(double maxSpeed, double maxTurningRadius);
+    double computeApproxCost(double maxSpeed, double turningRadius);
     double computeApproxCost();
 
     void computeBrownPath(const PlannerConfig& config, const Ribbon& r);
 
     void smooth(Map::SharedPtr map, const DynamicObstaclesManager& obstacles, double maxSpeed, double maxTurningRadius);
 
-    Plan getPlan(const PlannerConfig& config);
+    DubinsWrapper getPlan(const PlannerConfig& config);
 
     std::shared_ptr<Vertex> start() const;
 
@@ -59,6 +59,8 @@ public:
 private:
     std::shared_ptr<Vertex> m_Start;
     std::weak_ptr<Vertex> m_End;
+
+    DubinsWrapper m_DubinsWrapper;
 
     bool m_Infeasible = false;
 

@@ -26,6 +26,8 @@ add_message_files(
         FILES
         StateMsg.msg
         Trajectory.msg
+        DubinsPath.msg
+        Plan.msg
 )
 
 add_action_files(DIRECTORY action FILES path_planner.action)
@@ -67,13 +69,13 @@ add_library(planner
         src/planner/search/Vertex.cpp
         src/planner/search/Edge.cpp
         src/planner/utilities/Path.cpp
-        src/planner/utilities/Plan.cpp
+        src/common/Plan.cpp
         src/planner/utilities/StateGenerator.cpp
         src/planner/SamplingBasedPlanner.cpp
         src/planner/AStarPlanner.cpp
         src/planner/utilities/Ribbon.cpp
         src/planner/utilities/RibbonManager.cpp
-        )
+        src/common/DubinsWrapper.cpp src/common/DubinsWrapper.h)
 
 target_link_libraries(planner path_planner_common dubins)
 

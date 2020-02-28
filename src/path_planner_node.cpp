@@ -7,6 +7,8 @@
 #include "project11/gz4d_geo.h"
 #include "path_planner/path_plannerAction.h"
 #include "path_planner/Trajectory.h"
+#include "path_planner/Plan.h"
+#include "path_planner/DubinsPath.h"
 #include <project11_transformations/LatLongToMap.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <mpc/UpdateReferenceTrajectory.h>
@@ -146,24 +148,24 @@ public:
         m_Executive->updateDynamicObstacle(inmsg->mmsi, obstacle);
     }
 
-    State publishTrajectory(std::vector<State> trajectory) final
-    {
-        path_planner::Trajectory reference;
-        for (State s : trajectory) {
-            reference.states.push_back(getStateMsg(s));
-        }
-        reference.trajectoryNumber = ++m_TrajectoryCount;
-        mpc::UpdateReferenceTrajectoryRequest req;
-        mpc::UpdateReferenceTrajectoryResponse res;
-        req.trajectory = reference;
-        if (m_update_reference_trajectory_client.call(req, res)) {
-            auto s = getState(res.state);
-            displayPlannerStart(s);
-            return s;
-        } else {
-            return State();
-        }
-    }
+//    State publishTrajectory(std::vector<State> trajectory) final
+//    {
+//        path_planner::Trajectory reference;
+//        for (State s : trajectory) {
+//            reference.states.push_back(getStateMsg(s));
+//        }
+//        reference.trajectoryNumber = ++m_TrajectoryCount;
+//        mpc::UpdateReferenceTrajectoryRequest req;
+//        mpc::UpdateReferenceTrajectoryResponse res;
+//        req.trajectory = reference;
+//        if (m_update_reference_trajectory_client.call(req, res)) {
+//            auto s = getState(res.state);
+//            displayPlannerStart(s);
+//            return s;
+//        } else {
+//            return State();
+//        }
+//    }
 
     void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) override
     {
@@ -220,6 +222,10 @@ public:
         }
         geoVizItem.id = "ribbons";
         m_display_pub.publish(geoVizItem);
+    }
+
+    State publishPlan(const Plan& plan) override {
+        return NodeBase::publishPlan(plan);
     }
 
 private:

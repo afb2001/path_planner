@@ -112,7 +112,7 @@ void Executive::planLoop() {
         }
 
         // declare here so that I can assign it in try block and reference it later
-        vector<State> plan;
+        Plan plan;
 
         // call the controller service to get the estimated state we'll be in after the planning time has elapsed
 //        auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
@@ -158,7 +158,7 @@ void Executive::planLoop() {
 
         if (!plan.empty()) {
 //            cerr << "Sending trajectory to controller" << endl;
-            startState = m_TrajectoryPublisher->publishTrajectory(plan);
+            startState = m_TrajectoryPublisher->publishPlan(plan);
 //            cerr << "Received state from controller: " << startState.toString() << endl;
         } else {
             cerr << "Planner returned empty trajectory." << endl;
@@ -166,7 +166,7 @@ void Executive::planLoop() {
         }
 
         // display the trajectory
-        m_TrajectoryPublisher->displayTrajectory(plan, true);
+        m_TrajectoryPublisher->displayTrajectory(plan.getHalfSecondSamples(), true);
     }
 
     unique_lock<mutex> lock2(m_PlannerStateMutex);

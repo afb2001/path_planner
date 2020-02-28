@@ -49,7 +49,7 @@ Plan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, const Dynam
 //    if (smoothing) {
 //        v->parentEdge()->smooth(m_Config.map(), obstacles, m_MaxSpeed, m_TurningRadius);
 //    }
-    for (auto cur = v; !cur->isRoot(); cur = cur->parent()) {
+    for (auto cur = v; !cur->isRoot(); cur = cur->parent()) { // extra edge somehow???
         branch.push_back(cur->parentEdge());
         if (cur->parentEdge()->getSavedCollisionPenalty() > 0) {
             std::cerr << "Collision possible in returned plan (penalty = " << cur->parentEdge()->collisionPenalty() << ")" << std::endl;
@@ -59,9 +59,9 @@ Plan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, const Dynam
     Plan plan;
     for (auto it = branch.rbegin(); it != branch.rend(); it++) {
         plan.append((*it)->getPlan(m_Config));
-        plan.append((*it)->end()->state());
+//        plan.append((*it)->end()->state());
     }
-    plan.append(v->state());
+//    plan.append(v->state());
     return plan;
 }
 
@@ -78,7 +78,7 @@ double Planner::now() const {
 //    throw std::runtime_error("Ribbon point-to-point planner is not yet implemented");
 //}
 
-std::vector<State> Planner::plan(const RibbonManager& ribbonManager, const State& start,
+Plan Planner::plan(const RibbonManager& ribbonManager, const State& start,
                                  PlannerConfig config, double timeRemaining) {
     m_Config = std::move(config);
     throw std::runtime_error("Ribbon point-to-point planner is not yet implemented");

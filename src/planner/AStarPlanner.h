@@ -13,7 +13,7 @@ public:
 
     ~AStarPlanner() override = default;
 
-    std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
+    Plan plan(const RibbonManager& ribbonManager, const State& start,
                             PlannerConfig config, double timeRemaining) override;
 
 //    std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,

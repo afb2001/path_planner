@@ -42,29 +42,35 @@ public:
 
         m_Trajectory.clear();
 
-        double time = getTime() + 10;
+        double time = getTime() + 10; // give the controller an extra 10s to get to the line
 
+        Plan plan;
         for (unsigned long i = 0; i < goal->path.poses.size() - 1; i ++) {
             auto startPoint = convertToMap(goal->path.poses[i]);
             auto endPoint = convertToMap(goal->path.poses[i + 1]);
             State start(startPoint.x, startPoint.y, 0, c_MaxSpeed, time);
             State end(endPoint.x, endPoint.y, 0, 0, 0);
             start.setHeadingTowards(end);
+            end.setHeading(start.heading());
+            DubinsWrapper wrapper(start, end, 8); // why 8? I just picked it OK?
             std::cerr << "Adding line between\n" << start.toString() << " and\n" << end.toString() << std::endl;
-            State current = start;
-            auto d = start.distanceTo(end);
-            for (int j = 0; j < d; j++){ // 2 m/s updated every half second is 1m of distance each iteration
-                current = start.push(0.5 * j);
-                m_Trajectory.push_back(current);
-            }
+            plan.append(wrapper);
+//            State current = start;
+//            auto d = start.distanceTo(end);
+//            for (int j = 0; j < d; j++){ // 2 m/s updated every half second is 1m of distance each iteration
+//                current = start.push(0.5 * j);
+//                m_Trajectory.push_back(current);
+//            }
 //            m_Trajectory.push_back(current);
-            time = current.time();
+            time += wrapper.length() / c_MaxSpeed;
         }
 
         std::cerr << "Publishing trajectory of length " << m_Trajectory.size() << " to controller" << std::endl;
 
-        m_TrajectoryDisplayer.displayTrajectory(m_Trajectory, true);
-        publishTrajectory(m_Trajectory);
+        m_TrajectoryDisplayer.displayTrajectory(plan.getHalfSecondSamples(), true);
+//        publishTrajectory(m_Trajectory);
+
+        publishPlan(plan);
 
         auto t = async(std::launch::async, [&]{
             auto t = getTime();
@@ -104,22 +110,22 @@ public:
         if (m_ActionDone) allDone();
     }
 
-    void publishTrajectory(std::vector<State> trajectory)
-    {
-        path_planner::Trajectory reference;
-        for (State s : trajectory) {
-            reference.states.push_back(getStateMsg(s));
-        }
-        reference.trajectoryNumber = ++m_TrajectoryCount;
-        mpc::UpdateReferenceTrajectoryRequest req;
-        mpc::UpdateReferenceTrajectoryResponse res;
-        req.trajectory = reference;
-        if (m_update_reference_trajectory_client.call(req, res)) {
-            // success
-        } else {
-            std::cerr << "Controller failed to send state to test node" << std::endl;
-        }
-    }
+//    void publishTrajectory(std::vector<State> trajectory)
+//    {
+//        path_planner::Trajectory reference;
+//        for (State s : trajectory) {
+//            reference.states.push_back(getStateMsg(s));
+//        }
+//        reference.trajectoryNumber = ++m_TrajectoryCount;
+//        mpc::UpdateReferenceTrajectoryRequest req;
+//        mpc::UpdateReferenceTrajectoryResponse res;
+//        req.trajectory = reference;
+//        if (m_update_reference_trajectory_client.call(req, res)) {
+//            // success
+//        } else {
+//            std::cerr << "Controller failed to send state to test node" << std::endl;
+//        }
+//    }
 
     void allDone() override
     {

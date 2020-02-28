@@ -12,6 +12,8 @@
 #include "trajectory_publisher.h"
 #include "path_planner/TrajectoryDisplayer.h"
 #include <mpc/UpdateReferenceTrajectory.h>
+#include <path_planner/Plan.h>
+#include <path_planner/DubinsPath.h>
 
 /**
  * Base class for nodes related to the path planner.
@@ -157,6 +159,38 @@ public:
 
     geographic_msgs::GeoPoint convertToLatLong(const State& state) {
         return m_TrajectoryDisplayer.convertToLatLong(state);
+    }
+
+    static path_planner::Plan getPlanMsg(const Plan& plan) {
+        path_planner::Plan planMsg;
+        for (const auto& d : plan.get()) {
+            path_planner::DubinsPath path;
+            auto p = d.unwrap();
+            path.x = p.qi[0];
+            path.y = p.qi[1];
+            path.yaw = p.qi[2];
+            path.param0 = p.param[0];
+            path.param1 = p.param[1];
+            path.param2 = p.param[2];
+            path.speed = d.getSpeed();
+            path.start_time = d.getStartTime();
+            path.rho = d.getRho();
+            planMsg.paths.push_back(path);
+        }
+        return planMsg;
+    }
+
+    State publishPlan(const Plan& plan) {
+        mpc::UpdateReferenceTrajectoryRequest req;
+        mpc::UpdateReferenceTrajectoryResponse res;
+        req.plan = getPlanMsg(plan);
+        if (m_update_reference_trajectory_client.call(req, res)) {
+            auto s = getState(res.state);
+            displayPlannerStart(s);
+            return s;
+        } else {
+            return State();
+        }
     }
 
 protected:

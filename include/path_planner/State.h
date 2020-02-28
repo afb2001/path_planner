@@ -26,6 +26,25 @@ class State
     double& heading() { return m_Pose[2]; }
     void setHeading(double heading) { m_Pose[2] = heading; }
 
+    /**
+     * Heading north of east. Val called it "yaw".
+     * @return
+     */
+    double yaw() const {
+        double h = M_PI_2 - heading();
+        if (h < 0) h += 2 * M_PI;
+        return h;
+    }
+
+    /**
+     * Set the heading with a yaw value.
+     * @param yaw1
+     * @return
+     */
+    double yaw(double yaw1) {
+        heading() = M_PI_2 - yaw1;
+    }
+
     double speed() const { return m_Pose[3]; }
     double& speed() { return m_Pose[3]; }
     void setSpeed(double speed) { m_Pose[3] = speed; }
@@ -35,6 +54,7 @@ class State
     void setTime(double time) { m_Time = time; }
 
     double* pose() { return m_Pose; }
+    const double* pose() const { return m_Pose; }
 
     /**
      * Construct a State.
@@ -147,25 +167,6 @@ class State
     void setHeadingTowards(double x1, double y1) {
         heading() = headingTo(x1, y1);
         if (heading() < 0) heading() += 2 * M_PI;
-    }
-
-    /**
-     * Heading north of east. Val called it "yaw".
-     * @return
-     */
-    double yaw() const {
-        double h = M_PI_2 - heading();
-        if (h < 0) h += 2 * M_PI;
-        return h;
-    }
-
-    /**
-     * Set the heading with a yaw value.
-     * @param yaw1
-     * @return
-     */
-    double yaw(double yaw1) {
-        heading() = M_PI_2 - yaw1;
     }
 
     /**

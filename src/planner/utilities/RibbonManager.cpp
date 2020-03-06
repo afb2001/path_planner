@@ -375,7 +375,7 @@ std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, do
         auto d = distance(projFinal, start.x(), start.y());
         if (d > 1e-5 && d < 2 * radius){
             states.emplace_back(projFinal.first, projFinal.second, s.heading(), 0, 0);
-            std::cerr << "Found Brown path to state " << states.back().toString() << " from " << start.toString() << std::endl;
+//            std::cerr << "Found Brown path to state " << states.back().toString() << " from " << start.toString() << std::endl;
 //            states.back().push(0.1); // push the state along the ribbon a tiny bit to fix rounding errors
         }
     }

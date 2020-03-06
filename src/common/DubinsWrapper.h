@@ -35,6 +35,8 @@ public:
 
     double getEndTime() const;
 
+    void updateEndTime(double endTime);
+
     const DubinsPath& unwrap() const;
 
 private:

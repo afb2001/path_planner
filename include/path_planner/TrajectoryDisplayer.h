@@ -38,6 +38,7 @@ public:
      */
     void displayTrajectory(const std::vector<State>& trajectory, bool plannerTrajectory) {
         displayTrajectory(trajectory, plannerTrajectory, true);
+//        for (const auto& s : trajectory) std::cerr << s.toString() << std::endl; // print trajectory
     }
 
     /**

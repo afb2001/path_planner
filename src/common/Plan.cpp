@@ -52,6 +52,7 @@ std::vector<State> Plan::getHalfSecondSamples() const {
         auto r = p.getSamples(planTimeDensity());
         for (const auto& s : r) result.push_back(s);
     }
+    return result;
 }
 
 const std::vector<DubinsWrapper>& Plan::get() const {

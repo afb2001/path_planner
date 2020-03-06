@@ -109,23 +109,23 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     if (start()->state().isCoLocated(end()->state())) {
         std::cerr << "Computing cost of edge between two co-located states is likely an error" << std::endl;
     }
-    double maxSpeed, maxTurningRadius;
-    maxSpeed = config.maxSpeed();
-    assert(maxSpeed > 0);
+    double speed, turningRadius;
+    speed = config.maxSpeed();
+    assert(speed > 0);
     if (end()->coverageAllowed()) {
-        maxTurningRadius = config.coverageTurningRadius();
+        turningRadius = config.coverageTurningRadius();
     } else {
-        maxTurningRadius = config.turningRadius();
+        turningRadius = config.turningRadius();
     }
-    if (m_ApproxCost == -1) computeApproxCost(maxSpeed, maxTurningRadius);
+    if (m_ApproxCost == -1) computeApproxCost(speed, turningRadius);
     if (m_ApproxCost <= 0) throw std::runtime_error("Could not compute approximate cost");
     double collisionPenalty = 0;
     std::vector<std::pair<double, double>> result;
     State intermediate(start()->state());
     double length = m_DubinsWrapper.length();
-    // truncate longer edges than 30 seconds // TODO! -- use actual horizon variable
-    auto remainingTime = 30 + 1 + config.startStateTime() - start()->state().time();
-    if (length > maxSpeed * remainingTime) length = maxSpeed * remainingTime;
+    // truncate longer edges than 30 seconds
+    auto remainingTime = Plan::timeHorizon() + 1 + config.startStateTime() - start()->state().time();
+    if (length > speed * remainingTime) length = speed * remainingTime;
 
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
@@ -159,7 +159,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
         } else {
             dynamicDistance = config.obstacles().distanceToNearestPossibleCollision(intermediate);
             if (dynamicDistance <= Edge::dubinsIncrement()) {
-                assert(std::isfinite(maxSpeed));
+                assert(std::isfinite(speed));
                 assert(std::isfinite(config.obstacles().collisionExists(intermediate)));
                 collisionPenalty += config.obstacles().collisionExists(intermediate) * Edge::collisionPenalty();
                 dynamicDistance = 0;
@@ -172,7 +172,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
                 // do this first because cover splits ribbons so you'd never get one that "contains" the point so it
                 // could be a bit more work
                 toCoverDistance = end()->ribbonManager().minDistanceFrom(intermediate.x(), intermediate.y());
-                if (end()->coverageAllowed() || lastHeading == intermediate.yaw()) {
+                if (end()->coverageAllowed() || lastHeading == intermediate.heading()) {
                     end()->ribbonManager().cover(intermediate.x(), intermediate.y());
                 }
             } else {
@@ -187,7 +187,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
                 }
             }
         }
-        intermediate.time() += Edge::dubinsIncrement() / maxSpeed;
+        intermediate.time() += Edge::dubinsIncrement() / speed;
         lastHeading = intermediate.heading();
     }
     // make sure we're close // not valid because we truncate if too long
@@ -198,7 +198,8 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
 
 
     // set end's state's time
-    end()->state().time() = start()->state().time() + length / maxSpeed;
+    end()->state().time() = start()->state().time() + length / speed;
+    m_DubinsWrapper.updateEndTime(end()->state().time()); // should just be truncating the path
 
     if (!m_UseRibbons) {
         // remove duplicates for efficiency for the next bit

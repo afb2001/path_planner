@@ -371,7 +371,9 @@ TEST(UnitTests, MakePlanTest) {
     EXPECT_DOUBLE_EQ(a, 5);
     // will return dubins wrapper now
     auto plan = e->getPlan(plannerConfig);
-//    EXPECT_FALSE(plan.empty());
+    EXPECT_GE(plan.getEndTime() - plan.getStartTime(), 5);
+    auto samples = plan.getSamples(0.5);
+    for (const auto& s : samples) cerr << s.toString() << endl;
     // TODO
 //    EXPECT_TRUE(plan.getRef().front() == s1);
 //    EXPECT_GE(plan.getRef().back().y(), 4.5); // because of plan density
@@ -383,13 +385,13 @@ TEST(UnitTests, ComputeEdgeCostTest) {
     auto v1 = Vertex::makeRoot(s1, Path());
     auto v2 = Vertex::connect(v1, s2);
     auto e = v2->parentEdge();
-    auto a = e->computeApproxCost(1, 2);
+    auto a = e->computeApproxCost(plannerConfig.maxSpeed(), plannerConfig.turningRadius());
     Map::SharedPtr map = make_shared<Map>();
     DynamicObstaclesManager dynamicObstacles;
     Path path;
     path.add(0, 10);
-    auto c = e->computeTrueCost(map, dynamicObstacles, 1, 2);
-    EXPECT_DOUBLE_EQ(6, e->end()->state().time());
+    auto c = e->computeTrueCost(plannerConfig);
+    EXPECT_DOUBLE_EQ(3, e->end()->state().time());
     EXPECT_DOUBLE_EQ(c, a);
 }
 
@@ -747,17 +749,20 @@ TEST(PlannerTests, RHRSAStarSingleRibbonTSP) {
     ribbonManager.add(0, 40, 50, 40);
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
-    bool headingChanged = false;
+    bool headingChanged = true; // assume coverage
     while(!ribbonManager.done()) {
-        if (!headingChanged) ribbonManager.cover(start.x(), start.y());
+        /*if (!headingChanged)*/ ribbonManager.cover(start.x(), start.y());
         auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.95);
         ASSERT_FALSE(plan.empty());
-        headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
-        start = plan.getHalfSecondSamples()[1];
+//        headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
+        start.time() += 1;
+        plan.sample(start);
+        for (const auto& s : plan.getHalfSecondSamples()) cerr << s.toString() << endl;
         ASSERT_LT(start.time(), 180);
         cerr << "Remaining " << ribbonManager.dumpRibbons() << endl;
         cerr << start.toString() << endl;
     }
+
 }
 
 TEST(PlannerTests, RHRSAStarTest5TspRibbons) {

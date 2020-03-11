@@ -243,7 +243,11 @@ class State
     }
 
     double headingDifference(const State& other) const {
-        return (fmod(fmod((other.heading() - heading()), twoPi) + 3 * M_PI, twoPi) - M_PI);
+        return headingDifference(other.heading());
+    }
+
+    double headingDifference(double otherHeading) const {
+        return (fmod(fmod((otherHeading - heading()), twoPi) + 3 * M_PI, twoPi) - M_PI);
     }
 
 private:

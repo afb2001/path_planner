@@ -26,6 +26,25 @@ class State
     double& heading() { return m_Pose[2]; }
     void setHeading(double heading) { m_Pose[2] = heading; }
 
+    /**
+     * Heading north of east. Val called it "yaw".
+     * @return
+     */
+    double yaw() const {
+        double h = M_PI_2 - heading();
+        if (h < 0) h += 2 * M_PI;
+        return h;
+    }
+
+    /**
+     * Set the heading with a yaw value.
+     * @param yaw1
+     * @return
+     */
+    double yaw(double yaw1) {
+        heading() = M_PI_2 - yaw1;
+    }
+
     double speed() const { return m_Pose[3]; }
     double& speed() { return m_Pose[3]; }
     void setSpeed(double speed) { m_Pose[3] = speed; }
@@ -35,6 +54,7 @@ class State
     void setTime(double time) { m_Time = time; }
 
     double* pose() { return m_Pose; }
+    const double* pose() const { return m_Pose; }
 
     /**
      * Construct a State.
@@ -150,25 +170,6 @@ class State
     }
 
     /**
-     * Heading north of east. Val called it "yaw".
-     * @return
-     */
-    double yaw() const {
-        double h = M_PI_2 - heading();
-        if (h < 0) h += 2 * M_PI;
-        return h;
-    }
-
-    /**
-     * Set the heading with a yaw value.
-     * @param yaw1
-     * @return
-     */
-    double yaw(double yaw1) {
-        heading() = M_PI_2 - yaw1;
-    }
-
-    /**
      * Get the time difference between states.
      * @param other
      * @return the time until other
@@ -222,24 +223,38 @@ class State
      * @return
      */
     State interpolate(const State& other, double desiredTime) const {
+//        std::cerr << "Interpolating between " << other.toString() << " and " << toString() << std::endl;
         auto dt = other.time() - time();
         auto dx = (other.x() - x()) / dt;
         auto dy = (other.y() - y()) / dt;
-        auto dh = (other.heading() - heading()) / dt;
+        // assume the headings have changed the closer way, not all the way around the other way
+
+        auto dh = headingDifference(other) / dt;
         auto ds = (other.speed() - speed()) / dt;
         dt = desiredTime - time();
         State s = *this;
         s.x() += dx * dt;
         s.y() += dy * dt;
-        s.heading() += dh * dt;
+        s.heading() = this->heading() + (dh * dt);
+        if (s.heading() >= twoPi) s.heading() -= twoPi;
         s.speed() += ds * dt;
         s.time() = desiredTime;
         return s;
     }
 
+    double headingDifference(const State& other) const {
+        return headingDifference(other.heading());
+    }
+
+    double headingDifference(double otherHeading) const {
+        return (fmod(fmod((otherHeading - heading()), twoPi) + 3 * M_PI, twoPi) - M_PI);
+    }
+
 private:
     double m_Pose [4] = {0, 0, 0, 0};
     double m_Time = -1;
+
+    static constexpr double twoPi = 2 * M_PI;
 };
 
 #endif

@@ -11,13 +11,11 @@ class NodeStub : public TrajectoryPublisher {
 public:
     ~NodeStub() override = default;
 
-    void publishTrajectory(std::vector<State> trajectory) override;
+    State publishTrajectory(std::vector<State> trajectory) override;
 
     void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) override;
 
     void allDone() override;
-
-    State getEstimatedState(double desiredTime) override;
 
     std::vector<State> lastTrajectory() const;
     

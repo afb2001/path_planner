@@ -17,7 +17,7 @@ public:
 //    std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
 //                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
 
-    std::vector<State> plan(const RibbonManager&, const State& start, PlannerConfig config,
+    Plan plan(const RibbonManager&, const State& start, PlannerConfig config,
             double timeRemaining) override;
 
     void pushVertexQueue(Vertex::SharedPtr vertex);

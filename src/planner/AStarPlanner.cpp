@@ -24,7 +24,7 @@ std::function<bool(shared_ptr<Vertex> v1, shared_ptr<Vertex> v2)> AStarPlanner::
 //    return plan(start, dynamicObstacles, timeRemaining);
 //}
 
-std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
+Plan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
                                       double timeRemaining) {
     m_Config = std::move(config); // gotta do this before we can call now()
     double endTime = timeRemaining + now();
@@ -86,10 +86,10 @@ std::vector<State> AStarPlanner::plan(const RibbonManager& ribbonManager, const 
         << m_IterationCount << " iterations" << std::endl;
     if (!m_BestVertex) {
         *m_Config.output() << "Failed to find a plan" << std::endl;
-        return std::vector<State>();
+        return Plan();
     } else {
 //        *m_Output << "Best Plan " << bestVertex->ribbonManager().dumpRibbons() << std::endl; // "Best Plan Ribbons: "
-        return tracePlan(m_BestVertex, false, m_Config.obstacles()).get();
+        return tracePlan(m_BestVertex, false, m_Config.obstacles());
     }
 }
 
@@ -98,16 +98,17 @@ shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles,
     while (now() < endTime) {
         // with filter on vertex queue this second check is unnecessary
         if (goalCondition(vertex) && (!m_BestVertex || vertex->f() < m_BestVertex->f())) {
-//            *m_Output << "Found goal: " << vertex->toString() << std::endl;
+//            *m_Config.output() << "Found goal: " << vertex->toString() << std::endl;
             return vertex;
         }
-//        *m_Output << "Expanding vertex at " << vertex->state().toString() << std::endl;
+//        *m_Config.output() << "Expanding vertex at " << vertex->state().toString() << std::endl;
 //        visualizeVertex(vertex, "vertex");
         expand(vertex, obstacles);
 
         // should probably check if vertex queue is empty but expand should always push some on
         if (vertexQueueEmpty()) return Vertex::SharedPtr(nullptr);
         vertex = popVertexQueue();
+//        if (m_ExpandedCount >= m_Samples.size()) break; // probably can't find a good plan in these samples so add more
     }
     return shared_ptr<Vertex>(nullptr);
 }

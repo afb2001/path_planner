@@ -45,6 +45,7 @@ void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     if (m_BestVertex && m_BestVertex->f() < vertex->f()) return; // assumes heuristic is admissible
     m_VertexQueue.push_back(vertex);
     std::push_heap(m_VertexQueue.begin(), m_VertexQueue.end(), getVertexComparator());
+//    std::cerr << "Pushing to vertex queue: " << vertex->toString() << std::endl;
     visualizeVertex(vertex, "vertex");
 }
 
@@ -190,7 +191,7 @@ std::function<bool(const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vert
 //    m_UseRibbons = true;
 //}
 
-std::vector<State> SamplingBasedPlanner::plan(const RibbonManager&, const State& start, PlannerConfig config,
+Plan SamplingBasedPlanner::plan(const RibbonManager&, const State& start, PlannerConfig config,
                                               double timeRemaining) {
     m_Config = config;
     m_StartStateTime = start.time();
@@ -210,7 +211,7 @@ std::vector<State> SamplingBasedPlanner::plan(const RibbonManager&, const State&
          !goalCondition(vertex); vertex = popVertexQueue()) {
         expand(vertex, m_Config.obstacles());
     }
-    return tracePlan(vertex, false, m_Config.obstacles()).get();
+    return tracePlan(vertex, false, m_Config.obstacles());
 }
 
 void SamplingBasedPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag) {

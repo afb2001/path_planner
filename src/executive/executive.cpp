@@ -112,7 +112,7 @@ void Executive::planLoop() {
         }
 
         // declare here so that I can assign it in try block and reference it later
-        vector<State> plan;
+        Plan plan;
 
         // call the controller service to get the estimated state we'll be in after the planning time has elapsed
 //        auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
@@ -133,6 +133,10 @@ void Executive::planLoop() {
                 std::lock_guard<std::mutex> lock(m_RibbonManagerMutex);
                 ribbonManagerCopy = m_RibbonManager;
             }
+            // cover up to the state that we're planning from. Will require more work if we can go more than the min
+            // ribbon length in 1s
+            ribbonManagerCopy.coverBetween(m_LastState.x(), m_LastState.y(), startState.x(), startState.y());
+//            ribbonManagerCopy.cover(startState.x(), startState.y());
             plan = planner->plan(ribbonManagerCopy, startState, m_PlannerConfig,
                                    startTime + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
         } catch(const std::exception& e) {
@@ -154,7 +158,7 @@ void Executive::planLoop() {
 
         if (!plan.empty()) {
 //            cerr << "Sending trajectory to controller" << endl;
-            startState = m_TrajectoryPublisher->publishTrajectory(plan);
+            startState = m_TrajectoryPublisher->publishPlan(plan);
 //            cerr << "Received state from controller: " << startState.toString() << endl;
         } else {
             cerr << "Planner returned empty trajectory." << endl;
@@ -162,7 +166,7 @@ void Executive::planLoop() {
         }
 
         // display the trajectory
-        m_TrajectoryPublisher->displayTrajectory(plan, true);
+        m_TrajectoryPublisher->displayTrajectory(plan.getHalfSecondSamples(), true);
     }
 
     unique_lock<mutex> lock2(m_PlannerStateMutex);
@@ -224,10 +228,11 @@ void Executive::addRibbon(double x1, double y1, double x2, double y2) {
 std::vector<Distribution> Executive::inventDistributions(State obstacle) {
     std::vector<Distribution> distributions;
     double mean[2] = {obstacle.x(), obstacle.y()};
-    double covariance[2][2] = {{0, 5},{5, 0}};
+    double covariance[2][2] = {{1, 0},{0, 1}};
     distributions.emplace_back(mean, covariance, obstacle.heading(), obstacle.time());
     obstacle = obstacle.push(1);
     mean[0] = obstacle.x(); mean[1] = obstacle.y();
+//    double covariance2[2][2] = {{2, 0}, {0, 2}}; // grow variance over time
     distributions.emplace_back(mean, covariance, obstacle.heading(), obstacle.time());
     return distributions;
 }
@@ -237,12 +242,21 @@ void Executive::clearRibbons() {
     m_RibbonManager = RibbonManager(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons, m_PlannerConfig.turningRadius(), 2);
 }
 
-void Executive::setVehicleConfiguration(double maxSpeed, double turningRadius, double coverageMaxSpeed,
-                                        double coverageTurningRadius, int k) {
+void Executive::setVehicleConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed,
+        double lineWidth, int k, int heuristic) {
     m_PlannerConfig.setMaxSpeed(maxSpeed);
     m_PlannerConfig.setTurningRadius(turningRadius);
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
+    RibbonManager::setRibbonWidth(lineWidth);
     m_PlannerConfig.setBranchingFactor(k);
+    switch (heuristic) {
+        case 0: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::MaxDistance); break;
+        case 1: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitAllRibbons); break;
+        case 2: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons); break;
+        case 3: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspDubinsNoSplitAllRibbons); break;
+        case 4: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspDubinsNoSplitKRibbons); break;
+        default: cerr << "Unknown heuristic. Ignoring." << endl; break;
+    }
 }
 
 void Executive::startPlanner() {

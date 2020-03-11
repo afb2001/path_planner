@@ -372,7 +372,8 @@ std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, do
         // IT'S BACKWARDS! Ahhhh // alright I think I got it but I gotta go study
 
         // done. that's the state. If it's close by add it to the list
-        if (distance(projFinal, start.x(), start.y()) < 2 * radius){
+        auto d = distance(projFinal, start.x(), start.y());
+        if (d > 1e-5 && d < 2 * radius){
             states.emplace_back(projFinal.first, projFinal.second, s.heading(), 0, 0);
 //            std::cerr << "Found Brown path to state " << states.back().toString() << " from " << start.toString() << std::endl;
 //            states.back().push(0.1); // push the state along the ribbon a tiny bit to fix rounding errors
@@ -385,5 +386,23 @@ void RibbonManager::changeHeuristicIfTooManyRibbons() {
     if (m_Ribbons.size() > c_RibbonCountDangerThreshold) {
         m_Heuristic = MaxDistance;
     }
+}
+
+void RibbonManager::setHeuristic(Heuristic heuristic) {
+    m_Heuristic = heuristic;
+}
+
+void RibbonManager::coverBetween(double x1, double y1, double x2, double y2) {
+    double theta = atan((y2 - y1) / (x2 - x1));
+    double d = distance(x1, y1, x2, y2);
+    do {
+        auto d1 = distance(x1, y1, x2, y2);
+        if (d1 > d) break; // ensure distance to go is decreasing
+        else d = d1;
+        cover(x1, y1);
+        x1 += Ribbon::minLength() * cos(theta) / 2; // so we don't overshoot
+        y1 += Ribbon::minLength() * sin(theta) / 2;
+    } while (d > Ribbon::minLength());
+    cover(x2, y2);
 }
 

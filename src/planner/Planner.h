@@ -7,7 +7,7 @@
 #include "../common/map/Map.h"
 #include "search/Vertex.h"
 #include "utilities/Path.h"
-#include "utilities/Plan.h"
+#include "../common/Plan.h"
 #include "PlannerConfig.h"
 
 class Planner {
@@ -26,7 +26,7 @@ public:
 //    virtual std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
 //            DynamicObstaclesManager dynamicObstacles, double timeRemaining);
 
-    virtual std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
+    virtual Plan plan(const RibbonManager& ribbonManager, const State& start,
                             PlannerConfig config, double timeRemaining);
 
     Plan tracePlan(const std::shared_ptr<Vertex>& v, bool smoothing, const DynamicObstaclesManager& obstacles);

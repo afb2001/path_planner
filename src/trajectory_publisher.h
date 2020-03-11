@@ -2,9 +2,11 @@
 #define SRC_TRAJECTORY_PUBLISHER_H
 
 #include "planner/utilities/RibbonManager.h"
+#include "common/Plan.h"
 
 /**
  * Interface to expose trajectory publishing to the Executive
+ * TODO! -- change name
  */
 class TrajectoryPublisher
 {
@@ -15,7 +17,9 @@ public:
      * @param trajectory the trajectory to publish
      * @return The state to plan from next, as predicted by a controller accepting the trajectory
      */
-    virtual State publishTrajectory(std::vector<State> trajectory) = 0;
+//    virtual State publishTrajectory(std::vector<State> trajectory) = 0;
+
+    virtual State publishPlan(const Plan& plan) = 0;
 
     virtual void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) = 0;
     /**

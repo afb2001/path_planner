@@ -20,7 +20,6 @@ TEST(SystemTests, LoadMapTest) {
     auto executive = new Executive(&stub);
     executive->addRibbon(20, 20, 20, 30);
     executive->updateCovered(0, 0, 0, M_PI / 4, Executive::getCurrentTime());
-    executive->startPlanner("", 43.073397415457535, -70.71054174878898);
     executive->refreshMap("/home/abrown/Downloads/depth_map/US5NH02M.tiff", 43.073397415457535, -70.71054174878898);
     for (int i = 0; i <= 60; i++) {
         auto found = buffer.str().find("Done loading map") != -1;
@@ -49,10 +48,10 @@ TEST(SystemTests, SimpleTwoLineTest) {
         if (!stub.lastTrajectory().empty()) {
             auto start = stub.lastTrajectory()[1];
             cerr << start.toString() << endl;
-            executive->updateCovered(start.x, start.y, start.speed, start.heading,
+            executive->updateCovered(start.x(), start.y(), start.speed(), start.heading(),
                                      i + 1); // maybe use start's time here?
         }
-        std::this_thread::sleep_for(chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     EXPECT_TRUE(stub.allDoneCalled());
 }

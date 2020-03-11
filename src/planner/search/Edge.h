@@ -5,7 +5,7 @@
 #include "../../common/map/Map.h"
 #include "../../common/dynamic_obstacles/DynamicObstaclesManager.h"
 #include "../utilities/Path.h"
-#include "../utilities/Plan.h"
+#include "../../common/Plan.h"
 #include "../PlannerConfig.h"
 #include "../utilities/Ribbon.h"
 
@@ -35,20 +35,22 @@ public:
 
     double trueCost() const;
 
-    double computeApproxCost(double maxSpeed, double maxTurningRadius);
+    double computeApproxCost(double maxSpeed, double turningRadius);
     double computeApproxCost();
 
     void computeBrownPath(const PlannerConfig& config, const Ribbon& r);
 
     void smooth(Map::SharedPtr map, const DynamicObstaclesManager& obstacles, double maxSpeed, double maxTurningRadius);
 
-    Plan getPlan(const PlannerConfig& config);
+    DubinsWrapper getPlan(const PlannerConfig& config);
 
     std::shared_ptr<Vertex> start() const;
 
     std::shared_ptr<Vertex> end() const;
 
     bool infeasible() const;
+
+    double getSavedCollisionPenalty() const { return m_CollisionPenalty; }
 
     static double collisionPenalty() { return c_CollisionPenalty; }
     static double dubinsIncrement() { return c_DubinsIncrement; }
@@ -58,15 +60,19 @@ private:
     std::shared_ptr<Vertex> m_Start;
     std::weak_ptr<Vertex> m_End;
 
+    DubinsWrapper m_DubinsWrapper;
+
     bool m_Infeasible = false;
 
-    static constexpr double c_CollisionPenalty = 600;
+    static constexpr double c_CollisionPenalty = 10; // no idea how to set this but this is probably too low (try 600)
     static constexpr double c_DubinsIncrement = 0.1;
     static constexpr double c_TimePenalty = 1;
 
     double m_ApproxCost = -1, m_TrueCost = -1;
 
     bool m_UseRibbons;
+
+    double m_CollisionPenalty = 0;
 
     double netTime();
 };

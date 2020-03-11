@@ -42,7 +42,7 @@ public:
 
         m_Trajectory.clear();
 
-        double time = getTime() + 10; // give the controller an extra 10s to get to the line
+        double time = getTime() /*+ 10*/; // give the controller an extra 10s to get to the line
 
         Plan plan;
         for (unsigned long i = 0; i < goal->path.poses.size() - 1; i ++) {
@@ -52,20 +52,23 @@ public:
             State end(endPoint.x, endPoint.y, 0, 0, 0);
             start.setHeadingTowards(end);
             end.setHeading(start.heading());
-            DubinsWrapper wrapper(start, end, 8); // why 8? I just picked it OK?
+            DubinsWrapper wrapper(start, end, 8); // why 8? I just picked it OK? // TODO! -- expose parameter
             std::cerr << "Adding line between\n" << start.toString() << " and\n" << end.toString() << std::endl;
             plan.append(wrapper);
-//            State current = start;
-//            auto d = start.distanceTo(end);
-//            for (int j = 0; j < d; j++){ // 2 m/s updated every half second is 1m of distance each iteration
-//                current = start.push(0.5 * j);
-//                m_Trajectory.push_back(current);
-//            }
-//            m_Trajectory.push_back(current);
+            // still append to trajectory so we can display the start state
+            State current = start;
+            auto d = start.distanceTo(end);
+            for (int j = 0; j < d; j++){ // 2 m/s updated every half second is 1m of distance each iteration
+                current = start.push(0.5 * j);
+                m_Trajectory.push_back(current);
+            }
+            m_Trajectory.push_back(current);
             time += wrapper.length() / c_MaxSpeed;
         }
 
-        std::cerr << "Publishing trajectory of length " << m_Trajectory.size() << " to controller" << std::endl;
+        m_Plan = plan;
+
+        std::cerr << "Publishing a plan of length " << plan.get().size() << " to controller" << std::endl;
 
         m_TrajectoryDisplayer.displayTrajectory(plan.getHalfSecondSamples(), true);
 //        publishTrajectory(m_Trajectory);
@@ -73,14 +76,16 @@ public:
         publishPlan(plan);
 
         auto t = async(std::launch::async, [&]{
-            auto t = getTime();
 //            cerr << "Starting display loop at time " << t << endl;
             int i = 0;
-            while (i < m_Trajectory.size()) {
-                t = getTime();
-                while (i < m_Trajectory.size() && m_Trajectory[i].time() < t) i++;
-                if (i > 0) displayPlannerStart(m_Trajectory[i - 1]);
+//            sleep(11); // sleep a little extra to make sure we've started the plan
+            State sample;
+            sample.time() = getTime();
+            while (plan.containsTime(sample.time())) {
+                plan.sample(sample);
+                displayPlannerStart(sample);
                 sleep(1);
+                sample.time() = getTime();
                 if (m_Preempted) {
                     break;
                 }
@@ -154,6 +159,7 @@ public:
 
 private:
     std::vector<State> m_Trajectory;
+    Plan m_Plan;
 
     static constexpr double c_MaxSpeed = 2.0;
 };

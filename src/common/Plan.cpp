@@ -63,3 +63,8 @@ double Plan::totalTime() const {
     if (empty()) return 0;
     return m_DubinsPaths.back().getEndTime() - m_DubinsPaths.front().getStartTime();
 }
+
+bool Plan::containsTime(double time) const {
+    for (const auto& p : m_DubinsPaths) if (p.containsTime(time)) return true;
+    return false;
+}

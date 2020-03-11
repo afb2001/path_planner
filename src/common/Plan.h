@@ -25,6 +25,8 @@ public:
 
     double totalTime() const;
 
+    bool containsTime(double time) const;
+
     std::vector<State> getHalfSecondSamples() const;
 
     const std::vector<DubinsWrapper>& get() const;

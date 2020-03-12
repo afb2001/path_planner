@@ -43,6 +43,7 @@ class State
      */
     double yaw(double yaw1) {
         heading() = M_PI_2 - yaw1;
+        if (heading() < 0) heading() += twoPi;
     }
 
     double speed() const { return m_Pose[3]; }

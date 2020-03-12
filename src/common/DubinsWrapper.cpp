@@ -26,7 +26,9 @@ bool DubinsWrapper::containsTime(double time) const {
 
 void DubinsWrapper::sample(State& s) const {
     double distance = (s.time() - m_StartTime) * m_Speed;
+    // heading comes back as yaw
     dubins_path_sample(&m_DubinsPath, distance, s.pose());
+    // set yaw with heading value to correct things
     s.yaw(s.heading()); // TODO! -- change state to internally use yaw?
     s.speed() = m_Speed; // take note of this
 }

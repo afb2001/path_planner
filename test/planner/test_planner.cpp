@@ -618,18 +618,31 @@ TEST(UnitTests, ExpandDifferentTurningRadiiTest) {
     EXPECT_TRUE(v1->coverageAllowed());
 }
 
-//TEST(PlannerTests, RHRSAStarTest1) {
-//    vector<pair<double, double>> points;
-//    points.emplace_back(0, 10);
-//    points.emplace_back(0, 20);
-//    points.emplace_back(0, 30);
-//    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
-//    planner.addToCover(points);
-//    State start(0, 0, 0, 2.5, 1);
-//    auto plan = planner.plan(vector<pair<double, double>>(), start, DynamicObstaclesManager(), 0.95);
-//    EXPECT_FALSE(plan.empty());
-//    for (auto s : plan) cerr << s.toString() << endl;
-//}
+TEST(UnitTests, AngleConsistencyTest) {
+    auto minAngleChange = Edge::dubinsIncrement() / plannerConfig.turningRadius() + 1e-5; // arc length / radius + tolerance
+    StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
+    auto rootState = generator.generate();
+    rootState.time() = 1;
+    rootState.speed() = plannerConfig.maxSpeed();
+    RibbonManager ribbonManager;
+    ribbonManager.add(0, 10, 20, 10);
+    auto root = Vertex::makeRoot(rootState, ribbonManager);
+    for (int i = 0; i < 10; i++) {
+        auto startState = generator.generate();
+        auto start = Vertex::connect(root, startState);
+        start->parentEdge()->computeTrueCost(plannerConfig);
+        auto endState = generator.generate();
+        auto end = Vertex::connect(start, endState);
+        end->parentEdge()->computeTrueCost(plannerConfig);
+        auto sPrev = startState;
+        for (const auto& s : end->parentEdge()->getPlan(plannerConfig).getSamples(Edge::dubinsIncrement() / plannerConfig.maxSpeed())) {
+            ASSERT_NEAR(sPrev.headingDifference(s.heading()), 0, minAngleChange);
+            sPrev = s;
+        }
+        EXPECT_NEAR(sPrev.heading(), end->state().heading(), minAngleChange);
+
+    }
+}
 
 TEST(PlannerTests, RHRSAStarTest1Ribbons) {
     plannerConfig.now();
@@ -641,30 +654,6 @@ TEST(PlannerTests, RHRSAStarTest1Ribbons) {
     EXPECT_FALSE(plan.empty());
 //    for (auto s : plan.getHalfSecondSamples()) cerr << s.toString() << endl;
 }
-
-//TEST(PlannerTests, RHRSAStarTest2) {
-//    vector<pair<double, double>> points;
-//    points.emplace_back(0, 10);
-//    points.emplace_back(0, 20);
-//    points.emplace_back(0, 30);
-//    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
-//    planner.addToCover(points);
-//    State start(0, 0, 0, 2.5, 1);
-//    vector<pair<double , double>> newlyCovered;
-//    while(!points.empty()) {
-//        if (Path::covers(points.front(), start.x, start.y)) {
-//            cerr << "Covered a point near " << start.x << ", " << start.y << endl;
-//            newlyCovered.push_back(points.front());
-//            points.erase(points.begin());
-//        }
-//        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.5); // quick iterations
-//        newlyCovered.clear();
-//        ASSERT_FALSE(plan.empty());
-//        start = plan[1];
-//        ASSERT_LT(start.time, 30);
-//        cerr << start.toString() << endl;
-//    }
-//}
 
 TEST(PlannerTests, RHRSAStarTest2Ribbons) {
     RibbonManager ribbonManager;
@@ -857,7 +846,7 @@ TEST(PlannerTests, VisualizationTest) {
 }
 
 TEST(PlannerTests, VisualizationLongerTest) {
-    RibbonManager ribbonManager(RibbonManager::TspDubinsNoSplitKRibbons, 8, 2);
+    RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitAllRibbons, 8, 2);
     ribbonManager.add(0, 20, 20, 20);
     ribbonManager.add(0, 40, 20, 40);
     ribbonManager.add(0, 60, 20, 60);

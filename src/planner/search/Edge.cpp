@@ -124,8 +124,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     State intermediate(start()->state());
     double length = m_DubinsWrapper.length();
     // truncate longer edges than 30 seconds
-    auto remainingTime = Plan::timeHorizon() + 1 + config.startStateTime() - start()->state().time();
-    if (length > speed * remainingTime) length = speed * remainingTime;
+    auto endTime = fmin(Plan::timeHorizon() + 1 + config.startStateTime(), length / speed + start()->state().time());
 
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
@@ -136,7 +135,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     auto startH = start()->approxToGo();
 
     // collision check along the curve (and watch out for newly covered points, too)
-    while (intermediate.time() <= remainingTime) {
+    while (intermediate.time() <= endTime) {
         m_DubinsWrapper.sample(intermediate);
         // visualize
         if (config.visualizations() && visCount-- <= 0) {
@@ -190,15 +189,16 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
         intermediate.time() += Edge::dubinsIncrement() / speed;
         lastHeading = intermediate.heading();
     }
-    // make sure we're close // not valid because we truncate if too long
-//    assert(fabs(end()->state().x - q[0]) < Edge::dubinsIncrement() &&
-//        fabs(end()->state().y - q[1]) < Edge::dubinsIncrement());
-    // set state to be at the end of where we collision checked
+    // set to the end of the edge (potentially truncated)
+    intermediate.time() = endTime;
+    m_DubinsWrapper.sample(intermediate);
     end()->state().x() = intermediate.x(); end()->state().y() = intermediate.y(); end()->state().yaw(intermediate.yaw());
 
+    assert(intermediate.heading() == end()->state().heading());
+    assert(intermediate.yaw() == end()->state().yaw());
 
     // set end's state's time
-    end()->state().time() = start()->state().time() + length / speed;
+    end()->state().time() = intermediate.time() - Edge::dubinsIncrement() / speed; // this is as far as we got
     m_DubinsWrapper.updateEndTime(end()->state().time()); // should just be truncating the path
 
     if (!m_UseRibbons) {

@@ -38,6 +38,7 @@ public:
         m_position_sub = m_node_handle.subscribe("/position_map", 10, &NodeBase::positionCallback, this);
         m_heading_sub = m_node_handle.subscribe("/heading", 10, &NodeBase::headingCallback, this);
         m_speed_sub = m_node_handle.subscribe("/sog", 10, &NodeBase::speedCallback, this);
+        m_piloting_mode_sub = m_node_handle.subscribe("/project11/piloting_mode", 10, &NodeBase::pilotingModeCallback, this);
 
         m_action_server.registerGoalCallback(boost::bind(&NodeBase::goalCallback, this));
         m_action_server.registerPreemptCallback(boost::bind(&NodeBase::preemptCallback, this));
@@ -78,6 +79,8 @@ public:
     {
         m_current_speed = inmsg->twist.linear.x; // this will change once /sog is a vector
     }
+
+    virtual void pilotingModeCallback(const std_msgs::String::ConstPtr& inmsg) = 0;
 
     virtual void allDone() = 0;
 
@@ -217,6 +220,7 @@ protected:
     ros::Subscriber m_position_sub;
     ros::Subscriber m_heading_sub;
     ros::Subscriber m_speed_sub;
+    ros::Subscriber m_piloting_mode_sub;
 
     ros::ServiceClient m_lat_long_to_map_client;
     ros::ServiceClient m_update_reference_trajectory_client;

@@ -185,13 +185,6 @@ void Executive::pause()
     cancelPlanner();
 }
 
-void Executive::unPause() {
-    m_PauseMutex.lock();
-    m_Pause = false;
-    m_PauseMutex.unlock();
-//    m_PauseCv.notify_all();
-}
-
 void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
     m_DynamicObstaclesManager.update(mmsi, inventDistributions(obstacle));
 }
@@ -260,7 +253,6 @@ void Executive::setVehicleConfiguration(double turningRadius, double coverageTur
 }
 
 void Executive::startPlanner() {
-    unPause();
     if (!m_PlannerConfig.map()) {
         m_PlannerConfig.setMap(make_shared<Map>());
     }

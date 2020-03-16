@@ -42,6 +42,15 @@ public:
     m_Dynamic_Reconfigure_Server.setCallback(f);
 }
 
+    void pilotingModeCallback(const std_msgs::String::ConstPtr& inmsg) override {
+        if (inmsg->data == "standby") {
+            // TODO! -- talk to Roland about how this should work
+//            m_Executive->pause();
+        } else if (inmsg->data == "autonomous") {
+            // maybe do something?
+        }
+    }
+
     ~PathPlanner() final
     {
         publishControllerMessage("stop running");

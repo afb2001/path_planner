@@ -157,6 +157,10 @@ public:
         m_display_pub.publish(geoVizItem);
     }
 
+    void pilotingModeCallback(const std_msgs::String::ConstPtr& inmsg) override {
+        // ???
+    }
+
 private:
     std::vector<State> m_Trajectory;
     Plan m_Plan;

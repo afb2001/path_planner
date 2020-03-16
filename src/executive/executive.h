@@ -104,8 +104,6 @@ private:
 
     DynamicObstaclesManager m_DynamicObstaclesManager;
 
-    bool m_Pause = true;
-
     std::mutex m_PauseMutex;
 //    std::condition_variable m_PauseCv;
 
@@ -119,11 +117,6 @@ private:
 
     static constexpr double c_CoverageHeadingRateMax = 0.1; // (in radians/sec)
     static constexpr double c_PlanningTimeSeconds = 1;
-
-    /**
-     * Clear m_PauseAll and notify threads blocked on it.
-     */
-    void unPause();
 
     /**
      * Make sure the threads can exit and kill the planner (if it's running).

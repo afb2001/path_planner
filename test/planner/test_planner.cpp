@@ -555,31 +555,6 @@ TEST(UnitTests, EmptyVertexQueueTest) {
     EXPECT_THROW(planner.popVertexQueue(), std::out_of_range);
 }
 
-//TEST(UnitTests, ExpandTest1) {
-//    State start(0, 0, 0, 2.5, 1);
-//    Path path;
-//    path.add(0, 10);
-//    path.add(0, 20);
-//    path.add(0, 30);
-//    Map::SharedPtr m = make_shared<Map>();
-//    DynamicObstaclesManager obstacles;
-//    auto root = Vertex::makeRoot(start, path);
-//    AStarPlanner planner(2.5, 8, 2.5, 16, m);
-//    planner.addToCover(path.get());
-//    StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
-//    planner.addSamples(generator, 1000);
-//    planner.expand(root, &obstacles);
-//    double fPrev = 0;
-//    for (int i = 0; i < 20; i++) { // k + 1, at the time of this writing
-//        auto v = planner.popVertexQueue();
-////        cerr << "Popped vertex at " << v->state().toString() << endl;
-////        cerr << "g = " << v->currentCost() << ", h = " << v->approxToGo() << ", f = " << v->f() << endl;
-//        EXPECT_LE(fPrev, v->f());
-//        fPrev = v->f();
-//    }
-//    EXPECT_THROW(planner.popVertexQueue(), std::out_of_range);
-//}
-
 TEST(UnitTests, ExpandTest1Ribbons) {
     StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 9);
     State start = generator.generate();
@@ -619,8 +594,8 @@ TEST(UnitTests, ExpandDifferentTurningRadiiTest) {
 }
 
 TEST(UnitTests, AngleConsistencyTest) {
-    auto minAngleChange = Edge::dubinsIncrement() / plannerConfig.turningRadius() + 1e-5; // arc length / radius + tolerance
-    StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
+    auto minAngleChange = 2 * (Edge::dubinsIncrement() / plannerConfig.turningRadius() + 1e-5); // arc length / radius + tolerance
+    StateGenerator generator(-50, 50, -50, 50, plannerConfig.maxSpeed(), plannerConfig.maxSpeed(), 7);
     auto rootState = generator.generate();
     rootState.time() = 1;
     rootState.speed() = plannerConfig.maxSpeed();
@@ -630,17 +605,52 @@ TEST(UnitTests, AngleConsistencyTest) {
     for (int i = 0; i < 10; i++) {
         auto startState = generator.generate();
         auto start = Vertex::connect(root, startState);
-        start->parentEdge()->computeTrueCost(plannerConfig);
+        if (start->parentEdge()->computeTrueCost(plannerConfig) > Plan::timeHorizon() - 1){
+            i--;
+            continue;
+        }
         auto endState = generator.generate();
         auto end = Vertex::connect(start, endState);
         end->parentEdge()->computeTrueCost(plannerConfig);
+        State sample;
+        sample.time() = end->state().time() - Edge::dubinsIncrement() / plannerConfig.maxSpeed();
+        auto plan = end->parentEdge()->getPlan(plannerConfig);
+        plan.sample(sample);
+        EXPECT_NEAR(sample.headingDifference(end->state().heading()), 0, minAngleChange);
+        sample.time() = end->state().time();
+        plan.sample(sample);
+//        EXPECT_DOUBLE_EQ(sample.heading(), end->state().heading());
         auto sPrev = startState;
-        for (const auto& s : end->parentEdge()->getPlan(plannerConfig).getSamples(Edge::dubinsIncrement() / plannerConfig.maxSpeed())) {
-            ASSERT_NEAR(sPrev.headingDifference(s.heading()), 0, minAngleChange);
+        auto samples = plan.getSamples(Edge::dubinsIncrement() / plannerConfig.maxSpeed());
+        for (const auto& s : samples) {
+            EXPECT_NEAR(sPrev.headingDifference(s.heading()), 0, minAngleChange);
             sPrev = s;
         }
         EXPECT_NEAR(sPrev.heading(), end->state().heading(), minAngleChange);
+    }
+}
 
+TEST(UnitTests, AngleConsitencyTest2) {
+    auto minAngleChange = (Edge::dubinsIncrement() / plannerConfig.turningRadius() + 1e-5); // arc length / radius + tolerance
+    StateGenerator generator(-50, 50, -50, 50, plannerConfig.maxSpeed(), plannerConfig.maxSpeed(), 7);
+    generator.generate(); // waste a state for the root state in prev test so we can have same states
+    for (int i = 0; i < 10; i++) {
+        auto startState = generator.generate();
+        startState.time() = 1;
+        auto endState = generator.generate();
+        DubinsWrapper wrapper(startState, endState, plannerConfig.turningRadius());
+        State sample;
+        sample.time() = startState.time() + wrapper.length() / plannerConfig.maxSpeed();
+        wrapper.sample(sample);
+        EXPECT_NEAR(sample.headingDifference(endState.heading()), 0, minAngleChange);
+        wrapper.sample(sample); // for stepping through with a debugger
+        auto sPrev = startState;
+        auto samples = wrapper.getSamples(Edge::dubinsIncrement() / plannerConfig.maxSpeed());
+        for (const auto& s : samples) {
+            EXPECT_NEAR(sPrev.headingDifference(s.heading()), 0, minAngleChange);
+            sPrev = s;
+        }
+        EXPECT_NEAR(sPrev.heading(), endState.heading(), minAngleChange);
     }
 }
 
@@ -669,29 +679,6 @@ TEST(PlannerTests, RHRSAStarTest2Ribbons) {
         cerr << start.toString() << endl;
     }
 }
-
-//TEST(PlannerTests, RHRSAStarTest3) {
-//    // no memory leak with Valgrind
-//    Path path;
-//    path.add(10, 10);
-//    path.add(20, 10);
-//    path.add(20, 20);
-//    path.add(10, 20);
-//    AStarPlanner planner(2.5, 8, 2.5, 16, make_shared<Map>());
-//    planner.addToCover(path.get());
-//    State start(0, 0, 0, 1, 1);
-//    while(path.size() != 0) {
-//        cerr << start.toString() << endl;
-//        auto newlyCovered = path.removeNewlyCovered(start.x, start.y);
-//        if (!newlyCovered.empty()) {
-//            cerr << "Covered a point near " << start.x << ", " << start.y << endl;
-//        }
-//        auto plan = planner.plan(newlyCovered, start, DynamicObstaclesManager(), 0.95);
-//        ASSERT_FALSE(plan.empty());
-//        start = plan[1];
-//        ASSERT_LT(start.time, 60);
-//    }
-//}
 
 TEST(PlannerTests, RHRSAStarTest4Ribbons) {
     RibbonManager ribbonManager;

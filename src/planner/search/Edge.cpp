@@ -134,6 +134,9 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     auto startG = start()->currentCost();
     auto startH = start()->approxToGo();
 
+    if (intermediate.time() > endTime) {
+        std::cerr << "Zero or negative length edge" << std::endl;
+    }
     // collision check along the curve (and watch out for newly covered points, too)
     while (intermediate.time() <= endTime) {
         m_DubinsWrapper.sample(intermediate);
@@ -144,7 +147,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
             auto gSoFar = startG + timeSoFar + collisionPenalty;
             // should really put visualizeVertex somewhere accessible
             // use start H because it isn't worth it to calculate current H
-            config.visualizationStream() << "State: (" << intermediate.toString() << "), f: " << gSoFar + startH <<
+            config.visualizationStream() << "State: (" << intermediate.toStringRad() << "), f: " << gSoFar + startH <<
                 ", g: " << gSoFar << ", h: " << startH << " trajectory" << std::endl;
         }
         if (config.map()->getUnblockedDistance(intermediate.x(), intermediate.y()) <= Edge::dubinsIncrement()) {

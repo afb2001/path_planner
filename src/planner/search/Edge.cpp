@@ -197,9 +197,6 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     m_DubinsWrapper.sample(intermediate);
     end()->state().x() = intermediate.x(); end()->state().y() = intermediate.y(); end()->state().yaw(intermediate.yaw());
 
-    assert(intermediate.heading() == end()->state().heading());
-    assert(intermediate.yaw() == end()->state().yaw());
-
     // set end's state's time
     end()->state().time() = intermediate.time() - Edge::dubinsIncrement() / speed; // this is as far as we got
     m_DubinsWrapper.updateEndTime(end()->state().time()); // should just be truncating the path

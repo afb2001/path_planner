@@ -68,3 +68,13 @@ bool Plan::containsTime(double time) const {
     for (const auto& p : m_DubinsPaths) if (p.containsTime(time)) return true;
     return false;
 }
+
+double Plan::getStartTime() const {
+    assert(!m_DubinsPaths.empty());
+    return m_DubinsPaths.front().getStartTime();
+}
+
+double Plan::getEndTime() const {
+    assert(!m_DubinsPaths.empty());
+    return m_DubinsPaths.back().getEndTime();
+}

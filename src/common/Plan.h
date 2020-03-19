@@ -25,6 +25,10 @@ public:
 
     double totalTime() const;
 
+    double getStartTime() const;
+
+    double getEndTime() const;
+
     bool containsTime(double time) const;
 
     std::vector<State> getHalfSecondSamples() const;

@@ -9,6 +9,7 @@
 #include "../../src/common/map/GeoTiffMap.h"
 #include "../../src/common/map/GridWorldMap.h"
 #include <thread>
+#include <path_planner/Plan.h>
 
 using std::vector;
 using std::pair;
@@ -17,6 +18,115 @@ using std::endl;
 using std::make_shared;
 
 auto plannerConfig = PlannerConfig(&std::cerr);
+
+void validatePlan(Plan plan, PlannerConfig config) {
+    auto wrappers = plan.get();
+    auto timeIncrement = Edge::dubinsIncrement() / config.maxSpeed();
+    for (int i = 0; i < wrappers.size() - 1; i++) {
+        auto& w1 = wrappers[i]; auto& w2 = wrappers[i + 1];
+        EXPECT_NEAR(w1.getEndTime(), w2.getStartTime(), 1e-5);
+        State s1, s2;
+        s1.time() = w2.getStartTime();// - timeIncrement;
+        s2.time() = w2.getStartTime();
+        w1.sample(s1); w2.sample(s2);
+        // TODO! -- this should probably be zero, not the dubins increment, but I can't be bothered with that now
+        EXPECT_NEAR(s1.distanceTo(s2), 0, Edge::dubinsIncrement() + 1e-5);
+        EXPECT_NEAR(s1.headingDifference(s2), 0, Edge::dubinsIncrement() / config.turningRadius() + 1e-5);
+    }
+}
+
+//region Plan transfer tests
+
+static Plan getPlan(path_planner::Plan plan) {
+    Plan result;
+    for (const auto& d : plan.paths) {
+        DubinsWrapper wrapper;
+        DubinsPath path;
+        path.qi[0] = d.x;
+        path.qi[1] = d.y;
+        path.qi[2] = d.yaw;
+        path.param[0] = d.param0;
+        path.param[1] = d.param1;
+        path.param[2] = d.param2;
+        path.rho = d.rho;
+        path.type = (DubinsPathType)d.type;
+        wrapper.fill(path, d.speed, d.start_time);
+        if (wrapper.getEndTime() > plan.endtime){
+            wrapper.updateEndTime(plan.endtime);
+        }
+        result.append(wrapper);
+    }
+    return result;
+}
+
+static path_planner::Plan getPlanMsg(const Plan& plan) {
+    path_planner::Plan planMsg;
+    for (const auto& d : plan.get()) {
+        path_planner::DubinsPath path;
+        auto p = d.unwrap();
+        path.x = p.qi[0];
+        path.y = p.qi[1];
+        path.yaw = p.qi[2];
+        path.param0 = p.param[0];
+        path.param1 = p.param[1];
+        path.param2 = p.param[2];
+        path.type = p.type;
+        path.rho = d.getRho();
+        path.speed = d.getSpeed();
+        path.start_time = d.getStartTime();
+        planMsg.paths.push_back(path);
+    }
+    planMsg.endtime = plan.getEndTime();
+    return planMsg;
+}
+
+TEST(UnitTests, PlanTransferTest1) {
+    RibbonManager ribbonManager;
+    ribbonManager.add(0, 20, 20, 20);
+    ribbonManager.add(0, 40, 20, 40);
+    ribbonManager.add(0, 60, 20, 60);
+    ribbonManager.add(0, 80, 20, 80);
+    ribbonManager.add(0, 100, 20, 100);
+    AStarPlanner planner;
+    State start(0, 0, 0, 2.5, 1);
+    for (int i = 2; i < 5; i++){
+        ribbonManager.cover(start.x(), start.y());
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.95);
+        ASSERT_FALSE(plan.empty());
+        validatePlan(plan, plannerConfig);
+        auto planMsg = getPlanMsg(plan);
+        auto plan2 = getPlan(planMsg);
+//        validatePlan(plan2, plannerConfig);
+        const auto& paths1 = plan.get();
+        const auto& paths2 = plan2.get();
+        EXPECT_EQ(paths1.size(), paths2.size());
+        for (int j = 0; j < paths1.size(); j++) {
+            auto p1 = paths1[j].unwrap();
+            auto p2 = paths2[j].unwrap();
+            EXPECT_DOUBLE_EQ(p1.param[0], p2.param[0]);
+            EXPECT_DOUBLE_EQ(p1.param[1], p2.param[1]);
+            EXPECT_DOUBLE_EQ(p1.param[2], p2.param[2]);
+            EXPECT_DOUBLE_EQ(p1.qi[0], p2.qi[0]);
+            EXPECT_DOUBLE_EQ(p1.qi[1], p2.qi[1]);
+            EXPECT_DOUBLE_EQ(p1.qi[2], p2.qi[2]);
+            EXPECT_DOUBLE_EQ(p1.rho, p2.rho);
+            EXPECT_EQ(p1.type, p2.type);
+            EXPECT_DOUBLE_EQ(paths1[j].getStartTime(), paths2[j].getStartTime());
+            EXPECT_DOUBLE_EQ(paths1[j].getEndTime(), paths2[j].getEndTime());
+            EXPECT_DOUBLE_EQ(paths1[j].length(), paths2[j].length());
+            EXPECT_DOUBLE_EQ(paths1[j].getSpeed(), paths2[j].getSpeed());
+//            EXPECT_TRUE(paths1[j] == paths2[j]);
+//            EXPECT_EQ(paths1[j], paths2[j]);
+        }
+        start.time() = i;
+        plan.sample(start);
+        cerr << "Remaining " << ribbonManager.dumpRibbons() << endl;
+        cerr << start.toString() << endl;
+        if (ribbonManager.done()) return;
+    }
+}
+
+//endregion
 
 TEST(UnitTests, GaussianDensityTest) {
     double sigma[2][2] = {1, 0.1, 0.1, 1};
@@ -662,6 +772,7 @@ TEST(PlannerTests, RHRSAStarTest1Ribbons) {
     State start(0, 0, 0, 2.5, 1);
     auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.95);
     EXPECT_FALSE(plan.empty());
+    validatePlan(plan, plannerConfig);
 //    for (auto s : plan.getHalfSecondSamples()) cerr << s.toString() << endl;
 }
 
@@ -674,6 +785,7 @@ TEST(PlannerTests, RHRSAStarTest2Ribbons) {
         ribbonManager.cover(start.x(), start.y());
         auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.5); // quick iterations
         ASSERT_FALSE(plan.empty());
+        validatePlan(plan, plannerConfig);
         start = plan.getHalfSecondSamples()[1];
         ASSERT_LT(start.time(), 30);
         cerr << start.toString() << endl;
@@ -694,6 +806,7 @@ TEST(PlannerTests, RHRSAStarTest4Ribbons) {
         if (!headingChanged) ribbonManager.cover(start.x(), start.y());
         auto plan = planner.plan(ribbonManager, start, plannerConfig, 0.95);
         ASSERT_FALSE(plan.empty());
+        validatePlan(plan, plannerConfig);
         headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
         start = plan.getHalfSecondSamples()[1];
         ASSERT_LT(start.time(), 180);

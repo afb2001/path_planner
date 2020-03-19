@@ -175,11 +175,13 @@ public:
             path.param0 = p.param[0];
             path.param1 = p.param[1];
             path.param2 = p.param[2];
+            path.type = p.type;
+            path.rho = d.getRho();
             path.speed = d.getSpeed();
             path.start_time = d.getStartTime();
-            path.rho = d.getRho();
             planMsg.paths.push_back(path);
         }
+        planMsg.endtime = plan.getEndTime();
         return planMsg;
     }
 

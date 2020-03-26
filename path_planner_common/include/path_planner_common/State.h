@@ -65,14 +65,7 @@ class State
      * @param speed
      * @param t
      */
-    State(double x, double y, double heading, double speed, double t)
-    {
-        setX(x);
-        setY(y);
-        setHeading(heading);
-        setSpeed(speed);
-        setTime(t);
-    }
+    State(double x, double y, double heading, double speed, double t);
 
     State() = default;
 
@@ -81,61 +74,31 @@ class State
      * @param timeInterval
      * @return the resultant state
      */
-    State push(double timeInterval) const {
-        State s;
-        double displacement = timeInterval * speed();
-        s.x() = x() + sin(heading()) * displacement;
-        s.y() = y() + cos(heading()) * displacement;
-        s.heading() = heading();
-        s.speed() = speed();
-        s.time() = time() + timeInterval;
-        return s;
-    }
+    State push(double timeInterval) const;
 
     /**
      * Pushes a state forward some distance. Doesn't affect time.
      * @param distance
      */
-    void move(double distance) {
-        x() += cos(yaw()) * distance;
-        y() += sin(yaw()) * distance;
-    }
+    void move(double distance);
 
-    std::string toString() const
-    {
-        return std::to_string(x()) + " " +
-               std::to_string(y()) + " " +
-               std::to_string(heading()*180/M_PI) + " " +
-               std::to_string(speed()) + " " +
-               std::to_string(time());
-    }
+    std::string toString() const;
 
-    std::string toStringRad() const
-    {
-        return std::to_string(x()) + " " +
-               std::to_string(y()) + " " +
-               std::to_string(heading()) + " " +
-               std::to_string(speed()) + " " +
-               std::to_string(time());
-    }
+    std::string toStringRad() const;
 
     /**
      * Get the direction (heading) towards another state.
      * @param other
      * @return the heading
      */
-    double headingTo(const State& other) const {
-        return headingTo(other.x(), other.y());
-    }
+    double headingTo(const State& other) const;
 
     /**
      * Get the direction (heading) towards a point.
      * @param p
      * @return the heading
      */
-    double headingTo(const std::pair<double, double> p) const {
-        return headingTo(p.first, p.second);
-    }
+    double headingTo(const std::pair<double, double> p) const;
 
     /**
      * Get the direction (heading) towards a point.
@@ -143,69 +106,43 @@ class State
      * @param y1
      * @return the heading
      */
-    double headingTo(double x1, double y1) const {
-        double dx = x1 - this->x();
-        double dy = y1 - this->y();
-        double h = M_PI_2 - atan2(dy, dx); // TODO! -- is this correct?
-        if (h < 0) h += 2 * M_PI;
-        return h;
-    }
+    double headingTo(double x1, double y1) const;
 
     /**
      * Sets this state's heading to point towards the other state.
      * @param other
      */
-    void setHeadingTowards(const State& other) {
-        heading() = headingTo(other);
-        if (heading() < 0) heading() += 2 * M_PI;
-    }
+    void setHeadingTowards(const State& other);
 
     /**
      * Sets this state's heading towards the point.
      * @param x1
      * @param y1
      */
-    void setHeadingTowards(double x1, double y1) {
-        heading() = headingTo(x1, y1);
-        if (heading() < 0) heading() += 2 * M_PI;
-    }
+    void setHeadingTowards(double x1, double y1);
 
     /**
      * Get the time difference between states.
      * @param other
      * @return the time until other
      */
-    double timeUntil(const State& other) const {
-        return other.time() - time();
-    }
+    double timeUntil(const State& other) const;
 
-    inline bool operator==(const State& rhs) const {
-        return x() == rhs.x() &&
-                y() == rhs.y() &&
-                heading() == rhs.heading() &&
-                speed() == rhs.speed() &&
-                time() == rhs.time();
-    }
+    inline bool operator==(const State& rhs) const;
 
     /**
      * Determine whether two states share the same pose (ignores speed).
      * @param rhs
      * @return
      */
-    bool isCoLocated(const State& rhs) const {
-        return x() == rhs.x() &&
-               y() == rhs.y() &&
-               heading() == rhs.heading();
-    }
+    bool isCoLocated(const State& rhs) const;
 
     /**
      * Get the Euclidean distance to the other state.
      * @param other
      * @return
      */
-    double distanceTo(const State& other) const {
-        return distanceTo(other.x(), other.y());
-    }
+    double distanceTo(const State& other) const;
 
     /**
      * Get the Euclidean distance to the point.
@@ -213,9 +150,7 @@ class State
      * @param y1
      * @return
      */
-    double distanceTo(double x1, double y1) const {
-        return sqrt((this->x() - x1)*(this->x() - x1) + (this->y() - y1)*(this->y() - y1));
-    }
+    double distanceTo(double x1, double y1) const;
 
     /**
      * Interpolate (or extrapolate) between this state and other to the desired time.
@@ -223,33 +158,11 @@ class State
      * @param desiredTime
      * @return
      */
-    State interpolate(const State& other, double desiredTime) const {
-//        std::cerr << "Interpolating between " << other.toString() << " and " << toString() << std::endl;
-        auto dt = other.time() - time();
-        auto dx = (other.x() - x()) / dt;
-        auto dy = (other.y() - y()) / dt;
-        // assume the headings have changed the closer way, not all the way around the other way
+    State interpolate(const State& other, double desiredTime) const;
 
-        auto dh = headingDifference(other) / dt;
-        auto ds = (other.speed() - speed()) / dt;
-        dt = desiredTime - time();
-        State s = *this;
-        s.x() += dx * dt;
-        s.y() += dy * dt;
-        s.heading() = this->heading() + (dh * dt);
-        if (s.heading() >= twoPi) s.heading() -= twoPi;
-        s.speed() += ds * dt;
-        s.time() = desiredTime;
-        return s;
-    }
+    double headingDifference(const State& other) const;
 
-    double headingDifference(const State& other) const {
-        return headingDifference(other.heading());
-    }
-
-    double headingDifference(double otherHeading) const {
-        return (fmod(fmod((otherHeading - heading()), twoPi) + 3 * M_PI, twoPi) - M_PI);
-    }
+    double headingDifference(double otherHeading) const;
 
 private:
     double m_Pose [4] = {0, 0, 0, 0};

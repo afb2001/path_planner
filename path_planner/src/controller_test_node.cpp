@@ -7,7 +7,6 @@
 #include "path_planner_common/Trajectory.h"
 #include <geometry_msgs/PoseStamped.h>
 #include "trajectory_publisher.h"
-#include "path_planner_common/TrajectoryDisplayer.h"
 #include "NodeBase.h"
 
 #pragma clang diagnostic push

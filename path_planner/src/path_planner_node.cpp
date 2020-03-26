@@ -10,7 +10,6 @@
 #include <geometry_msgs/PoseStamped.h>
 #include "executive/executive.h"
 #include "trajectory_publisher.h"
-#include "path_planner_common/TrajectoryDisplayer.h"
 #include "NodeBase.h"
 #include <path_planner/path_plannerConfig.h>
 #include <dynamic_reconfigure/server.h>

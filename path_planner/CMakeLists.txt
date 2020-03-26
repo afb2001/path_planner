@@ -97,7 +97,7 @@ add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_gencfg)
 
 add_executable(controller_test_node src/controller_test_node.cpp)
 add_dependencies(controller_test_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(controller_test_node marine_msgs_gencpp)
+add_dependencies(controller_test_node marine_msgs_gencpp path_planner_utilities)
 add_dependencies(controller_test_node project11_transformations_gencpp)
 
 target_link_libraries(${PROJECT_NAME}_node
@@ -109,6 +109,7 @@ target_link_libraries(${PROJECT_NAME}_node
 target_link_libraries(controller_test_node
         ${catkin_LIBRARIES}
         executive
+        path_planner_utilities
         )
 
 catkin_add_gtest(test_planner test/planner/test_planner.cpp)

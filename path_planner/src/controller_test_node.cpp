@@ -4,7 +4,6 @@
 #include "geometry_msgs/TwistStamped.h"
 #include "marine_msgs/NavEulerStamped.h"
 #include "path_planner/path_plannerAction.h"
-#include "path_planner_common/Trajectory.h"
 #include <geometry_msgs/PoseStamped.h>
 #include "trajectory_publisher.h"
 #include "NodeBase.h"

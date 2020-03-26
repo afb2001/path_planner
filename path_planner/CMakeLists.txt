@@ -49,7 +49,7 @@ include_directories(
 )
 
 catkin_package(
-        INCLUDE_DIRS include
+#        INCLUDE_DIRS include
         #  LIBRARIES asv_helm
         CATKIN_DEPENDS geometry_msgs roscpp project11
         #  DEPENDS system_lib

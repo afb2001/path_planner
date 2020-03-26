@@ -6,7 +6,6 @@
 #include <vector>
 #include "path_planner/path_plannerAction.h"
 #include "actionlib/server/simple_action_server.h"
-#include "path_planner_common/Trajectory.h"
 #include <project11_transformations/LatLongToMap.h>
 #include <geometry_msgs/PoseStamped.h>
 #include "trajectory_publisher.h"

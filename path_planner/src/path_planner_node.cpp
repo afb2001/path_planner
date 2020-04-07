@@ -70,34 +70,16 @@ public:
 
         m_Executive->clearRibbons();
 
-        std::vector<std::pair<double, double>> currentPath;
 
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 
         for (int i = 0; i + 1 < goal->path.poses.size(); i++) {
             // assume points represent track-line pairs
-            geographic_msgs::GeoPoseStamped startPose = goal->path.poses[i];
-            geographic_msgs::GeoPoseStamped endPose = goal->path.poses[i + 1];
-            geometry_msgs::PointStamped::_point_type start;
-            geometry_msgs::PointStamped::_point_type end;
-
-            project11_transformations::LatLongToMap::Request request;
-            project11_transformations::LatLongToMap::Response response;
-
-            // send to LatLongToMap
-            request.wgs84.position = startPose.pose.position;
-            if (m_lat_long_to_map_client.call(request, response)) {
-                start = response.map.point;
-            }
-            currentPath.emplace_back(start.x, start.y);
-            request.wgs84.position = endPose.pose.position;
-            if (m_lat_long_to_map_client.call(request, response)) {
-                end = response.map.point;
-            }
+            geometry_msgs::PointStamped::_point_type start = m_CoordinateConverter.wgs84_to_map(goal->path.poses[i].pose.position);
+            geometry_msgs::PointStamped::_point_type end = m_CoordinateConverter.wgs84_to_map(goal->path.poses[i + 1].pose.position);
 
             m_Executive->addRibbon(start.x, start.y, end.x, end.y);
         }
-
 
         // start planner
         m_Executive->startPlanner();
@@ -133,16 +115,10 @@ public:
     {
         State obstacle;
 
-        project11_transformations::LatLongToMap::Request request;
-        project11_transformations::LatLongToMap::Response response;
+        auto point = m_CoordinateConverter.wgs84_to_map(inmsg->position);
 
-        request.wgs84.position = inmsg->position;
-        if (m_lat_long_to_map_client.call(request, response)) {
-            obstacle.x() = response.map.point.x;
-            obstacle.y() = response.map.point.y;
-        } else {
-            std::cerr << "Error: LatLongToMap failed" << std::endl;
-        }
+        obstacle.x() = point.x;
+        obstacle.y() = point.y;
 
         obstacle.heading() = inmsg->cog;
         obstacle.speed() = inmsg->sog;

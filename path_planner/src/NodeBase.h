@@ -14,6 +14,7 @@
 #include <path_planner_common/DubinsPlan.h>
 #include <path_planner_common/DubinsPath.h>
 #include <geographic_visualization_msgs/GeoVizItem.h>
+#include <project11_transformations/local_services.h>
 
 /**
  * Base class for nodes related to the path planner.
@@ -22,12 +23,11 @@ class NodeBase
 {
 public:
     explicit NodeBase(std::string name):
-            m_action_server(m_node_handle, std::move(name), false)
+            m_action_server(m_node_handle, std::move(name), false), m_CoordinateConverter(m_node_handle)
     {
         m_current_speed = 0.01;
         m_current_heading = 0;
 
-        m_lat_long_to_map_client = m_node_handle.serviceClient<project11_transformations::LatLongToMap>("wgs84_to_map");
         m_node_handle.advertise<geographic_visualization_msgs::GeoVizItem>("/project11/display",1);
 
         m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
@@ -55,18 +55,6 @@ public:
     virtual void goalCallback() = 0;
 
     virtual void preemptCallback() = 0;
-
-    geometry_msgs::Point convertToMap(geographic_msgs::GeoPoseStamped pose) {
-        project11_transformations::LatLongToMap::Request request;
-        project11_transformations::LatLongToMap::Response response;
-        request.wgs84.position = pose.pose.position;
-        if (m_lat_long_to_map_client.call(request, response)) {
-            return response.map.point;
-        } else {
-            std::cerr << "LatLongToMap failed" << std::endl;
-            return response.map.point;
-        }
-    }
 
     virtual void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg) = 0;
 
@@ -224,8 +212,9 @@ protected:
     ros::Subscriber m_speed_sub;
     ros::Subscriber m_piloting_mode_sub;
 
-    ros::ServiceClient m_lat_long_to_map_client;
     ros::ServiceClient m_update_reference_trajectory_client;
+
+    project11::Transformations m_CoordinateConverter;
 
     long m_TrajectoryCount = 1;
 };

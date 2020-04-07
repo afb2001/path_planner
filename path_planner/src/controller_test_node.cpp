@@ -44,8 +44,8 @@ public:
 
         DubinsPlan plan;
         for (unsigned long i = 0; i < goal->path.poses.size() - 1; i ++) {
-            auto startPoint = convertToMap(goal->path.poses[i]);
-            auto endPoint = convertToMap(goal->path.poses[i + 1]);
+            auto startPoint = m_CoordinateConverter.wgs84_to_map(goal->path.poses[i].pose.position);
+            auto endPoint = m_CoordinateConverter.wgs84_to_map(goal->path.poses[i + 1].pose.position);
             State start(startPoint.x, startPoint.y, 0, c_MaxSpeed, time);
             State end(endPoint.x, endPoint.y, 0, 0, 0);
             start.setHeadingTowards(end);

@@ -80,13 +80,13 @@ add_library(planner
 
 add_dependencies(planner path_planner_common)
 
-target_link_libraries(planner path_planner_common path_planner_state dubins_plan dubins)
+target_link_libraries(planner path_planner_common ${catkin_LIBRARIES})
 
 add_library(executive
         src/executive/executive.cpp
         )
 
-target_link_libraries(executive planner)
+target_link_libraries(executive planner path_planner_common)
 
 add_executable(${PROJECT_NAME}_node src/path_planner_node.cpp)
 
@@ -103,17 +103,15 @@ add_dependencies(controller_test_node project11_transformations_gencpp)
 target_link_libraries(${PROJECT_NAME}_node
         ${catkin_LIBRARIES}
         executive
-        path_planner_utilities
         )
 
 target_link_libraries(controller_test_node
         ${catkin_LIBRARIES}
         executive
-        path_planner_utilities
         )
 
 catkin_add_gtest(test_planner test/planner/test_planner.cpp)
-target_link_libraries(test_planner planner dubins)
+target_link_libraries(test_planner planner ${catkin_LIBRARIES})
 
 catkin_add_gtest(test_system test/system/test_executive.cpp test/system/NodeStub.cpp)
 target_link_libraries(test_system executive)

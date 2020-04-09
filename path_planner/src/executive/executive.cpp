@@ -105,6 +105,7 @@ void Executive::planLoop() {
         // copy the map pointer if it's been set (don't wait for the mutex because it may be a while)
         if (m_MapMutex.try_lock()) {
             if (m_NewMap) {
+                // TODO! -- Dunno what's going on but the map is messed up
                 m_PlannerConfig.setMap(m_NewMap);
             }
             m_NewMap = nullptr;
@@ -160,6 +161,26 @@ void Executive::planLoop() {
 //            cerr << "Sending trajectory to controller" << endl;
             startState = m_TrajectoryPublisher->publishPlan(plan);
 //            cerr << "Received state from controller: " << startState.toString() << endl;
+
+            // debugging:
+            State expectedStartState(startState);
+            plan.sample(expectedStartState);
+            if (!startState.isCoLocated(expectedStartState)) {
+                cerr << "Start state is not along previous plan; did the controller let us know?" << endl;
+                if (startState.x() != expectedStartState.x()) {
+                    if (startState.y() != expectedStartState.y()) {
+                        cerr << "Position is different: (" << startState.x() << ", " << startState.y() << ") vs (" << expectedStartState.x() << ", " << expectedStartState.y() << "). ";
+                    } else {
+                        cerr << "X is different: " << startState.x() << " vs " << expectedStartState.x() << ". ";
+                    }
+                } else if (startState.y() != expectedStartState.y()) {
+                    cerr << "Y is different: " << startState.y() << " vs " << expectedStartState.y() << ". ";
+                }
+                if (startState.headingDifference(expectedStartState) != 0) {
+                    cerr << "Headings are different: " << startState.heading() << " vs " << expectedStartState.heading() << ". ";
+                }
+                cerr << endl;
+            }
         } else {
             cerr << "Planner returned empty trajectory." << endl;
             startState = State();

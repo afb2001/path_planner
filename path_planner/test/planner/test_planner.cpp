@@ -9,7 +9,7 @@
 #include "../../src/common/map/GeoTiffMap.h"
 #include "../../src/common/map/GridWorldMap.h"
 #include <thread>
-#include <path_planner/Plan.h>
+#include <path_planner_common/Plan.h>
 
 using std::vector;
 using std::pair;
@@ -37,7 +37,7 @@ void validatePlan(DubinsPlan plan, PlannerConfig config) {
 
 //region Plan transfer tests
 
-static DubinsPlan getPlan(path_planner::Plan plan) {
+static DubinsPlan getPlan(path_planner_common::Plan plan) {
     DubinsPlan result;
     for (const auto& d : plan.paths) {
         DubinsWrapper wrapper;
@@ -59,10 +59,10 @@ static DubinsPlan getPlan(path_planner::Plan plan) {
     return result;
 }
 
-static path_planner::Plan getPlanMsg(const DubinsPlan& plan) {
-    path_planner::Plan planMsg;
+static path_planner_common::Plan getPlanMsg(const DubinsPlan& plan) {
+    path_planner_common::Plan planMsg;
     for (const auto& d : plan.get()) {
-        path_planner::DubinsPath path;
+        path_planner_common::DubinsPath path;
         auto p = d.unwrap();
         path.x = p.qi[0];
         path.y = p.qi[1];
@@ -206,6 +206,130 @@ TEST(UnitTests, GridWorldMapTest1) {
 //    map.getUnblockedDistance(0, 0);
     EXPECT_DOUBLE_EQ(-1, map.getUnblockedDistance(450, 445));
     EXPECT_DOUBLE_EQ(10, map.getUnblockedDistance(495, 450));
+}
+
+void visualizePath(const State& s1, const State& s2, const State& s3, double turningRadius) {
+    RibbonManager ribbonManager;
+    ribbonManager.add(0, 0, 1000, 0);
+    PlannerConfig config(&std::cerr);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_visualizations"));
+    config.setVisualizer(&visualizer);
+    config.setVisualizations(true);
+    config.setNowFunction([] () -> double {
+        struct timespec t{};
+        clock_gettime(CLOCK_REALTIME, &t);
+        return t.tv_sec + t.tv_nsec * 1e-9;
+    });
+    config.setMap(make_shared<Map>());
+    config.setObstacles(DynamicObstaclesManager());
+    config.setBranchingFactor(4);
+    config.setMaxSpeed(2.5); // set this super high so we don't clip paths short
+    config.setTurningRadius(turningRadius);
+    auto v1 = Vertex::makeRoot(s1, ribbonManager);
+    auto v2 = Vertex::connect(v1, s2);
+    auto v3 = Vertex::makeRoot(s3, ribbonManager);
+    auto v4 = Vertex::connect(v3, s2);
+    visualizer->stream() << v1->toString() << " start" << endl;
+    v2->parentEdge()->computeTrueCost(config);
+    visualizer->stream() << v2->toString() << " vertex" << endl;
+    visualizer->stream() << v3->toString() << " vertex" << endl;
+    v4->parentEdge()->computeTrueCost(config);
+    visualizer->stream() << v4->toString() << " vertex" << endl;
+}
+
+TEST(UnitTests, DubinsSuffixTest) {
+    StateGenerator generator(-50, 50, -50, 50, plannerConfig.maxSpeed(), plannerConfig.maxSpeed(), 7);
+    auto rootState = generator.generate();
+    rootState.time() = 1;
+    rootState.speed() = plannerConfig.maxSpeed();
+    RibbonManager ribbonManager;
+    ribbonManager.add(0, 10, 20, 10);
+    int successCount = 0, failureCount = 0, shorterCount = 0;
+    double differences = 0, progress = 0;
+    double tolerance = 1;
+    for (int i = 0; i < 1000; i++) {
+        auto startState = generator.generate(); startState.time() = 1;
+        auto endState = generator.generate();
+        DubinsWrapper path(startState, endState, plannerConfig.turningRadius());
+        endState.time() = path.getEndTime();
+//        cerr << endState.time() << endl;
+        State sample;
+        for (sample.time() = startState.time(); sample.time() < endState.time() - 1; sample.time() += Edge::dubinsIncrement() / plannerConfig.maxSpeed()) {
+            path.sample(sample);
+            DubinsWrapper path2(sample, endState, plannerConfig.turningRadius());
+//            EXPECT_DOUBLE_EQ(endState.time(), path2.getEndTime());
+            if (fabs(endState.time() - path2.getEndTime()) > tolerance) {
+//                std::cout << "Failed from state " << sample.toString() << endl;
+                cerr << startState.toStringRad() << endl;
+                cerr << endState.toStringRad() << endl;
+                cerr << sample.toStringRad() << endl;
+                auto diff = fabs(endState.time() - path2.getEndTime()) / plannerConfig.maxSpeed();
+                cerr << diff << endl;
+                visualizePath(startState, endState, sample, plannerConfig.turningRadius());
+                failureCount++;
+                progress += (sample.time() - startState.time()) / (endState.time() - startState.time());
+                differences += diff;
+                return;
+                if (path2.getEndTime() < endState.time()) {
+                    shorterCount++;
+                }
+            }
+            else {
+//                std::cout << "." << std::flush;
+                successCount++;
+            }
+        }
+//        std::cout << endl;
+    }
+
+    auto total = successCount + failureCount;
+    cerr << "Successes: " << successCount << ", failures: " << failureCount << ", failure rate: " << (double)failureCount / total * 100 << "%" << endl;
+    cerr << "Failures occur on average " << progress / failureCount * 100 << "% of the way through the path" << endl;
+    cerr << "Found a shorter path " << (double) shorterCount / failureCount  * 100 << "% of the time" << endl;
+    cerr << "Average length difference: " << differences / failureCount << endl;
+
+    // Randomizing turning radius now to study its effect on length differences
+    std::uniform_real_distribution<> radiusDistribution(1, 100);
+    std::default_random_engine randomEngine(7);
+    failureCount = 0; successCount = 0; progress = 0;
+    double ratio = 0;
+    for (int i = 0; i < 1000; i++) {
+        auto startState = generator.generate(); startState.time() = 1;
+        auto endState = generator.generate();
+        auto radius = radiusDistribution(randomEngine);
+        DubinsWrapper path(startState, endState, radius);
+        endState.time() = path.getEndTime();
+//        cerr << endState.time() << endl;
+        State sample;
+        for (sample.time() = startState.time(); sample.time() < endState.time() - 1; sample.time() += Edge::dubinsIncrement() / plannerConfig.maxSpeed()) {
+            path.sample(sample);
+            DubinsWrapper path2(sample, endState, radius);
+//            EXPECT_DOUBLE_EQ(endState.time(), path2.getEndTime());
+            if (fabs(endState.time() - path2.getEndTime()) > tolerance) {
+//                if (endState.time() != path2.getEndTime()) {
+//                std::cout << "Failed from state " << sample.toString() << endl;
+                failureCount++;
+                progress += (sample.time() - startState.time()) / (endState.time() - startState.time());
+                auto diff = fabs(endState.time() - path2.getEndTime()) / plannerConfig.maxSpeed();
+                differences += diff;
+                ratio += diff / radius;
+                if (path2.getEndTime() < endState.time()) {
+                    shorterCount++;
+                }
+            }
+            else {
+//                std::cout << "." << std::flush;
+                successCount++;
+            }
+        }
+//        std::cout << endl;
+    }
+    cerr << "Now using randomized radii: " << endl;
+    total = successCount + failureCount;
+    cerr << "Successes: " << successCount << ", failures: " << failureCount << ", failure rate: " << (double)failureCount / total * 100 << "%" << endl;
+    cerr << "Failures occur on average " << progress / failureCount * 100 << "% of the way through the path" << endl;
+    cerr << "Average length difference: " << differences / failureCount << endl;
+    cerr << "Average ratio length difference to turning radius: " << ratio / failureCount << endl;
 }
 
 TEST(UnitTests, RibbonsTest1) {
@@ -507,7 +631,7 @@ TEST(UnitTests, ComputeEdgeCostTest) {
 
 TEST(UnitTests, RunStateGenerationTest) {
     double minX, maxX, minY, maxY, minSpeed = 2.5, maxSpeed = 2.5;
-    double magnitude = 2.5 * DubinsPlan::DubinsPlan();
+    double magnitude = 2.5 * DubinsPlan::timeHorizon();
     minX = -magnitude;
     maxX = magnitude;
     minY = -magnitude;
@@ -715,7 +839,7 @@ TEST(UnitTests, AngleConsistencyTest) {
     for (int i = 0; i < 10; i++) {
         auto startState = generator.generate();
         auto start = Vertex::connect(root, startState);
-        if (start->parentEdge()->computeTrueCost(plannerConfig) > DubinsPlan::DubinsPlan() - 1){
+        if (start->parentEdge()->computeTrueCost(plannerConfig) > DubinsPlan::timeHorizon() - 1){
             i--;
             continue;
         }

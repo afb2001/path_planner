@@ -47,7 +47,7 @@ include_directories(
 
 catkin_package(
         INCLUDE_DIRS include
-        #  LIBRARIES asv_helm
+        LIBRARIES path_planner_state dubins_plan path_planner_utilities
         CATKIN_DEPENDS geometry_msgs roscpp project11
         #  DEPENDS system_lib
 )

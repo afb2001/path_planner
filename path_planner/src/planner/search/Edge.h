@@ -28,6 +28,7 @@ public:
     double approxCost() const;
 
     std::shared_ptr<Vertex> setEnd(const State& state);
+    std::shared_ptr<Vertex> setEnd(const DubinsWrapper& path);
 
     double computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesManager& obstacles, double maxSpeed, double maxTurningRadius);
     double computeTrueCost(const Map::SharedPtr& map, const DynamicObstaclesManager& obstacles);
@@ -65,7 +66,7 @@ private:
     bool m_Infeasible = false;
 
     static constexpr double c_CollisionPenalty = 10; // no idea how to set this but this is probably too low (try 600)
-    static constexpr double c_DubinsIncrement = 0.1;
+    static constexpr double c_DubinsIncrement = 1;
     static constexpr double c_TimePenalty = 1;
 
     double m_ApproxCost = -1, m_TrueCost = -1;

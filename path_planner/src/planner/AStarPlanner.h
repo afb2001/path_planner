@@ -13,8 +13,8 @@ public:
 
     ~AStarPlanner() override = default;
 
-    DubinsPlan plan(const RibbonManager& ribbonManager, const State& start,
-                    PlannerConfig config, double timeRemaining) override;
+    DubinsPlan plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
+                    const DubinsPlan& previousPlan, double timeRemaining) override;
 
 //    std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
 //                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;

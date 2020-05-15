@@ -134,11 +134,17 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     auto startG = start()->currentCost();
     auto startH = start()->approxToGo();
 
-    if (intermediate.time() > endTime) {
-        std::cerr << "Zero or negative length edge" << std::endl;
+    if (intermediate.time() >= endTime) {
+        if (intermediate.time() > endTime) std::cerr << "Negative length edge" << std::endl;
+        else {
+            std::cerr << "Zero length edge: " << std::endl;
+            std::cerr << "\t" << start()->state().toString() << std::endl;
+            std::cerr << "\t" << end()->state().toString() << std::endl;
+        }
+        m_Infeasible = true;
     }
     // collision check along the curve (and watch out for newly covered points, too)
-    while (intermediate.time() <= endTime) {
+    while (intermediate.time() < endTime) {
         m_DubinsWrapper.sample(intermediate);
         // visualize
         if (config.visualizations() && visCount-- <= 0) {
@@ -190,15 +196,18 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
             }
         }
         intermediate.time() += Edge::dubinsIncrement() / speed;
+//        if (intermediate.time() > endTime) intermediate.time() = endTime; // set to true ending state
         lastHeading = intermediate.heading();
     }
     // set to the end of the edge (potentially truncated)
-    intermediate.time() = endTime;
-    m_DubinsWrapper.sample(intermediate);
-    end()->state().x() = intermediate.x(); end()->state().y() = intermediate.y(); end()->state().yaw(intermediate.yaw());
+//    intermediate.time() = endTime;
+//    m_DubinsWrapper.sample(intermediate);
+//    end()->state().x() = intermediate.x(); end()->state().y() = intermediate.y(); end()->state().yaw(intermediate.yaw());
 
     // set end's state's time
-    end()->state().time() = intermediate.time() - Edge::dubinsIncrement() / speed; // this is as far as we got
+//    end()->state().time() = intermediate.time() - Edge::dubinsIncrement() / speed; // this is as far as we got
+    end()->state().time() = endTime;
+    m_DubinsWrapper.sample(end()->state());
     m_DubinsWrapper.updateEndTime(end()->state().time()); // should just be truncating the path
 
     if (!m_UseRibbons) {
@@ -291,6 +300,14 @@ void Edge::computeBrownPath(const PlannerConfig& config, const Ribbon& r) {
 
     // now to figure out a Dubins curve for it
 
+}
+
+std::shared_ptr<Vertex> Edge::setEnd(const DubinsWrapper& path) {
+    m_DubinsWrapper = path;
+    State s;
+    s.time() = path.getEndTime();
+    path.sample(s);
+    return setEnd(s);
 }
 
 

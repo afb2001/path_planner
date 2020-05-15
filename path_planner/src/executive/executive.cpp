@@ -59,6 +59,9 @@ void Executive::planLoop() {
 //    cerr << "Starting plan loop" << endl;
     State startState;
 
+    // declare plan here so that it persists between loops
+    DubinsPlan plan;
+
 
     while (true) {
         double startTime = m_TrajectoryPublisher->getTime();
@@ -112,9 +115,6 @@ void Executive::planLoop() {
             m_MapMutex.unlock();
         }
 
-        // declare here so that I can assign it in try block and reference it later
-        DubinsPlan plan;
-
         // call the controller service to get the estimated state we'll be in after the planning time has elapsed
 //        auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
 
@@ -122,6 +122,17 @@ void Executive::planLoop() {
         // if the state estimator returns an error naively do it ourselves
         if (startState.time() == -1) {
             startState = m_LastState.push(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds - m_LastState.time());
+        }
+
+        if (!c_ReusePlanEnabled) plan = DubinsPlan();
+
+        if (!plan.empty()) plan.changeIntoSuffix(startState.time()); // update the last plan
+
+        // shrink turning radius (experimental)
+        if (c_RadiusShrinkEnabled) {
+            m_PlannerConfig.setTurningRadius(m_PlannerConfig.turningRadius() - c_RadiusShrinkAmount);
+            m_PlannerConfig.setCoverageTurningRadius(m_PlannerConfig.coverageTurningRadius() - c_RadiusShrinkAmount);
+            m_RadiusShrink += c_RadiusShrinkAmount;
         }
 
         try {
@@ -138,8 +149,8 @@ void Executive::planLoop() {
             // ribbon length in 1s
             ribbonManagerCopy.coverBetween(m_LastState.x(), m_LastState.y(), startState.x(), startState.y());
 //            ribbonManagerCopy.cover(startState.x(), startState.y());
-            plan = planner->plan(ribbonManagerCopy, startState, m_PlannerConfig,
-                                   startTime + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
+            plan = planner->plan(ribbonManagerCopy, startState, m_PlannerConfig, plan,
+                                 startTime + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
         } catch(const std::exception& e) {
             cerr << "Exception thrown while planning:" << endl;
             cerr << e.what() << endl;
@@ -157,15 +168,28 @@ void Executive::planLoop() {
 
         this_thread::sleep_for(chrono::milliseconds(sleepTime));
 
+        // display the trajectory
+        m_TrajectoryPublisher->displayTrajectory(plan.getHalfSecondSamples(), true);
+
         if (!plan.empty()) {
 //            cerr << "Sending trajectory to controller" << endl;
             startState = m_TrajectoryPublisher->publishPlan(plan);
 //            cerr << "Received state from controller: " << startState.toString() << endl;
 
-            // debugging:
             State expectedStartState(startState);
             plan.sample(expectedStartState);
             if (!startState.isCoLocated(expectedStartState)) {
+                // reset plan because controller says we can't make it
+                plan = DubinsPlan();
+
+                // reset turning radius shrink because we can't follow original plan anymore
+                if (c_RadiusShrinkEnabled) {
+                    m_PlannerConfig.setTurningRadius(m_PlannerConfig.turningRadius() + m_RadiusShrink);
+                    m_PlannerConfig.setCoverageTurningRadius(m_PlannerConfig.coverageTurningRadius() + m_RadiusShrink);
+                    m_RadiusShrink = 0;
+                }
+
+                // debugging:
                 cerr << "Start state is not along previous plan; did the controller let us know?" << endl;
                 if (startState.x() != expectedStartState.x()) {
                     if (startState.y() != expectedStartState.y()) {
@@ -180,14 +204,17 @@ void Executive::planLoop() {
                     cerr << "Headings are different: " << startState.heading() << " vs " << expectedStartState.heading() << ". ";
                 }
                 cerr << endl;
+
+            } else {
+                // expected start state is along plan so allow plan to be passed to planner as previous plan
+                m_RadiusShrink += c_RadiusShrinkAmount;
+
             }
         } else {
             cerr << "Planner returned empty trajectory." << endl;
             startState = State();
         }
 
-        // display the trajectory
-        m_TrajectoryPublisher->displayTrajectory(plan.getHalfSecondSamples(), true);
     }
 
     unique_lock<mutex> lock2(m_PlannerStateMutex);

@@ -30,6 +30,15 @@ std::shared_ptr<Vertex> Vertex::connect(const std::shared_ptr<Vertex> &start, co
     return v;
 }
 
+Vertex::SharedPtr Vertex::connect(const Vertex::SharedPtr& start, const DubinsWrapper& wrapper) {
+    auto e = new Edge(start, start->m_UseRibbons);
+    auto v = e->setEnd(wrapper);
+    if (start->m_UseRibbons) {
+        v->m_RibbonManager = start->m_RibbonManager;
+    }
+    return v;
+}
+
 std::shared_ptr<Vertex> Vertex::makeRoot(const State& start, const Path& uncovered) {
     auto v = std::shared_ptr<Vertex>(new Vertex(start, false));
     v->m_CurrentCost = 0;
@@ -50,6 +59,7 @@ double Vertex::estimateApproxToGo(const State &destination) {
 
 double Vertex::computeApproxToGo() {
     // NOTE: using the current speed for computing time penalty by distance. With just one speed it works.
+    // TODO -- pass planner config to retrieve max speed instead of this assumption
     double max;
     if (m_UseRibbons) max = m_RibbonManager.approximateDistanceUntilDone(state().x(), state().y(), state().heading());
     else max = m_Uncovered.maxDistanceFrom(state());

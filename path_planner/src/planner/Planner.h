@@ -26,8 +26,8 @@ public:
 //    virtual std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
 //            DynamicObstaclesManager dynamicObstacles, double timeRemaining);
 
-    virtual DubinsPlan plan(const RibbonManager& ribbonManager, const State& start,
-                            PlannerConfig config, double timeRemaining);
+    virtual DubinsPlan plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
+                            const DubinsPlan& previousPlan, double timeRemaining);
 
     DubinsPlan tracePlan(const std::shared_ptr<Vertex>& v, bool smoothing, const DynamicObstaclesManager& obstacles);
 

@@ -31,18 +31,29 @@ public:
 
     double getSpeed() const;
 
+    /**
+     * Gets the start time. If the start time has been updated, that updated value is returned.
+     * @return
+     */
     double getStartTime() const;
 
     double getEndTime() const;
 
     void updateEndTime(double endTime);
 
+    /**
+     * Updates the start time. The original start time is kept for the math of sampling but for all other purposes this
+     * is the start time now. It is not valid to sample before this time any more.
+     * @param startTime
+     */
+    void updateStartTime(double startTime);
+
     const DubinsPath& unwrap() const;
 
 private:
     DubinsPath m_DubinsPath;
     double m_Speed;
-    double m_StartTime = -1, m_EndTime = -1;
+    double m_StartTime = -1, m_EndTime = -1, m_UpdatedStartTime = -1;
 
     bool isInitialized() const;
 

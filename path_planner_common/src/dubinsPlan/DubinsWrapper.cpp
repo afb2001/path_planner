@@ -11,20 +11,21 @@ void DubinsWrapper::set(const State& s1, const State& s2, double rho) {
     double q2[3] = {s2.x(), s2.y(), s2.yaw()};
     dubins_shortest_path(&m_DubinsPath, q1, q2, rho);
     m_Speed = s1.speed();
-    m_StartTime = s1.time();
+    m_UpdatedStartTime = m_StartTime = s1.time();
     setEndTime();
 }
 
 double DubinsWrapper::length() const {
-    assert(isInitialized());
+    if (!isInitialized()) throw std::runtime_error("Cannot access unset Dubins wrapper");
     return dubins_path_length(&m_DubinsPath);
 }
 
 bool DubinsWrapper::containsTime(double time) const {
-    return m_StartTime <= time && m_EndTime >= time;
+    return m_UpdatedStartTime <= time && m_EndTime >= time;
 }
 
 void DubinsWrapper::sample(State& s) const {
+    if (!containsTime(s.time())) throw std::runtime_error("Invalid time in sample for Dubins path");
     double distance = (s.time() - m_StartTime) * m_Speed;
     // heading comes back as yaw
     int err = dubins_path_sample(&m_DubinsPath, distance, s.pose());
@@ -48,7 +49,7 @@ std::vector<State> DubinsWrapper::getSamples(double timeInterval) const {
     std::vector<State> result;
     State intermediate;
     intermediate.speed() = m_Speed;
-    for (auto s = m_StartTime; s < m_EndTime; s+= timeInterval) {
+    for (auto s = m_UpdatedStartTime; s < m_EndTime; s+= timeInterval) {
         intermediate.time() = s;
         sample(intermediate);
         result.push_back(intermediate);
@@ -65,7 +66,7 @@ const DubinsPath& DubinsWrapper::unwrap() const {
 }
 
 double DubinsWrapper::getStartTime() const {
-    return m_StartTime;
+    return m_UpdatedStartTime;
 }
 
 double DubinsWrapper::getSpeed() const {
@@ -75,7 +76,7 @@ double DubinsWrapper::getSpeed() const {
 void DubinsWrapper::fill(const DubinsPath& path, double speed, double startTime) {
     m_DubinsPath = path;
     m_Speed = speed;
-    m_StartTime = startTime;
+    m_UpdatedStartTime = m_StartTime = startTime;
     setEndTime();
 }
 
@@ -88,7 +89,13 @@ double DubinsWrapper::getEndTime() const {
 }
 
 void DubinsWrapper::updateEndTime(double endTime) {
-    assert(m_EndTime != -1);
-    assert(endTime <= m_EndTime);
+    if (m_EndTime == -1) throw std::runtime_error("Cannot access unset Dubins wrapper");
+    if(endTime > m_EndTime) throw std::runtime_error("Invalid end time for Dubins wrapper");
     m_EndTime = endTime;
+}
+
+void DubinsWrapper::updateStartTime(double startTime) {
+    if (!isInitialized()) throw std::runtime_error("Cannot access unset Dubins wrapper");
+    if (startTime < m_StartTime) throw std::runtime_error("Invalid start time for Dubins wrapper");
+    m_UpdatedStartTime = startTime;
 }

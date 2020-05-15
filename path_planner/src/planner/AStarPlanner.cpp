@@ -25,7 +25,7 @@ std::function<bool(shared_ptr<Vertex> v1, shared_ptr<Vertex> v2)> AStarPlanner::
 //}
 
 DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
-                              double timeRemaining) {
+                              const DubinsPlan& previousPlan, double timeRemaining) {
     m_Config = std::move(config); // gotta do this before we can call now()
     double endTime = timeRemaining + now();
     m_Config.setStartStateTime(start.time());
@@ -51,6 +51,20 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     m_BestVertex = nullptr;
     auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
     auto otherRibbonSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());
+
+    // collision check old plan
+    Vertex::SharedPtr lastPlanEnd = startV;
+    if (!previousPlan.empty()) {
+        for (const auto& p : previousPlan.get()) {
+            lastPlanEnd = Vertex::connect(lastPlanEnd, p);
+            lastPlanEnd->parentEdge()->computeTrueCost(m_Config);
+            if (lastPlanEnd->parentEdge()->infeasible()) {
+                lastPlanEnd = startV;
+                break;
+            }
+        }
+    }
+
 //    if (m_UseRibbons) {
 //        for (const auto& s : m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_CoverageTurningRadius * 2 + 1)) {
 //            m_Samples.push_back(s);
@@ -64,6 +78,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         }
         visualizeVertex(startV, "start");
         pushVertexQueue(startV);
+        if (lastPlanEnd != startV) pushVertexQueue(lastPlanEnd);
         // manually expand starting node to include states on nearby ribbons far enough away such that the boat doesn't
         // have to loop around
         expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles(), true);
@@ -101,11 +116,14 @@ shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles,
 //            *m_Config.output() << "Found goal: " << vertex->toString() << std::endl;
             return vertex;
         }
+//        else {
+//            if (goalCondition(vertex)) std::cerr << "Vertex was goal but outside prior f-bound" << std::endl;
+//            else std::cerr << "Vertex not goal: " << vertex->toString() << std::endl;
+//        }
 //        *m_Config.output() << "Expanding vertex at " << vertex->state().toString() << std::endl;
 //        visualizeVertex(vertex, "vertex");
         expand(vertex, obstacles);
 
-        // should probably check if vertex queue is empty but expand should always push some on
         if (vertexQueueEmpty()) return Vertex::SharedPtr(nullptr);
         vertex = popVertexQueue();
 //        if (m_ExpandedCount >= m_Samples.size()) break; // probably can't find a good plan in these samples so add more

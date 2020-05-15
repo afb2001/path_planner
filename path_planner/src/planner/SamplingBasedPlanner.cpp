@@ -42,7 +42,10 @@ SamplingBasedPlanner::SamplingBasedPlanner() {}
 void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     if (!vertex->isRoot() && vertex->parentEdge()->infeasible()) return;
     vertex->approxToGo(); // make sure it is calculated
+    // prune vertices worse than the incumbent solution
     if (m_BestVertex && m_BestVertex->f() < vertex->f()) return; // assumes heuristic is admissible
+    // make sure this isn't a goal with equal f to the incumbent
+    if (m_BestVertex && m_BestVertex->f() == vertex->f() && goalCondition(vertex)) return;
     m_VertexQueue.push_back(vertex);
     std::push_heap(m_VertexQueue.begin(), m_VertexQueue.end(), getVertexComparator());
 //    std::cerr << "Pushing to vertex queue: " << vertex->toString() << std::endl;
@@ -72,7 +75,7 @@ std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getS
 }
 
 bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) {
-    return vertex->state().time() > m_StartStateTime + DubinsPlan::timeHorizon() ||
+    return vertex->state().time() + 1e-5 > m_StartStateTime + DubinsPlan::timeHorizon() ||
            (vertex->allCovered() && vertex->state().time() > m_StartStateTime + DubinsPlan::timeMinimum());
 }
 
@@ -192,6 +195,7 @@ std::function<bool(const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vert
 //}
 
 DubinsPlan SamplingBasedPlanner::plan(const RibbonManager&, const State& start, PlannerConfig config,
+                                      const DubinsPlan& previousPlan,
                                       double timeRemaining) {
     m_Config = config;
     m_StartStateTime = start.time();

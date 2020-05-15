@@ -17,7 +17,7 @@ public:
 //    std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
 //                            DynamicObstaclesManager dynamicObstacles, double timeRemaining) override;
 
-    DubinsPlan plan(const RibbonManager&, const State& start, PlannerConfig config,
+    DubinsPlan plan(const RibbonManager&, const State& start, PlannerConfig config, const DubinsPlan& previousPlan,
                     double timeRemaining) override;
 
     void pushVertexQueue(Vertex::SharedPtr vertex);

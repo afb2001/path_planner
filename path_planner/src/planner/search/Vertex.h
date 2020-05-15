@@ -6,6 +6,7 @@
 #include "Edge.h"
 #include "../utilities/Path.h"
 #include "../utilities/RibbonManager.h"
+#include "path_planner_common/DubinsWrapper.h"
 
 class Edge;
 class Vertex {
@@ -38,6 +39,8 @@ public:
      */
     static std::shared_ptr<Vertex> connect(const std::shared_ptr<Vertex>& start, const State& next);
     static std::shared_ptr<Vertex> connect(const std::shared_ptr<Vertex>& start, const State& next, double turningRadius, bool coverageAllowed);
+
+    static SharedPtr connect(const SharedPtr& start, const DubinsWrapper& wrapper);
 
     static std::shared_ptr<Vertex> makeRoot(const State& start, const Path& uncovered);
 

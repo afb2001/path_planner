@@ -11,8 +11,6 @@ public:
 
     DubinsPlan(const State& s1, const State& s2, double rho);
 
-//    void append(const State& s); // no
-
     void append(const DubinsPlan& plan);
 
     void append(const DubinsWrapper& dubinsPath);
@@ -29,13 +27,11 @@ public:
 
     bool containsTime(double time) const;
 
+    void changeIntoSuffix(double time);
+
     std::vector<State> getHalfSecondSamples() const;
 
     const std::vector<DubinsWrapper>& get() const;
-
-//    std::vector<State> get() const; // no
-
-//    std::string toString() const;
 
     static constexpr double timeHorizon() { return c_TimeHorizon; }
 

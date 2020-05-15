@@ -51,19 +51,19 @@ double State::headingTo(const State& other) const {
 double State::headingTo(double x1, double y1) const {
     double dx = x1 - this->x();
     double dy = y1 - this->y();
-    double h = M_PI_2 - atan2(dy, dx); // TODO! -- is this correct?
-    if (h < 0) h += 2 * M_PI;
+    double h = c_PiOverTwo - atan2(dy, dx); // TODO! -- is this correct?
+    if (h < 0) h += c_TwoPi;
     return h;
 }
 
 void State::setHeadingTowards(const State& other) {
     heading() = headingTo(other);
-    if (heading() < 0) heading() += 2 * M_PI;
+    if (heading() < 0) heading() += c_TwoPi;
 }
 
 void State::setHeadingTowards(double x1, double y1) {
     heading() = headingTo(x1, y1);
-    if (heading() < 0) heading() += 2 * M_PI;
+    if (heading() < 0) heading() += c_TwoPi;
 }
 
 double State::timeUntil(const State& other) const {
@@ -106,7 +106,7 @@ State State::interpolate(const State& other, double desiredTime) const {
     s.x() += dx * dt;
     s.y() += dy * dt;
     s.heading() = this->heading() + (dh * dt);
-    if (s.heading() >= twoPi) s.heading() -= twoPi;
+    if (s.heading() >= c_TwoPi) s.heading() -= c_TwoPi;
     s.speed() += ds * dt;
     s.time() = desiredTime;
     return s;
@@ -117,5 +117,5 @@ double State::headingDifference(const State& other) const {
 }
 
 double State::headingDifference(double otherHeading) const {
-    return (fmod(fmod((otherHeading - heading()), twoPi) + 3 * M_PI, twoPi) - M_PI);
+    return (fmod(fmod((otherHeading - heading()), c_TwoPi) + 3 * M_PI, c_TwoPi) - M_PI);
 }

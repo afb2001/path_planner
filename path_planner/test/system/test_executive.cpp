@@ -29,7 +29,7 @@ TEST(SystemTests, LoadMapTest) {
         sleep(1);
         executive->updateCovered(1.6263455967290593 * (i+1), 1.6263455967290593 * (i+1), M_PI / 4, 2.3, Executive::getCurrentTime());
     }
-    executive->pause();
+    executive->cancelPlanner();
     std::cerr.rdbuf(sbuf);
     std::cerr << buffer.str() << endl;
     cerr << "Total time elapsed: " << Executive::getCurrentTime() - startTime << "s" << endl;

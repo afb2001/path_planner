@@ -8,12 +8,19 @@
 
 /**
  * This class represents a state of the vehicle in five dimensions: x, y, heading, speed, time.
- * Units: meters, radians east of north, m/s, seconds
+ * Units: meters (local map coordinates), radians east of north, m/s, seconds
  */
 class State
 {
 
   public:
+
+    /**
+     * These may seem strange but it was all so I could change the underlying data storage between fields and a pose
+     * array without changing the interface. It's probably a good idea to go back to individual fields, but if you want
+     * to pass a pose as an array you can do it with the current setup.
+     */
+
     double x() const { return m_Pose[0]; }
     double& x() { return m_Pose[0]; }
     void setX(double x) { m_Pose[0] = x; }
@@ -25,6 +32,17 @@ class State
     double heading() const { return m_Pose[2]; }
     double& heading() { return m_Pose[2]; }
     void setHeading(double heading) { m_Pose[2] = heading; }
+
+    double speed() const { return m_Pose[3]; }
+    double& speed() { return m_Pose[3]; }
+    void setSpeed(double speed) { m_Pose[3] = speed; }
+
+    double time() const { return m_Time; }
+    double& time() { return m_Time; }
+    void setTime(double time) { m_Time = time; }
+
+    double* pose() { return m_Pose; }
+    const double* pose() const { return m_Pose; }
 
     /**
      * Heading north of east. Val called it "yaw".
@@ -41,21 +59,10 @@ class State
      * @param yaw1
      * @return
      */
-    double yaw(double yaw1) {
+    double setYaw(double yaw1) {
         heading() = M_PI_2 - yaw1;
-        if (heading() < 0) heading() += twoPi;
+        if (heading() < 0) heading() += c_TwoPi;
     }
-
-    double speed() const { return m_Pose[3]; }
-    double& speed() { return m_Pose[3]; }
-    void setSpeed(double speed) { m_Pose[3] = speed; }
-
-    double time() const { return m_Time; }
-    double& time() { return m_Time; }
-    void setTime(double time) { m_Time = time; }
-
-    double* pose() { return m_Pose; }
-    const double* pose() const { return m_Pose; }
 
     /**
      * Construct a State.
@@ -82,8 +89,16 @@ class State
      */
     void move(double distance);
 
+    /**
+     * Create a string representation of the state. Uses degrees for human-friendly headings.
+     * @return
+     */
     std::string toString() const;
 
+    /**
+     * Create a string representation using radians instead of degrees.
+     * @return
+     */
     std::string toStringRad() const;
 
     /**
@@ -128,10 +143,17 @@ class State
      */
     double timeUntil(const State& other) const;
 
+    /**
+     * Tests the actual (bitwise) equivalence between states. If you need to know approximate equivalence use the
+     * distanceTo and headingDifference functions (no utility to compare speeds is provided - I trust you can figure
+     * out). The controller has its own comparison function anyway.
+     * @param rhs
+     * @return
+     */
     inline bool operator==(const State& rhs) const;
 
     /**
-     * Determine whether two states share the same pose (ignores speed).
+     * Determine whether two states share the same pose (ignores speed). No floating point tolerance.
      * @param rhs
      * @return
      */
@@ -160,15 +182,34 @@ class State
      */
     State interpolate(const State& other, double desiredTime) const;
 
+    /**
+     * Calculate the heading difference between states. Just an overload of the other one for convenience.
+     * @param other
+     * @return
+     */
     double headingDifference(const State& other) const;
 
+    /**
+     * Calculate the heading difference between this state's heading and the given one. This is more than simple
+     * subtraction because it considers heading wrap around zero and returns a friendly heading.
+     * @param otherHeading
+     * @return
+     */
     double headingDifference(double otherHeading) const;
 
 private:
     double m_Pose [4] = {0, 0, 0, 0};
     double m_Time = -1;
 
-    static constexpr double twoPi = 2 * M_PI;
+    /**
+     * I found myself typing this a lot so I made my own constant.
+     */
+    static constexpr double c_TwoPi = 2 * M_PI;
+
+    /**
+     * Made another one because M_PI_2 is a little misleading/confusing
+     */
+     static constexpr double c_PiOverTwo = M_PI_2;
 };
 
 #endif

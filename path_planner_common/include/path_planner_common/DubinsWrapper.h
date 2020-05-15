@@ -8,27 +8,69 @@ extern "C" {
 #include "dubins.h"
 };
 
-
+/**
+ * Wrapper class for convenience around a Dubins path. Check out the included "dubins.h" for more details about that.
+ */
 class DubinsWrapper {
 public:
     DubinsWrapper() = default;
 
+    /**
+     * Construct a Dubins wrapper. Computes and stores the Dubins path between the given states.
+     * @param s1 initial configuration
+     * @param s2 final configuration
+     * @param rho turning radius
+     */
     DubinsWrapper(const State& s1, const State& s2, double rho);
 
+    /**
+     * Computes and stores the Dubins path between the given states.
+     * @param s1 initial configuration
+     * @param s2 final configuration
+     * @param rho turning radius
+     */
     void set(const State& s1, const State& s2, double rho);
 
+    /**
+     * Stores the already-computed Dubins path.
+     * @param path the Dubins path
+     * @param speed
+     * @param startTime
+     */
     void fill(const DubinsPath& path, double speed, double startTime);
 
+    /**
+     * @return the length of the underlying Dubins path
+     */
     double length() const;
 
+    /**
+     * @return true iff the given time occurs in this path
+     */
     bool containsTime(double) const;
 
+    /**
+     * Sets the values of the given state to be on this Dubins path. Uses the provided time to determine how far along
+     * the path it is. Throws a runtime error if the time is not contained within this path. DOES set the state's speed.
+     * @param s
+     */
     void sample(State& s) const;
 
+    /**
+     * Get samples at a constant time interval, starting at the starting time for this path.
+     * @param timeInterval
+     * @return
+     */
     std::vector<State> getSamples(double timeInterval) const;
 
+    /**
+     * @return the turning radius
+     */
     double getRho() const;
 
+    /**
+     * @return the speed
+     */
     double getSpeed() const;
 
     /**
@@ -37,8 +79,15 @@ public:
      */
     double getStartTime() const;
 
+    /**
+     * @return the end time, calculated based on the length and speed, or updated manually
+     */
     double getEndTime() const;
 
+    /**
+     * Truncate the path with a new (earlier) end time. Throws an exception if you try to make it longer (later end time).
+     * @param endTime
+     */
     void updateEndTime(double endTime);
 
     /**
@@ -48,15 +97,26 @@ public:
      */
     void updateStartTime(double startTime);
 
+    /**
+     * Get the underlying Dubins path.
+     * @return
+     */
     const DubinsPath& unwrap() const;
 
 private:
-    DubinsPath m_DubinsPath;
-    double m_Speed;
+    DubinsPath m_DubinsPath{};
+    double m_Speed{};
     double m_StartTime = -1, m_EndTime = -1, m_UpdatedStartTime = -1;
 
+    /**
+     * Because you can default-construct it. Would be nice to get rid of this.
+     * @return
+     */
     bool isInitialized() const;
 
+    /**
+     * Compute the end time based on length and speed.
+     */
     void setEndTime();
 };
 

@@ -37,7 +37,7 @@ void DubinsWrapper::sample(State& s) const {
         std::cerr << "Encountered error in dubins library" << std::endl;
     }
     // set yaw with heading value to correct things
-    s.yaw(s.heading()); // TODO! -- change state to internally use yaw?
+    s.setYaw(s.heading()); // TODO! -- change state to internally use yaw?
     s.speed() = m_Speed; // take note of this
 }
 

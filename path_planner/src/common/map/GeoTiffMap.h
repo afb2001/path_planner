@@ -5,8 +5,18 @@
 #include <string>
 #include "Map.h"
 
+/**
+ * Represent a map loaded from a GeoTiff.
+ */
 class GeoTiffMap : public Map {
 public:
+    /**
+     * Loads a map from the given path. Currently converts it into a safety-distance grid but should skip that part and
+     * just make a bitmap of occupancy.
+     * @param path path to the map file.
+     * @param longitude origin longitude
+     * @param originLatitude origin latitude
+     */
     explicit GeoTiffMap(const std::string& path, double longitude, double originLatitude);
 
     ~GeoTiffMap() override = default;

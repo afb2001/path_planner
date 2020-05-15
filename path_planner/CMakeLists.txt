@@ -70,7 +70,6 @@ add_library(planner
         src/planner/Planner.cpp
         src/planner/search/Vertex.cpp
         src/planner/search/Edge.cpp
-        src/planner/utilities/Path.cpp
         src/planner/utilities/StateGenerator.cpp
         src/planner/SamplingBasedPlanner.cpp
         src/planner/AStarPlanner.cpp

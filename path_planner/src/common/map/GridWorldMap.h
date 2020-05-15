@@ -4,8 +4,15 @@
 #include <vector>
 #include "Map.h"
 
+/**
+ * Represent a map loaded from a grid-world text file.
+ */
 class GridWorldMap : public Map {
 public:
+    /**
+     * Load the map from a text file at the given path.
+     * @param path
+     */
     GridWorldMap(const std::string& path);
 
     ~GridWorldMap() override = default;

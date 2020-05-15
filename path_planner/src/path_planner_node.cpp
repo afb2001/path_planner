@@ -132,14 +132,14 @@ public:
 //    {
 //        path_planner::Trajectory reference;
 //        for (State s : trajectory) {
-//            reference.states.push_back(getStateMsg(s));
+//            reference.states.push_back(convertToStateMsg(s));
 //        }
 //        reference.trajectoryNumber = ++m_TrajectoryCount;
 //        mpc::UpdateReferenceTrajectoryRequest req;
 //        mpc::UpdateReferenceTrajectoryResponse res;
 //        req.trajectory = reference;
 //        if (m_update_reference_trajectory_client.call(req, res)) {
-//            auto s = getState(res.state);
+//            auto s = convertToStateFromMsg(res.state);
 //            displayPlannerStart(s);
 //            return s;
 //        } else {
@@ -170,8 +170,8 @@ public:
 
     void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
         m_Executive->refreshMap(config.planner_geotiff_map, m_origin.latitude, m_origin.longitude);
-        m_Executive->setVehicleConfiguration(config.non_coverage_turning_radius, config.coverage_turning_radius,
-                config.max_speed, config.line_width, config.branching_factor, config.heuristic);
+        m_Executive->setConfiguration(config.non_coverage_turning_radius, config.coverage_turning_radius,
+                                      config.max_speed, config.line_width, config.branching_factor, config.heuristic);
         m_Executive->setPlannerVisualization(config.dump_visualization, config.visualization_file);
     }
 

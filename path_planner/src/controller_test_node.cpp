@@ -117,7 +117,7 @@ public:
 //    {
 //        path_planner::Trajectory reference;
 //        for (State s : trajectory) {
-//            reference.states.push_back(getStateMsg(s));
+//            reference.states.push_back(convertToStateMsg(s));
 //        }
 //        reference.trajectoryNumber = ++m_TrajectoryCount;
 //        mpc::UpdateReferenceTrajectoryRequest req;

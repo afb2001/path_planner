@@ -12,12 +12,11 @@ TrajectoryDisplayerHelper::TrajectoryDisplayerHelper() {
 
 void TrajectoryDisplayerHelper::displayTrajectory(const std::vector<State>& trajectory, bool plannerTrajectory) {
     displayTrajectory(trajectory, plannerTrajectory, true);
-//        for (const auto& s : trajectory) std::cerr << s.toString() << std::endl; // print trajectory
 }
 
 void TrajectoryDisplayerHelper::displayTrajectory(const std::vector<State>& trajectory, bool plannerTrajectory,
                                                   bool achievable) {
-    assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
+    if (!m_display_pub) throw std::runtime_error("Trajectory displayer not properly initialized");
     geographic_visualization_msgs::GeoVizPointList displayPoints;
     displayPoints.color.b = 1;
     if (!plannerTrajectory) {
@@ -52,7 +51,7 @@ double TrajectoryDisplayerHelper::getTime() const {
 }
 
 geographic_msgs::GeoPoint TrajectoryDisplayerHelper::convertToLatLong(const State& state) {
-    assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
+    if (!m_display_pub) throw std::runtime_error("Trajectory displayer not properly initialized");
     project11_transformations::MapToLatLong::Request request;
     project11_transformations::MapToLatLong::Response response;
     request.map.point.x = state.x();
@@ -61,8 +60,8 @@ geographic_msgs::GeoPoint TrajectoryDisplayerHelper::convertToLatLong(const Stat
     return response.wgs84.position;
 }
 
-path_planner_common::StateMsg TrajectoryDisplayerHelper::getStateMsg(const State& state) {
-    assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
+path_planner_common::StateMsg TrajectoryDisplayerHelper::convertToStateMsg(const State& state) {
+    if (!m_display_pub) throw std::runtime_error("Trajectory displayer not properly initialized");
     path_planner_common::StateMsg stateMsg;
     stateMsg.x = state.x();
     stateMsg.y = state.y();
@@ -72,8 +71,8 @@ path_planner_common::StateMsg TrajectoryDisplayerHelper::getStateMsg(const State
     return stateMsg;
 }
 
-State TrajectoryDisplayerHelper::getState(const path_planner_common::StateMsg& stateMsg) {
-    assert(m_display_pub != nullptr && "Trajectory displayer not properly initialized");
+State TrajectoryDisplayerHelper::convertToStateFromMsg(const path_planner_common::StateMsg& stateMsg) {
+    if (!m_display_pub) throw std::runtime_error("Trajectory displayer not properly initialized");
     State state;
     state.x() = stateMsg.x;
     state.y() = stateMsg.y;

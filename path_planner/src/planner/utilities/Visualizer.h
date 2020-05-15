@@ -3,6 +3,9 @@
 
 #include <fstream>
 
+/**
+ * Encapsulate IO for visualization.
+ */
 class Visualizer {
 public:
     typedef std::shared_ptr<Visualizer> SharedPtr;

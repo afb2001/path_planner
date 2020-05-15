@@ -17,7 +17,7 @@
 #include <project11_transformations/local_services.h>
 
 /**
- * Base class for nodes related to the path planner.
+ * Base class for nodes related to the path planner. Holds some shared code and does some shared setup.
  */
 class NodeBase
 {
@@ -52,26 +52,55 @@ public:
         publishControllerMessage("terminate");
     }
 
+    /**
+     * Goal callback for action server.
+     */
     virtual void goalCallback() = 0;
 
+    /**
+     * Preempt callback for action server.
+     */
     virtual void preemptCallback() = 0;
 
+    /**
+     * Callback to update vehicle position.
+     * @param inmsg
+     */
     virtual void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &inmsg) = 0;
 
+    /**
+     * Callback to update vehicle heading.
+     * @param inmsg
+     */
     void headingCallback(const marine_msgs::NavEulerStamped::ConstPtr& inmsg)
     {
         m_current_heading = inmsg->orientation.heading * M_PI / 180.0;
     }
 
+    /**
+     * Callback to update vehicle speed.
+     * @param inmsg
+     */
     void speedCallback(const geometry_msgs::TwistStamped::ConstPtr& inmsg)
     {
         m_current_speed = inmsg->twist.linear.x; // this will change once /sog is a vector
     }
 
+    /**
+     * Callback to update piloting mode.
+     * @param inmsg
+     */
     virtual void pilotingModeCallback(const std_msgs::String::ConstPtr& inmsg) = 0;
 
+    /**
+     * What to do when the planner finishes.
+     */
     virtual void allDone() = 0;
 
+    /**
+     * Publish a message to the controller.
+     * @param m
+     */
     void publishControllerMessage(std::string m)
     {
         std_msgs::String msg;
@@ -79,6 +108,10 @@ public:
         m_controller_msgs_pub.publish(msg);
     }
 
+    /**
+     * Display the contents of a ribbon manager.
+     * @param ribbonManager
+     */
     void displayRibbons(const RibbonManager& ribbonManager) {
 
         geographic_visualization_msgs::GeoVizItem geoVizItem;
@@ -98,6 +131,10 @@ public:
         m_display_pub.publish(geoVizItem);
     }
 
+    /**
+     * Display the start state for the current planning iteration.
+     * @param state
+     */
     void displayPlannerStart(const State& state) {
 //        cerr << "Displaying state " << state.toString() << endl;
         geographic_visualization_msgs::GeoVizItem geoVizItem;
@@ -126,6 +163,9 @@ public:
         m_display_pub.publish(geoVizItem);
     }
 
+    /**
+     * Clear the display. Not sure why this doesn't work.
+     */
     void clearDisplay() {
         displayRibbons(RibbonManager());
         m_TrajectoryDisplayer.displayTrajectory(std::vector<State>(), true);
@@ -136,33 +176,39 @@ public:
         m_display_pub.publish(geoVizItem);
     }
 
+    /**
+     * Utility to get the time.
+     * @return
+     */
     double getTime() const {
         return m_TrajectoryDisplayer.getTime();
     }
 
-    path_planner_common::StateMsg getStateMsg(const State& state) {
-        return m_TrajectoryDisplayer.getStateMsg(state);
-    }
-
-    State getState(const path_planner_common::StateMsg& stateMsg) {
-        return m_TrajectoryDisplayer.getState(stateMsg);
-    }
-
+    /**
+     * Convert a state (local map coordinates) to a GeoPoint (LatLong).
+     * @param state
+     * @return
+     */
     geographic_msgs::GeoPoint convertToLatLong(const State& state) {
         return m_TrajectoryDisplayer.convertToLatLong(state);
     }
 
-    static path_planner_common::Plan getPlanMsg(const DubinsPlan& plan) {
+    /**
+     * Convert an internal Dubins plan to a ROS message.
+     * @param plan
+     * @return
+     */
+    static path_planner_common::Plan convertToPlanMsg(const DubinsPlan& plan) {
         path_planner_common::Plan planMsg;
         for (const auto& d : plan.get()) {
             path_planner_common::DubinsPath path;
             auto p = d.unwrap();
-            path.x = p.qi[0];
-            path.y = p.qi[1];
-            path.yaw = p.qi[2];
-            path.param0 = p.param[0];
-            path.param1 = p.param[1];
-            path.param2 = p.param[2];
+            path.initial_x = p.qi[0];
+            path.initial_y = p.qi[1];
+            path.initial_yaw = p.qi[2];
+            path.length0 = p.param[0];
+            path.length1 = p.param[1];
+            path.length2 = p.param[2];
             path.type = p.type;
             path.rho = d.getRho();
             path.speed = d.getSpeed();
@@ -173,12 +219,17 @@ public:
         return planMsg;
     }
 
+    /**
+     * Update the controller's reference trajectory and return the state it provides.
+     * @param plan
+     * @return
+     */
     State publishPlan(const DubinsPlan& plan) {
         path_planner_common::UpdateReferenceTrajectoryRequest req;
         path_planner_common::UpdateReferenceTrajectoryResponse res;
-        req.plan = getPlanMsg(plan);
+        req.plan = convertToPlanMsg(plan);
         if (m_update_reference_trajectory_client.call(req, res)) {
-            auto s = getState(res.state);
+            auto s = m_TrajectoryDisplayer.convertToStateFromMsg(res.state);
             displayPlannerStart(s);
             return s;
         } else {
@@ -215,8 +266,6 @@ protected:
     ros::ServiceClient m_update_reference_trajectory_client;
 
     project11::Transformations m_CoordinateConverter;
-
-    long m_TrajectoryCount = 1;
 };
 
 

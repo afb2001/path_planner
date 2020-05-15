@@ -5,6 +5,9 @@
 #include <path_planner_common/State.h>
 #include "RibbonManager.h"
 
+/**
+ * Encapsulate state generation. Construct a state generator with bounds and a seed and it'll do the rest.
+ */
 class StateGenerator {
 public:
     StateGenerator(double minX, double maxX,

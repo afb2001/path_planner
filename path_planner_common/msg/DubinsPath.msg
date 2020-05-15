@@ -1,10 +1,10 @@
-float64 x
-float64 y
-float64 yaw
+float64 initial_x
+float64 initial_y
+float64 initial_yaw
 float64 speed
 float64 start_time
-float64 param0
-float64 param1
-float64 param2
+float64 length0
+float64 length1
+float64 length2
 float64 rho
 int32 type

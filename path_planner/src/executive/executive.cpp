@@ -49,34 +49,28 @@ void Executive::planLoop() {
         m_CancelCV.wait_for(lock, chrono::seconds(2), [=] { return m_PlannerState != PlannerState::Cancelled; });
         if (m_PlannerState == PlannerState::Cancelled) {
             cerr << "Planner initialization timed out. Cancel flag is still set.\n" <<
-                "This is likely the result of a race condition I thought I fixed.\n" <<
+                "I think this happens when there was an error of some kind in the previous planning iteration.\n" <<
                 "You're gonna have to restart the planner node if you want to keep using it.\n" << endl;
             return;
         }
         m_PlannerState = PlannerState::Running;
     }
 
-//    cerr << "Starting plan loop" << endl;
     State startState;
-
     // declare plan here so that it persists between loops
     DubinsPlan plan;
-
 
     while (true) {
         double startTime = m_TrajectoryPublisher->getTime();
 
-//        std::cerr << "Top of plan loop" << std::endl;
-
-        unique_lock<mutex> lock(m_PlannerStateMutex);
-        if (m_PlannerState == PlannerState::Cancelled) {
-            lock.unlock();
-            break;
+        { // new scope for RAII again
+            unique_lock<mutex> lock(m_PlannerStateMutex);
+            if (m_PlannerState == PlannerState::Cancelled) {
+                lock.unlock();
+                break;
+            }
         }
-        lock.unlock();
-
-//        std::cerr << "Checking ribbons" << std::endl;
-        {
+        { // and again
             std::lock_guard<std::mutex> lock1(m_RibbonManagerMutex);
             if (m_RibbonManager.done()) {
                 // tell the node we're done
@@ -85,25 +79,11 @@ void Executive::planLoop() {
                 break;
             }
         }
-
-
         // display ribbons
-        // seg fault has occurred in this call and I have no idea how (trace below)
-        /*
-            #0  0x00007f3c16e12cd5 in Ribbon::startAsState (this=0x10)
-                at /home/abrown/project11/catkin_ws/src/path_planner/src/planner/utilities/Ribbon.cpp:55
-            #1  0x00005582929167bb in PathPlanner::displayRibbons (this=0x7ffd7db6dc90,
-                ribbonManager=...)
-                at /home/abrown/project11/catkin_ws/src/path_planner/src/path_planner_node.cpp:270
-            #2  0x00007f3c17078483 in Executive::planLoop (this=0x558293696800)
-                at /home/abrown/project11/catkin_ws/src/path_planner/src/executive/executive.cpp:86
-         */
-        {
+        { // one more time
             std::lock_guard<std::mutex> lock1(m_RibbonManagerMutex);
             m_TrajectoryPublisher->displayRibbons(m_RibbonManager);
         }
-
-//        std::cerr << "Displayed ribbons" << std::endl;
 
         // copy the map pointer if it's been set (don't wait for the mutex because it may be a while)
         if (m_MapMutex.try_lock()) {
@@ -115,11 +95,7 @@ void Executive::planLoop() {
             m_MapMutex.unlock();
         }
 
-        // call the controller service to get the estimated state we'll be in after the planning time has elapsed
-//        auto startState = m_TrajectoryPublisher->getEstimatedState(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds);
-
-//        std::cerr << "Checking start state" << std::endl;
-        // if the state estimator returns an error naively do it ourselves
+        // if the state estimator returned an error naively do it ourselves
         if (startState.time() == -1) {
             startState = m_LastState.push(m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds - m_LastState.time());
         }
@@ -145,20 +121,18 @@ void Executive::planLoop() {
                 std::lock_guard<std::mutex> lock(m_RibbonManagerMutex);
                 ribbonManagerCopy = m_RibbonManager;
             }
-            // cover up to the state that we're planning from. Will require more work if we can go more than the min
-            // ribbon length in 1s
+            // cover up to the state that we're planning from
             ribbonManagerCopy.coverBetween(m_LastState.x(), m_LastState.y(), startState.x(), startState.y());
-//            ribbonManagerCopy.cover(startState.x(), startState.y());
             plan = planner->plan(ribbonManagerCopy, startState, m_PlannerConfig, plan,
                                  startTime + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
         } catch(const std::exception& e) {
             cerr << "Exception thrown while planning:" << endl;
             cerr << e.what() << endl;
             cerr << "Pausing." << endl;
-            pause();
+            cancelPlanner();
         } catch (...) {
             cerr << "Unknown exception thrown while planning; pausing" << endl;
-            pause();
+            cancelPlanner();
             throw;
         }
 
@@ -172,10 +146,8 @@ void Executive::planLoop() {
         m_TrajectoryPublisher->displayTrajectory(plan.getHalfSecondSamples(), true);
 
         if (!plan.empty()) {
-//            cerr << "Sending trajectory to controller" << endl;
+            // send trajectory to controller
             startState = m_TrajectoryPublisher->publishPlan(plan);
-//            cerr << "Received state from controller: " << startState.toString() << endl;
-
             State expectedStartState(startState);
             plan.sample(expectedStartState);
             if (!startState.isCoLocated(expectedStartState)) {
@@ -208,13 +180,11 @@ void Executive::planLoop() {
             } else {
                 // expected start state is along plan so allow plan to be passed to planner as previous plan
                 m_RadiusShrink += c_RadiusShrinkAmount;
-
             }
         } else {
             cerr << "Planner returned empty trajectory." << endl;
             startState = State();
         }
-
     }
 
     unique_lock<mutex> lock2(m_PlannerStateMutex);
@@ -228,16 +198,12 @@ void Executive::terminate()
     cancelPlanner();
 }
 
-void Executive::pause()
-{
-    cancelPlanner();
-}
-
 void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
     m_DynamicObstaclesManager.update(mmsi, inventDistributions(obstacle));
 }
 
-void Executive::refreshMap(std::string pathToMapFile, double latitude, double longitude) {
+void Executive::refreshMap(const std::string& pathToMapFile, double latitude, double longitude) {
+    // Run asynchronously and headless. The ol' fire-off-and-pray method
     thread([this, pathToMapFile, latitude, longitude] {
         std::lock_guard<std::mutex> lock(m_MapMutex);
         if (m_CurrentMapPath != pathToMapFile) {
@@ -253,7 +219,7 @@ void Executive::refreshMap(std::string pathToMapFile, double latitude, double lo
             }
             catch (...) {
                 // swallow all errors in this thread
-                cerr << "Encountered an error loading map at path " << pathToMapFile << endl;
+                cerr << "Encountered an error loading map at path " << pathToMapFile << ".\nMap was not updated." << endl;
                 m_NewMap = nullptr;
                 m_CurrentMapPath = "";
             }
@@ -267,6 +233,7 @@ void Executive::addRibbon(double x1, double y1, double x2, double y2) {
 }
 
 std::vector<Distribution> Executive::inventDistributions(State obstacle) {
+    // This definitely needs some work. Maybe Distribution does too.
     std::vector<Distribution> distributions;
     double mean[2] = {obstacle.x(), obstacle.y()};
     double covariance[2][2] = {{1, 0},{0, 1}};
@@ -283,14 +250,15 @@ void Executive::clearRibbons() {
     m_RibbonManager = RibbonManager(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons, m_PlannerConfig.turningRadius(), 2);
 }
 
-void Executive::setVehicleConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed,
-        double lineWidth, int k, int heuristic) {
+void Executive::setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed,
+                                 double lineWidth, int k, int heuristic) {
     m_PlannerConfig.setMaxSpeed(maxSpeed);
     m_PlannerConfig.setTurningRadius(turningRadius);
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
     RibbonManager::setRibbonWidth(lineWidth);
     m_PlannerConfig.setBranchingFactor(k);
     switch (heuristic) {
+        // check the .cfg file if this is breaking or if you change these
         case 0: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::MaxDistance); break;
         case 1: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitAllRibbons); break;
         case 2: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons); break;
@@ -319,4 +287,8 @@ void Executive::setPlannerVisualization(bool visualize, const std::string& visua
         m_Visualizer = Visualizer::UniquePtr(new Visualizer(visualizationFilePath));
         m_PlannerConfig.setVisualizer(&m_Visualizer);
     }
+}
+
+void Executive::updateDynamicObstacle(uint32_t mmsi, const std::vector<Distribution>& obstacle) {
+    m_DynamicObstaclesManager.update(mmsi, obstacle);
 }

@@ -6,29 +6,39 @@
 #include <path_planner_common/State.h>
 #include "../common/map/Map.h"
 #include "search/Vertex.h"
-#include "utilities/Path.h"
 #include <path_planner_common/DubinsPlan.h>
 #include "PlannerConfig.h"
 
+/**
+ * Interface to represent all planners. This might not have been really necessary but when I ported everything to C++
+ * I started with implementing a dumb planner here and more complex up the hierarchy. The dumber planners didn't get
+ * updated when we switched to ribbons so now this is basically just an interface.
+ */
 class Planner {
 public:
     Planner();
 
     virtual ~Planner() = default;
 
-//    void addToCover(const std::vector<std::pair<double, double>>& points);
-
-//    void clearToCover();
-
-//    virtual std::vector<State> plan(const std::vector<std::pair<double, double>>& newlyCovered, const State& start,
-//                                    DynamicObstaclesManager dynamicObstacles, double timeRemaining);
-
-//    virtual std::vector<State> plan(const RibbonManager& ribbonManager, const State& start,
-//            DynamicObstaclesManager dynamicObstacles, double timeRemaining);
-
+    /**
+     * Plan using the provided planning problem and configuration. Guaranteed to return before timeRemaining has elapsed.
+     * @param ribbonManager the ribbon manager
+     * @param start the start state
+     * @param config planner configuration
+     * @param previousPlan previous plan to help seed search
+     * @param timeRemaining computation time bound
+     * @return
+     */
     virtual DubinsPlan plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
                             const DubinsPlan& previousPlan, double timeRemaining);
 
+    /**
+     * Construct a single plan by tracing back from the given vertex to the root.
+     * @param v
+     * @param smoothing
+     * @param obstacles
+     * @return
+     */
     DubinsPlan tracePlan(const std::shared_ptr<Vertex>& v, bool smoothing, const DynamicObstaclesManager& obstacles);
 
     /**
@@ -37,18 +47,12 @@ public:
      */
     void setConfig(PlannerConfig config);
 
-//    void updateMap(Map::SharedPtr map);
-
-//    virtual void setK(int k);
-
 protected:
-//    double m_MaxSpeed, m_TurningRadius, m_CoverageMaxSpeed, m_CoverageTurningRadius;
-//    Path m_PointsToCover;
 
-//    Map::SharedPtr m_Map;
-
-//    std::ostream* m_Output = &std::cerr;
-
+    /**
+     * Utility to get the current time in seconds.
+     * @return
+     */
     double now() const;
 
     PlannerConfig m_Config;

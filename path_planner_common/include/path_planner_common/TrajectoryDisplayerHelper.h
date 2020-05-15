@@ -22,7 +22,8 @@ public:
 
     /**
      * Default constructor to allow for automatic construction. You should assign to your instance using the other
-     * constructor if you're going to use it.
+     * constructor if you're going to use it. I don't remember why I needed this but I wouldn't have put it in if I didn't.
+     * If you see a way to remove it gracefully go ahead - it would simplify things and be more idiomatic (RAII).
      */
     TrajectoryDisplayerHelper();
 
@@ -49,11 +50,27 @@ public:
      */
     virtual double getTime() const;;
 
+    /**
+     * Converts a state (in map coordinates) to a GeoPoint (in LatLong).
+     * @param state
+     * @return GeoPoint version of the state (LatLong)
+     */
     geographic_msgs::GeoPoint convertToLatLong(const State& state);
 
-    path_planner_common::StateMsg getStateMsg(const State& state);
+    /**
+     * Converts a state to a ROS message.
+     * @param state
+     * @return ROS StateMsg representing the state
+     */
+    path_planner_common::StateMsg convertToStateMsg(const State& state);
 
-    State getState(const path_planner_common::StateMsg& stateMsg);
+    /**
+     * Convert a ROS state message to the internal State type.
+     * @param stateMsg
+     * @return
+     */
+    State convertToStateFromMsg(const path_planner_common::StateMsg& stateMsg);
+
 protected:
     ros::Publisher* m_display_pub;
     ros::ServiceClient m_map_to_lat_long_client;

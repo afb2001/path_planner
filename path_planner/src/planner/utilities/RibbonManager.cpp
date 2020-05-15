@@ -52,7 +52,6 @@ double RibbonManager::approximateDistanceUntilDone(double x, double y, double ya
 
 double RibbonManager::tspPointRobotNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, std::pair<double, double> point) {
     // Depth-first TSP solution
-//    std::cerr << "Computing TSP solution from " << point.first << ", " << point.second << std::endl;
     if (ribbonsLeft.empty()) return distanceSoFar;
     auto min = DBL_MAX;
     for (auto it = ribbonsLeft.begin(); it != ribbonsLeft.end(); it++) {
@@ -99,7 +98,6 @@ double RibbonManager::tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft
 double RibbonManager::tspDubinsNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, double x,
                                                  double y, double yaw) const{
     // Depth-first TSP solution
-//    std::cerr << "Computing TSP solution from " << x << ", " << y << std::endl;
     if (ribbonsLeft.empty()) return distanceSoFar;
     auto min = DBL_MAX;
     for (auto it = ribbonsLeft.begin(); it != ribbonsLeft.end(); it++) {
@@ -127,7 +125,6 @@ double RibbonManager::tspDubinsNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, do
     };
     int i = 0;
     ribbonsLeft.sort(comp);
-//    std::sort(ribbonsLeft.begin(), ribbonsLeft.end(), comp);
     for (auto it = ribbonsLeft.begin(); it != ribbonsLeft.end(); it++) {
         if (i >= m_K) break;
         const auto r = *it;
@@ -338,7 +335,7 @@ std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, do
         } else {
             s = s2;
         }
-        auto h2 = s.yaw() - M_PI_2; // but which way???
+        auto h2 = s.yaw() - M_PI_2; // but which way??? // might not be right in all cases but seems to work in practice
         auto dx1 = cos(h2) * radius / 2;
         auto dy1 = sin(h2) * radius / 2;
 //        auto x3 = proj.first + proj.first < x ? dx1 : -dx1;
@@ -368,8 +365,6 @@ std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, do
 
         // project that back onto the ribbon
         auto projFinal = r.getProjection(x8, y8);
-
-        // IT'S BACKWARDS! Ahhhh // alright I think I got it but I gotta go study
 
         // done. that's the state. If it's close by add it to the list
         auto d = distance(projFinal, start.x(), start.y());

@@ -5,6 +5,10 @@
 #include <assert.h>
 #include "utilities/Visualizer.h"
 
+/**
+ * Class that holds all the configurations for the planner. These need to get passed around periodically so it was
+ * easiest to make a single object that holds them all. It just has getters and setters pretty much.
+ */
 class PlannerConfig {
 public:
 

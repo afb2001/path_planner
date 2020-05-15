@@ -4,41 +4,6 @@
 
 SamplingBasedPlanner::SamplingBasedPlanner() {}
 
-//std::vector<State> SamplingBasedPlanner::plan(const std::vector<std::pair<double, double>>& newlyCovered,
-//                                              const State& start,
-//                                              DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
-//    m_PointsToCover.remove(newlyCovered);
-//    return plan(start, dynamicObstacles, timeRemaining);
-//}
-
-//std::vector<State> SamplingBasedPlanner::plan(const RibbonManager& ribbonManager, const State& start,
-//                                              DynamicObstaclesManager dynamicObstacles, double timeRemaining) {
-//    setRibbonManager(ribbonManager);
-//    return plan(start, dynamicObstacles, timeRemaining);
-//}
-
-//std::vector<State> SamplingBasedPlanner::plan(const State& start, DynamicObstaclesManager dynamicObstacles,
-//                                              double timeRemaining) {
-//    m_StartStateTime = start.time;
-//    m_Samples.clear();
-//    m_VertexQueue.clear();
-//    double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
-//    double magnitude = m_Config.maxSpeed() * Plan::timeHorizon();
-//    minX = start.x - magnitude;
-//    maxX = start.x + magnitude;
-//    minY = start.y - magnitude;
-//    maxY = start.y + magnitude;
-//
-//    StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
-//    addSamples(generator, 1000);
-//    std::shared_ptr<Vertex> vertex;
-//    for (vertex = (Vertex::makeRoot(start, m_RibbonManager));
-//         !goalCondition(vertex); vertex = popVertexQueue()) {
-//        expand(vertex, m_Config.obstacles());
-//    }
-//    return tracePlan(vertex, false, m_Config.obstacles()).get();
-//}
-
 void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     if (!vertex->isRoot() && vertex->parentEdge()->infeasible()) return;
     vertex->approxToGo(); // make sure it is calculated
@@ -69,23 +34,22 @@ std::function<bool(std::shared_ptr<Vertex> v1,
 
 std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getStateComparator(const State& origin) {
     return [&](const State& s1, const State& s2) {
-//        return s1.dubinsDistanceTo(origin, m_TurningRadius) > s2.dubinsDistanceTo(origin, m_TurningRadius);
         return s1.distanceTo(origin) > s2.distanceTo(origin);
     };
 }
 
 bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) {
     return vertex->state().time() + 1e-5 > m_StartStateTime + DubinsPlan::timeHorizon() ||
-           (vertex->allCovered() && vertex->state().time() > m_StartStateTime + DubinsPlan::timeMinimum());
+           (vertex->done() && vertex->state().time() > m_StartStateTime + DubinsPlan::timeMinimum());
 }
 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, const DynamicObstaclesManager& obstacles) {
     
 //    std::cerr << "Expanding vertex " << sourceVertex->toString() << std::endl;
     // add nearest point to cover
-    if (!sourceVertex->allCovered()) {
+    if (!sourceVertex->done()) {
         auto s = sourceVertex->getNearestPointAsState();
-        if (sourceVertex->state().distanceTo(s) > Edge::dubinsIncrement()) {
+        if (sourceVertex->state().distanceTo(s) > Edge::collisionCheckingIncrement()) {
             s.speed() = m_Config.maxSpeed();
             // TODO! -- what heading for points?
             auto destinationVertex = Vertex::connect(sourceVertex, s, m_Config.turningRadius(), false);
@@ -111,7 +75,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
         std::pop_heap(m_Samples.begin(), m_Samples.end() - i, comp);
         if (!regularDone && (bestSamples.size() < k() ||
             bestSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
-            if (sourceVertex->state().distanceTo(sample) > Edge::dubinsIncrement()) {
+            if (sourceVertex->state().distanceTo(sample) > Edge::collisionCheckingIncrement()) {
                 // don't force speed to be anything in particular, allowing samples to come with unique speeds
                 bestSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.turningRadius(), false));
                 bestSamples.back()->parentEdge()->computeApproxCost();
@@ -126,7 +90,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
         }
         if (!coverageDone && (bestCoverageSamples.size() < k() ||
             bestCoverageSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
-            if (sourceVertex->state().distanceTo(sample) > Edge::dubinsIncrement()) {
+            if (sourceVertex->state().distanceTo(sample) > Edge::collisionCheckingIncrement()) {
                 bestCoverageSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.coverageTurningRadius(), true));
                 bestCoverageSamples.back()->parentEdge()->computeApproxCost();
                 std::push_heap(bestCoverageSamples.begin(), bestCoverageSamples.end(), dubinsComp);
@@ -189,11 +153,6 @@ std::function<bool(const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vert
     };
 }
 
-//void SamplingBasedPlanner::setRibbonManager(const RibbonManager& ribbonManager) {
-//    m_RibbonManager = ribbonManager;
-//    m_UseRibbons = true;
-//}
-
 DubinsPlan SamplingBasedPlanner::plan(const RibbonManager&, const State& start, PlannerConfig config,
                                       const DubinsPlan& previousPlan,
                                       double timeRemaining) {
@@ -233,9 +192,5 @@ void SamplingBasedPlanner::visualizeRibbons(const RibbonManager& ribbonManager) 
         m_Config.visualizationStream() << ribbonManager.dumpRibbons() << "\nEnd Ribbons" << std::endl;
     }
 }
-
-//void SamplingBasedPlanner::setK(int k) {
-//    m_K = k;
-//}
 
 

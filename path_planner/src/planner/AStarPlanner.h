@@ -3,6 +3,9 @@
 
 #include "SamplingBasedPlanner.h"
 
+/**
+ * The real deal planner, doing my real-time planning algorithm.
+ */
 class AStarPlanner : public SamplingBasedPlanner {
 public:
 

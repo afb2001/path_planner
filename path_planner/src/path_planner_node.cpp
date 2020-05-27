@@ -22,7 +22,7 @@
 /**
  * Node to act as interface between ROS and path planning system.
  */
-class PathPlanner: public NodeBase, public TrajectoryPublisher
+class PathPlanner final: public NodeBase, public TrajectoryPublisher
 {
 public:
     explicit PathPlanner(std::string name): NodeBase(std::move(name))
@@ -38,11 +38,18 @@ public:
 }
 
     void pilotingModeCallback(const std_msgs::String::ConstPtr& inmsg) override {
-        if (inmsg->data == "standby") {
-            // TODO! -- talk to Roland about how this should work
-//            m_Executive->pause();
-        } else if (inmsg->data == "autonomous") {
-            // maybe do something?
+        if (inmsg->data == "autonomous") {
+            if (m_Paused) {
+                // only resume planner if there's an unfinished survey already in the executive
+                if (m_CurrentGoalIsValid) {
+                    m_Executive->startPlanner();
+                }
+                m_Paused = false;
+            }
+        } else {
+            // don't need to do anything different on this end when canceling vs pausing
+            m_Executive->cancelPlanner();
+            m_Paused = true;
         }
     }
 
@@ -53,9 +60,11 @@ public:
         std::cerr << strerror(errno) << std::endl;
     }
 
-    // This is really only designed to work once right now
     void goalCallback() override
     {
+        // clear paused flag because we're starting fresh
+        m_Paused = false;
+
         auto goal = m_action_server.acceptNewGoal();
 
         // make sure controller is up
@@ -80,6 +89,8 @@ public:
 
             m_Executive->addRibbon(start.x, start.y, end.x, end.y);
         }
+        // set goal to be valid
+        m_CurrentGoalIsValid = true;
 
         // start planner
         m_Executive->startPlanner();
@@ -89,6 +100,7 @@ public:
     {
         std::cerr << "Canceling planner" << std::endl;
         m_Preempted = true;
+        m_CurrentGoalIsValid = false;
         m_action_server.setPreempted();
 
         // Should the executive stop now? Probably?
@@ -156,6 +168,7 @@ public:
     {
         std::cerr << "Planner appears to have finished" << std::endl;
         m_ActionDone = true;
+        m_CurrentGoalIsValid = false;
         publishControllerMessage("terminate");
         clearDisplay();
     }
@@ -217,6 +230,10 @@ private:
     ros::Subscriber m_origin_sub;
 
     dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Dynamic_Reconfigure_Server;
+
+    bool m_Paused = false;
+
+    bool m_CurrentGoalIsValid = false;
 
     // handle on Executive
     Executive* m_Executive;

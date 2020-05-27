@@ -150,7 +150,7 @@ class State
      * @param rhs
      * @return
      */
-    inline bool operator==(const State& rhs) const;
+    bool operator==(const State& rhs) const;
 
     /**
      * Determine whether two states share the same pose (ignores speed). No floating point tolerance.

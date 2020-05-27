@@ -42,12 +42,12 @@ static DubinsPlan getPlan(path_planner_common::Plan plan) {
     for (const auto& d : plan.paths) {
         DubinsWrapper wrapper;
         DubinsPath path;
-        path.qi[0] = d.x;
-        path.qi[1] = d.y;
-        path.qi[2] = d.yaw;
-        path.param[0] = d.param0;
-        path.param[1] = d.param1;
-        path.param[2] = d.param2;
+        path.qi[0] = d.initial_x;
+        path.qi[1] = d.initial_y;
+        path.qi[2] = d.initial_yaw;
+        path.param[0] = d.length0;
+        path.param[1] = d.length1;
+        path.param[2] = d.length2;
         path.rho = d.rho;
         path.type = (DubinsPathType)d.type;
         wrapper.fill(path, d.speed, d.start_time);
@@ -64,12 +64,12 @@ static path_planner_common::Plan getPlanMsg(const DubinsPlan& plan) {
     for (const auto& d : plan.get()) {
         path_planner_common::DubinsPath path;
         auto p = d.unwrap();
-        path.x = p.qi[0];
-        path.y = p.qi[1];
-        path.yaw = p.qi[2];
-        path.param0 = p.param[0];
-        path.param1 = p.param[1];
-        path.param2 = p.param[2];
+        path.initial_x = p.qi[0];
+        path.initial_y = p.qi[1];
+        path.initial_yaw = p.qi[2];
+        path.length0 = p.param[0];
+        path.length1 = p.param[1];
+        path.length2 = p.param[2];
         path.type = p.type;
         path.rho = d.getRho();
         path.speed = d.getSpeed();
@@ -237,6 +237,35 @@ void visualizePath(const State& s1, const State& s2, const State& s3, double tur
     visualizer->stream() << v4->toString() << " vertex" << endl;
 }
 
+void visualizePath(const State& s1, const State& s2, double turningRadius) {
+    RibbonManager ribbonManager;
+    ribbonManager.add(0, 0, 1000, 0);
+    PlannerConfig config(&std::cerr);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_visualizations"));
+    config.setVisualizer(&visualizer);
+    config.setVisualizations(true);
+    config.setNowFunction([] () -> double {
+        struct timespec t{};
+        clock_gettime(CLOCK_REALTIME, &t);
+        return t.tv_sec + t.tv_nsec * 1e-9;
+    });
+    config.setMap(make_shared<Map>());
+    config.setObstacles(DynamicObstaclesManager());
+    config.setBranchingFactor(4);
+    config.setMaxSpeed(2); // set this super high so we don't clip paths short
+    config.setTurningRadius(turningRadius);
+    auto v1 = Vertex::makeRoot(s1, ribbonManager);
+    auto v2 = Vertex::connect(v1, s2);
+//    auto v3 = Vertex::makeRoot(s3, ribbonManager);
+//    auto v4 = Vertex::connect(v3, s2);
+    visualizer->stream() << v1->toString() << " start" << endl;
+    v2->parentEdge()->computeTrueCost(config);
+    visualizer->stream() << v2->toString() << " vertex" << endl;
+//    visualizer->stream() << v3->toString() << " vertex" << endl;
+//    v4->parentEdge()->computeTrueCost(config);
+//    visualizer->stream() << v4->toString() << " vertex" << endl;
+}
+
 TEST(UnitTests, DubinsSuffixTest) {
     StateGenerator generator(-50, 50, -50, 50, plannerConfig.maxSpeed(), plannerConfig.maxSpeed(), 7);
     auto rootState = generator.generate();
@@ -333,6 +362,16 @@ TEST(UnitTests, DubinsSuffixTest) {
     cerr << "Failures occur on average " << progress / failureCount * 100 << "% of the way through the path" << endl;
     cerr << "Average length difference: " << differences / failureCount << endl;
     cerr << "Average ratio length difference to turning radius: " << ratio / failureCount << endl;
+}
+
+TEST(UnitTests, SimpleDubinsTest) {
+    // I wrote this when I thought something wasn't working but actually I was just being dumb. No reason to remove it though.
+    double radius = 8, speed = 2;
+    State s1(0, 0, 0, speed, 1);
+    State s2(2 * radius, 0, M_PI, speed, radius * M_PI / speed + 1);
+    DubinsPlan plan(s1, s2, radius);
+//    visualizePath(s1, s2, radius);
+    EXPECT_NEAR(plan.getEndTime(), s2.time(), 1e-5);
 }
 
 TEST(UnitTests, DubinsReverseTest) {
@@ -450,7 +489,7 @@ TEST(UnitTests, RibbonTest7) {
 TEST(UnitTests, RibbonManagerGetNearestEndpointTest) {
     RibbonManager ribbonManager;
     ribbonManager.add(10, 10, 20, 10);
-    auto s = ribbonManager.getNearestEndpointAsState(State(9, 9, 0, 0, 0));
+    auto s = ribbonManager.getNearestEndpointAsState(State(0, 0, 0, 0, 0));
     EXPECT_DOUBLE_EQ(s.x(), 10);
     s = ribbonManager.getNearestEndpointAsState(State(10, 10, 0, 0, 0));
     EXPECT_DOUBLE_EQ(s.x(), 20);
@@ -615,9 +654,12 @@ TEST(UnitTests, MakePlanTest) {
     EXPECT_GE(plan.getEndTime() - plan.getStartTime(), 5);
     auto samples = plan.getSamples(0.5);
     for (const auto& s : samples) cerr << s.toString() << endl;
-    // TODO
-//    EXPECT_TRUE(plan.getRef().front() == s1);
-//    EXPECT_GE(plan.getRef().back().y(), 4.5); // because of plan density
+    State sample(s1);
+    plan.sample(s1);
+    EXPECT_TRUE(sample.isCoLocated(s1));
+    sample.time() = s2.time();
+    plan.sample(sample);
+    EXPECT_NEAR(sample.distanceTo(s2), 0, 1e-5);
 }
 
 TEST(UnitTests, ComputeEdgeCostTest) {
@@ -645,7 +687,7 @@ TEST(UnitTests, RunStateGenerationTest) {
     maxY = magnitude;
     StateGenerator generator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7); // lucky seed
     cerr << generator.generate().toString() << endl;
-    sleep(1);
+    sleep(1); // ??
 }
 
 TEST(UnitTests, VertexTests1) {
@@ -678,8 +720,7 @@ TEST(UnitTests, VertexTests2) {
     auto t = v1->parentEdge()->computeTrueCost(plannerConfig);
     EXPECT_DOUBLE_EQ(c, t);
     auto h = v1->computeApproxToGo();
-    // TODO
-//    EXPECT_DOUBLE_EQ((Path::distance(5, -20, 30, 30) + 20*sqrt(2) + 10 + 50) / 2.5, h);
+    EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 10 + 50) / 2.5, h);
 }
 
 TEST(UnitTests, VertexTests3) {
@@ -694,8 +735,7 @@ TEST(UnitTests, VertexTests3) {
     DynamicObstaclesManager obstacles;
     v1->parentEdge()->computeTrueCost(plannerConfig);
     auto h = v1->computeApproxToGo();
-    // TODO
-//    EXPECT_DOUBLE_EQ((Path::distance(5, -20, 30, 30) + 20*sqrt(2) + 50) / 2.5, h);
+    EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 50) / 2.5, h);
 }
 
 //TEST(PlannerTests, DISABLED_DubinsWalkTest) {
@@ -765,32 +805,27 @@ TEST(UnitTests, VertexTests3) {
 //    for (auto s : plan) cerr << s.toString() << endl;
 //}
 
-// TODO! -- port to ribbons
 TEST(PlannerTests, VertexQueueTests) {
-//    State start(0, 0, 0, 2.5, 1);
-//    Path path;
-//    path.add(0, 10);
-//    path.add(0, 20);
-//    path.add(0, 30);
-//    Map::SharedPtr m = make_shared<Map>();
-//    DynamicObstaclesManager obstacles;
-//    auto root = Vertex::makeRoot(start, path);
-//    AStarPlanner planner(2.5, 8, m);
-//    planner.addToCover(path.get());
-//    planner.pushVertexQueue(root);
-//    auto popped = planner.popVertexQueue();
-//    EXPECT_EQ(root, popped);
-//    State s1(0, 10, 0, 2.5, 0), s2(0, -10, M_PI, 2.5, 0);
-//    auto v1 = Vertex::connect(root, s1);
-//    v1->parentEdge()->computeTrueCost(m, obstacles, 2.5, 8);
-//    v1->setCurrentCost();
-//    auto v2 = Vertex::connect(root, s2);
-//    v2->parentEdge()->computeTrueCost(m, obstacles, 2.5, 8);
-//    v2->setCurrentCost();
-//    planner.pushVertexQueue(v1);
-//    planner.pushVertexQueue(v2);
-//    popped = planner.popVertexQueue();
-//    EXPECT_EQ(v1, popped);
+    State start(0, 0, 0, 2.5, 1);
+    RibbonManager ribbonManager;
+    ribbonManager.add(0, 10, 0, 30);
+    auto root = Vertex::makeRoot(start, ribbonManager);
+    AStarPlanner planner;
+    planner.setConfig(plannerConfig);
+    planner.pushVertexQueue(root);
+    auto popped = planner.popVertexQueue();
+    EXPECT_EQ(root, popped);
+    State s1(0, 10, 0, 2.5, 0), s2(0, -10, M_PI, 2.5, 0);
+    auto v1 = Vertex::connect(root, s1);
+    v1->parentEdge()->computeTrueCost(plannerConfig);
+    v1->setCurrentCost();
+    auto v2 = Vertex::connect(root, s2);
+    v2->parentEdge()->computeTrueCost(plannerConfig);
+    v2->setCurrentCost();
+    planner.pushVertexQueue(v1);
+    planner.pushVertexQueue(v2);
+    popped = planner.popVertexQueue();
+    EXPECT_EQ(v1, popped);
 }
 
 TEST(UnitTests, EmptyVertexQueueTest) {

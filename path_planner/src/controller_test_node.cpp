@@ -25,6 +25,8 @@ public:
 
     void goalCallback() override
     {
+        m_Preempted = false;
+
         auto goal = m_action_server.acceptNewGoal();
 
         // make sure controller is up

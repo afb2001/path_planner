@@ -246,8 +246,8 @@ protected:
 
     // Apparently the action server is supposed to be manipulated on the ROS thread, so I had to make some flags
     // to get the done/preemption behavior I wanted. It seems like there should be a better way to do this but I don't
-    // know what it is.
-    bool m_ActionDone = false, m_Preempted = false;
+    // know what it is. We start in the done state because we haven't received a goal yet.
+    bool m_ActionDone = false, m_Preempted = true;
 
     // Since speed and heading are updated through different topics than position,
     // but we need them for state updates to the executive, keep the latest of each

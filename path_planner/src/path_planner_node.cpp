@@ -79,6 +79,9 @@ public:
 
         m_Executive->clearRibbons();
 
+        while (!m_CoordinateConverter.haveOrigin())
+            ros::Duration(0.5).sleep();
+
 
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 

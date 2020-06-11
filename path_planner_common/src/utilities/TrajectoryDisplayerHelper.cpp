@@ -1,12 +1,12 @@
 #include <path_planner_common/TrajectoryDisplayerHelper.h>
 
 
-TrajectoryDisplayerHelper::TrajectoryDisplayerHelper(ros::NodeHandle& nodeHandle, ros::Publisher* displayPub) {
-    m_map_to_lat_long_client = nodeHandle.serviceClient<project11_transformations::MapToLatLong>("map_to_wgs84");
+TrajectoryDisplayerHelper::TrajectoryDisplayerHelper(ros::NodeHandle& nodeHandle, ros::Publisher* displayPub): m_transformations(new project11::Transformations(nodeHandle))
+{
     m_display_pub = displayPub;
 }
 
-TrajectoryDisplayerHelper::TrajectoryDisplayerHelper() {
+TrajectoryDisplayerHelper::TrajectoryDisplayerHelper(): m_transformations(nullptr) {
     m_display_pub = nullptr;
 }
 
@@ -51,13 +51,14 @@ double TrajectoryDisplayerHelper::getTime() const {
 }
 
 geographic_msgs::GeoPoint TrajectoryDisplayerHelper::convertToLatLong(const State& state) {
-    if (!m_display_pub) throw std::runtime_error("Trajectory displayer not properly initialized");
-    project11_transformations::MapToLatLong::Request request;
-    project11_transformations::MapToLatLong::Response response;
-    request.map.point.x = state.x();
-    request.map.point.y = state.y();
-    m_map_to_lat_long_client.call(request, response);
-    return response.wgs84.position;
+    if (!m_display_pub || !m_transformations) throw std::runtime_error("Trajectory displayer not properly initialized");
+    
+    geometry_msgs::Point point;
+    
+    point.x = state.x();
+    point.y = state.y();
+    
+    return m_transformations->map_to_wgs84(point);
 }
 
 path_planner_common::StateMsg TrajectoryDisplayerHelper::convertToStateMsg(const State& state) {

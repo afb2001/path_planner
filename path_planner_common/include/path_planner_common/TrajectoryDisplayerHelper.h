@@ -6,7 +6,7 @@
 #include "State.h"
 #include "geographic_visualization_msgs/GeoVizItem.h"
 #include "geographic_visualization_msgs/GeoVizPointList.h"
-#include "project11_transformations/MapToLatLong.h"
+#include "project11_transformations/local_services.h"
 #include <path_planner_common/StateMsg.h>
 
 /**
@@ -73,7 +73,7 @@ public:
 
 protected:
     ros::Publisher* m_display_pub;
-    ros::ServiceClient m_map_to_lat_long_client;
+    project11::Transformations* m_transformations;
 };
 
 #endif //SRC_TRAJECTORYDISPLAYERUTILITIES_H

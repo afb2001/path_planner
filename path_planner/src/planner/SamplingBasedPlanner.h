@@ -84,6 +84,8 @@ protected:
      */
     void visualizeVertex(Vertex::SharedPtr v, const std::string& tag);
 
+    void visualizePlan(const DubinsPlan& plan);
+
     /**
      * Visualize a ribbon manager.
      * @param ribbonManager

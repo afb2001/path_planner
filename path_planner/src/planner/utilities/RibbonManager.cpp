@@ -57,9 +57,9 @@ double RibbonManager::tspPointRobotNoSplitAllRibbons(std::list<Ribbon> ribbonsLe
     for (auto it = ribbonsLeft.begin(); it != ribbonsLeft.end(); it++) {
         const Ribbon r = *it;
         it = ribbonsLeft.erase(it);
-        min = fmin(min, tspPointRobotNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min = fmin(min, tspPointRobotNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
                    distance(point, r.start()), r.end()));
-        min = fmin(min, tspPointRobotNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min = fmin(min, tspPointRobotNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
                    distance(point, r.end()), r.start()));
         it = ribbonsLeft.insert(it, r);
     }
@@ -85,9 +85,9 @@ double RibbonManager::tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft
         // TODO! -- this one and the other K-based one don't work because pop_back()
         const Ribbon r = *it;
         it = ribbonsLeft.erase(it);
-        min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length()- 2 * Ribbon::RibbonWidth +
                                                                     distance(point, r.start()), r.end()));
-        min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
                                                                     distance(point, r.end()), r.start()));
         it = ribbonsLeft.insert(it, r);
     }
@@ -105,9 +105,9 @@ double RibbonManager::tspDubinsNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, 
         it = ribbonsLeft.erase(it);
         auto start = r.startAsState();
         auto end = r.endAsState();
-        min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
             dubinsDistance(x, y, yaw, start), end.x(), end.y(), end.yaw()));
-        min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
             dubinsDistance(x, y, yaw, end), start.x(), start.y(), start.yaw()));
         it = ribbonsLeft.insert(it, r);
     }
@@ -131,9 +131,9 @@ double RibbonManager::tspDubinsNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, do
         it = ribbonsLeft.erase(it);
         auto start = r.startAsState();
         auto end = r.endAsState();
-        min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
                                                                  dubinsDistance(x, y, yaw, start), end.x(), end.y(), end.yaw()));
-        min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
                                                                  dubinsDistance(x, y, yaw, end), start.x(), start.y(), start.yaw()));
         it = ribbonsLeft.insert(it, r);
     }
@@ -236,7 +236,7 @@ double RibbonManager::maxDistance(double x, double y) const {
     // Both are technically inadmissible due to the "done" action but that's not implemented yet anywhere
     double sumLength = 0, min = DBL_MAX, max = 0;
     for (const auto& r : m_Ribbons) {
-        sumLength += r.length();
+        sumLength += r.length() - 2 * Ribbon::RibbonWidth; // can technically shortcut the ribbon on both ends
         auto dStart = distance(r.start(), x, y);
         auto dEnd = distance(r.end(), x, y);
         min = fmin(fmin(min, dEnd), dStart);

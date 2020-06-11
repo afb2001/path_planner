@@ -8,7 +8,7 @@ void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     if (!vertex->isRoot() && vertex->parentEdge()->infeasible()) return;
     vertex->approxToGo(); // make sure it is calculated
     // prune vertices worse than the incumbent solution
-    if (m_BestVertex && m_BestVertex->f() < vertex->f()) return; // assumes heuristic is admissible
+    if (m_BestVertex && m_BestVertex->f() < vertex->f()) return; // assumes heuristic is admissible and consistent
     // make sure this isn't a goal with equal f to the incumbent
     if (m_BestVertex && m_BestVertex->f() == vertex->f() && goalCondition(vertex)) return;
     m_VertexQueue.push_back(vertex);
@@ -130,10 +130,6 @@ void SamplingBasedPlanner::addSamples(StateGenerator& generator, int n) {
     for (int i = 0; i < n; i++) {
         const auto s = generator.generate();
         m_Samples.push_back(s);
-        if (m_Config.visualizations()) {
-            m_Config.visualizationStream() << "State: (" << s.toStringRad() << "), f: " << 0 << ", g: " << 0 << ", h: " <<
-                                         0 << " sample" << std::endl;
-        }
     }
 }
 
@@ -179,7 +175,7 @@ DubinsPlan SamplingBasedPlanner::plan(const RibbonManager&, const State& start, 
 
 void SamplingBasedPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag) {
     if (m_Config.visualizations()) {
-        m_Config.visualizationStream() << v->toString() << " " << tag << std::endl;
+        m_Config.visualizationStream() << v->toString() << " " << tag << " " << v->getPointerTreeString() << std::endl;
     }
 }
 
@@ -190,6 +186,19 @@ bool SamplingBasedPlanner::vertexQueueEmpty() const {
 void SamplingBasedPlanner::visualizeRibbons(const RibbonManager& ribbonManager) {
     if (m_Config.visualizations()) {
         m_Config.visualizationStream() << ribbonManager.dumpRibbons() << "\nEnd Ribbons" << std::endl;
+    }
+}
+
+void SamplingBasedPlanner::visualizePlan(const DubinsPlan& plan) {
+    if (m_Config.visualizations()) {
+        State s;
+        s.time() = plan.getStartTime();
+        while (s.time() < plan.getEndTime()) {
+            plan.sample(s);
+            m_Config.visualizationStream() << "State: (" << s.toStringRad() << "), f: " << 0 << ", g: " << 0 << ", h: " <<
+                                           0 << " plan" << std::endl;
+            s.time() += 1;
+        }
     }
 }
 

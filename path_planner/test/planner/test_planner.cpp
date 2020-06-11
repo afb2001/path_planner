@@ -486,6 +486,145 @@ TEST(UnitTests, RibbonTest7) {
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(100, 120, 0), 2020 + sqrt(2)*100);
 }
 
+TEST(UnitTests, HeuristicConsistency1) {
+    // ribbon dead ahead
+    auto heuristics = {
+            RibbonManager::MaxDistance,
+            RibbonManager::TspPointRobotNoSplitAllRibbons,
+            RibbonManager::TspPointRobotNoSplitKRibbons,
+            // Dubins heuristics are way off near ribbon ends that are being covered (rounding error again)
+//            RibbonManager::TspDubinsNoSplitAllRibbons,
+//            RibbonManager::TspDubinsNoSplitKRibbons
+    };
+    for (auto heuristic : heuristics) {
+        RibbonManager ribbonManager(heuristic, 8, 2);
+        ribbonManager.add(0, 0, 0, 75);
+        State s1(0, 0, 0, 2.5, 1), s2(0, 75, 0, 2.5, 31);
+        DubinsWrapper path(s1, s2, 8);
+        while (path.containsTime(s1.time())) {
+            path.sample(s1);
+            ribbonManager.cover(s1.x(), s1.y());
+            if (ribbonManager.done()) break;
+            auto h = ribbonManager.approximateDistanceUntilDone(s1.x(), s1.y(), s1.yaw()) / 2.5;
+            EXPECT_DOUBLE_EQ(s1.time() + h, s2.time());
+            s1.time() += 1;
+        }
+    }
+}
+
+TEST(UnitTests, HeuristicConsistency2) {
+    // curve then ribbon
+    RibbonManager ribbonManager(RibbonManager::MaxDistance, 8, 2);
+    ribbonManager.add(16, 0, 16, -75);
+    State s1(0, 0, 0, 2.5, 1), s2(16, -75, M_PI, 2.5, 0);
+    DubinsWrapper path(s1, s2, 8);
+    while (path.containsTime(s1.time())) {
+        path.sample(s1);
+        auto contained = ribbonManager.get().front().containsProjection(std::make_pair(s1.x(), s1.y()));
+        ribbonManager.cover(s1.x(), s1.y());
+        if (ribbonManager.done()) break;
+        auto h = ribbonManager.approximateDistanceUntilDone(s1.x(), s1.y(), s1.yaw()) / 2.5;
+        if (contained) {
+            EXPECT_DOUBLE_EQ(s1.time() + h, path.getEndTime());
+        } else
+        {
+            EXPECT_LE(s1.time() + h, path.getEndTime());
+        }
+        s1.time() += 1;
+    }
+}
+
+TEST(UnitTests, HeuristicConsistency3) {
+    // start from a random state, go to the start of the line, cover it
+    RibbonManager ribbonManager(RibbonManager::MaxDistance, 8, 2);
+    ribbonManager.add(0, 0, 0, 10);
+    StateGenerator generator(-100, 100, -100, 100, 2.5, 2.5, 42);
+    State s1(0, 0, 0, 2.5, 0), s2(0, 10, 0, 2.5, 0), s3 = generator.generate();
+    s3.time() = 1;
+    DubinsPlan plan;
+    plan.append(DubinsWrapper(s3, s1, 8));
+    s1.time() = plan.getEndTime();
+    plan.append(DubinsWrapper(s1, s2, 8));
+    while (plan.containsTime(s3.time())) {
+        plan.sample(s3);
+        auto r = ribbonManager.get().front();
+        auto contained = r.contains(s3.x(), s3.y(), r.getProjection(s3.x(), s3.y()));
+        ribbonManager.cover(s3.x(), s3.y());
+        if (ribbonManager.done()) break;
+        auto h = ribbonManager.approximateDistanceUntilDone(s3.x(), s3.y(), s3.yaw()) / 2.5;
+        if (contained) {
+            EXPECT_DOUBLE_EQ(s3.time() + h, plan.getEndTime());
+        } else
+        {
+            EXPECT_LE(s3.time() + h, plan.getEndTime());
+        }
+        s3.time() += 1;
+    }
+}
+
+TEST(UnitTests, HeuristicConsistency4) {
+    plannerConfig.setMaxSpeed(2.5); // this is default but make sure anyway
+    plannerConfig.setStartStateTime(1);
+    RibbonManager ribbonManager(RibbonManager::MaxDistance, 8, 2);
+    ribbonManager.add(0, 0, 0, 80);
+    State s1(0, 0, 0, plannerConfig.maxSpeed(), 1), s2(0, 75, 0, plannerConfig.maxSpeed(), 31);
+    ribbonManager.coverBetween(0, -2.5, 0, 0); // this happens in the real version so let's do it here; we've come from somewhere
+    auto root = Vertex::makeRoot(s1, ribbonManager);
+    auto v1 = Vertex::connect(root, s2);
+    v1->parentEdge()->computeTrueCost(plannerConfig);
+    auto f1 = v1->f();
+    auto path = v1->parentEdge()->getPlan(plannerConfig);
+    // append a state on the end of the last plan and make sure the heuristic is consistent
+    State s3(0, 0, 0, 0, 2), s4(0, 77.5, 0, 2.5, 32);
+    path.sample(s3);
+    path.updateStartTime(2);
+    ribbonManager.coverBetween(0, 0, s3.x(), s3.y());
+    plannerConfig.setStartStateTime(2);
+    auto root2 = Vertex::makeRoot(s3, ribbonManager);
+    auto v2 = Vertex::connect(root2, path);
+    v2->parentEdge()->computeTrueCost(plannerConfig);
+    auto v3 = Vertex::connect(v2, s4);
+    v3->parentEdge()->computeTrueCost(plannerConfig);
+    auto f2 = v3->f();
+    EXPECT_NEAR(f1 - 1, f2, 1e-5); // time has gone down
+}
+
+TEST(UnitTests, HeuristicComparison5) {
+    // okay how do I get more realistic than that?
+    // maybe let's have the planner make the plan?
+    RibbonManager ribbonManager(RibbonManager::MaxDistance, 2);
+    ribbonManager.add(0, 0, 0, 80);
+    plannerConfig.setMaxSpeed(2.5); // this is default but make sure anyway
+    plannerConfig.setTurningRadius(8);
+    plannerConfig.setCoverageTurningRadius(16); // eh probably don't need this but whatever
+    State start(-20, -20, 0, 2.5, 1);
+    AStarPlanner planner;
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    EXPECT_FALSE(plan.empty());
+    auto previousConfig = plannerConfig;
+    // done with that iteration, let's test what happens in the next one
+    plannerConfig.setStartStateTime(2);
+    start.time() = 2;
+    plan.sample(start);
+    // ignoring ribbon manager coverage because we're far enough away not to matter
+    auto root = Vertex::makeRoot(start, ribbonManager);
+    auto lastPlanEnd = root;
+    auto previousEndVertex = root;
+    for (const auto& p : plan.get()) {
+        lastPlanEnd = Vertex::connect(lastPlanEnd, p);
+        lastPlanEnd->parentEdge()->computeTrueCost(plannerConfig);
+        previousEndVertex = Vertex::connect(previousEndVertex, p);
+        previousEndVertex->parentEdge()->computeTrueCost(previousConfig);
+    }
+    State s(0, 80, 0, 2.5, 0);
+    auto endV = Vertex::connect(lastPlanEnd, s);
+    endV->parentEdge()->computeTrueCost(plannerConfig); // should truncate
+    cerr << endV->toString() << endl;
+    EXPECT_NEAR(endV->state().x(), 0, 1e-12);
+    EXPECT_NEAR(endV->state().heading(), 0, 1e-12);
+    EXPECT_DOUBLE_EQ(previousEndVertex->f(), endV->f());
+}
+
 TEST(UnitTests, RibbonManagerGetNearestEndpointTest) {
     RibbonManager ribbonManager;
     ribbonManager.add(10, 10, 20, 10);
@@ -736,6 +875,17 @@ TEST(UnitTests, VertexTests3) {
     v1->parentEdge()->computeTrueCost(plannerConfig);
     auto h = v1->computeApproxToGo();
     EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 50) / 2.5, h);
+}
+
+TEST(UnitTests, PointerTreeStringTest) {
+    // make sure the function runs and doesn't print out anything unreasonable
+    RibbonManager ribbonManager(RibbonManager::MaxDistance);
+    ribbonManager.add(30, 30, 50, 50);
+    ribbonManager.add(50, 60, 100, 60);
+    auto root = Vertex::makeRoot(State(5, 5, M_PI, 2.5, 1), ribbonManager);
+    auto v1 = Vertex::connect(root, State(5, -20, M_PI, 2.5, 0));
+    cerr << root->getPointerTreeString() << endl;
+    cerr << v1->getPointerTreeString() << endl;
 }
 
 //TEST(PlannerTests, DISABLED_DubinsWalkTest) {

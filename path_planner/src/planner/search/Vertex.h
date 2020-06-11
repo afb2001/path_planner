@@ -158,6 +158,12 @@ public:
     std::string toString() const;
 
     /**
+     * Get the pointer values for the motion tree to this vertex concatenated into a string.
+     * @return
+     */
+    std::string getPointerTreeString() const;
+
+    /**
      * Retrieve the turning radius.
      * @return
      */

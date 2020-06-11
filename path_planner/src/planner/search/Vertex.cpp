@@ -50,6 +50,14 @@ double Vertex::computeApproxToGo() {
     max = m_RibbonManager.approximateDistanceUntilDone(state().x(), state().y(), state().heading());
     m_ApproxToGo = max / state().speed() * Edge::timePenaltyFactor();
 
+    // since we're using the ribbon manager, we should have computed true cost at this point.
+    // PathMax or whatever. Guarantees heuristic consistency which is required for f pruning
+    if (!isRoot()) {
+        auto parentF = parent()->f();
+        auto diff = parentF - f();
+        if (diff > 0) m_ApproxToGo += diff;
+    }
+
     return m_ApproxToGo;
 }
 
@@ -125,6 +133,11 @@ bool Vertex::coverageAllowed() const {
 
 const RibbonManager& Vertex::ribbonManager() const {
     return m_RibbonManager;
+}
+
+std::string Vertex::getPointerTreeString() const {
+    if (isRoot()) return std::to_string(reinterpret_cast<long>(this)) + " ";
+    return parent()->getPointerTreeString() + std::to_string(reinterpret_cast<long>(this)) + " ";
 }
 
 Vertex::~Vertex() = default;

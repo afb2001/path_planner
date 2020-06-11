@@ -34,9 +34,12 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
     auto otherRibbonSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());
 
+    // redundant start visualization because we do other vis before we actually start search
+//    visualizeVertex(startV, "start");
     // collision check old plan
     Vertex::SharedPtr lastPlanEnd = startV;
     if (!previousPlan.empty()) {
+//        auto p = previousPlan.get().front();
         for (const auto& p : previousPlan.get()) {
             lastPlanEnd = Vertex::connect(lastPlanEnd, p);
             lastPlanEnd->parentEdge()->computeTrueCost(m_Config);
@@ -44,6 +47,10 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                 lastPlanEnd = startV;
                 break;
             }
+        }
+        if (lastPlanEnd != startV){
+//            *m_Config.output() << "Last plan f value: " << lastPlanEnd->f() << std::endl;
+            visualizeVertex(lastPlanEnd, "lastPlanEnd");
         }
     }
     // big loop
@@ -54,6 +61,9 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
             break;
         }
         visualizeVertex(startV, "start");
+        if (m_Config.visualizations()) {
+            m_Config.visualizationStream() << "Incumbent f-value: " << (m_BestVertex? m_BestVertex->f() : 0) << std::endl;
+        }
         pushVertexQueue(startV);
         if (lastPlanEnd != startV) pushVertexQueue(lastPlanEnd);
         // manually expand starting node to include states on nearby ribbons far enough away such that the boat doesn't
@@ -63,11 +73,20 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         // On the first iteration add c_InitialSamples samples, otherwise just double them
         if (m_Samples.size() < c_InitialSamples) addSamples(generator, c_InitialSamples);
         else addSamples(generator); // linearly increase samples (changed to not double)
+        // visualize all samples each iteration
+        if (m_Config.visualizations()) {
+            for (const auto& s : m_Samples)
+                m_Config.visualizationStream() << "State: (" << s.toStringRad() << "), f: " << 0 << ", g: " << 0 << ", h: " <<
+                                           0 << " sample" << std::endl;
+        }
         auto v = aStar(m_Config.obstacles(), endTime);
         if (!m_BestVertex || (v && v->f() < m_BestVertex->f())) {
             // found a (better) plan
             m_BestVertex = v;
-            if (v) visualizeVertex(v, "goal");
+            if (v && m_Config.visualizations()) {
+                visualizePlan(tracePlan(v, false, m_Config.obstacles()));
+                visualizeVertex(v, "goal");
+            }
         }
         m_IterationCount++;
     }
@@ -78,6 +97,8 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         *m_Config.output() << "Failed to find a plan" << std::endl;
         return DubinsPlan();
     } else {
+//        *m_Config.output() << "Final plan f value: " << m_BestVertex->f() << std::endl;
+        *m_Config.output() << "Final plan depth: " << m_BestVertex->getDepth() << std::endl;
         return tracePlan(m_BestVertex, false, m_Config.obstacles());
     }
 }
@@ -87,6 +108,7 @@ shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles,
     while (now() < endTime) {
         // with filter on vertex queue this second check is unnecessary
         if (goalCondition(vertex) && (!m_BestVertex || vertex->f() < m_BestVertex->f())) {
+            visualizeVertex(vertex, "vertex");
             return vertex;
         }
         expand(vertex, obstacles);

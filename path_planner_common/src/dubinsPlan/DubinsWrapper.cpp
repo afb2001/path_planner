@@ -42,7 +42,7 @@ void DubinsWrapper::sample(State& s) const {
 }
 
 bool DubinsWrapper::isInitialized() const {
-    return m_StartTime > 0;
+    return m_StartTime >= 0;
 }
 
 std::vector<State> DubinsWrapper::getSamples(double timeInterval) const {

@@ -100,6 +100,8 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
         }
         m_Infeasible = true;
     }
+    if (config.visualizations())
+        config.visualizationStream() << "Trajectory:" << std::endl;
     // collision check along the curve (and watch out for newly covered points, too)
     while (intermediate.time() < endTime) {
         m_DubinsWrapper.sample(intermediate);

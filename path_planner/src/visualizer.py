@@ -41,21 +41,6 @@ def dist_square(x1, y1, x2, y2):
     return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2)
 
 
-class Obs:
-    def __init__(self, x, y, h, cost, tag):
-        self.x = x
-        self.y = y
-        self.h = h
-        self.cost = cost
-        self.tag = tag
-        self.children = []
-
-
-class Ribbons:
-    def __init__(self):
-        self.ribbons = []
-
-
 class DisplayItem:
     def __init__(self, x, y, h, cost, tag):
         self.x = x
@@ -73,6 +58,7 @@ class Iteration:
         self.cost_min = 0
         self.cost_max = 0
         self.items = []
+        self.ribbons = []
         self.display_index = 0
         self.incumbent_f = 0
         self.contains_plan = False
@@ -137,9 +123,9 @@ class Iteration:
 
 
 class Visualizer:
-    def __init__(self, blocked, xlim, ylim, in_file_name):
+    def __init__(self, blocked, xlim, ylim):
         self.display = None
-        self.screenH = 1600
+        self.screenH = 1400
         self.screenW = 1200
         self.maxX = xlim
         self.maxY = ylim
@@ -156,16 +142,11 @@ class Visualizer:
 
         self.static_obs = blocked
 
-        self.maxColor = -10000000
-        self.minColor = 100000000
-
-        self.input_file_name = in_file_name
-
-        self.obs = []
-        self.starts = []
-        self.startIndex = 0
         self.draw_trajectories = True
-        self.ribbons = []
+        self.draw_samples = True
+        self.draw_ribbons = True
+        self.draw_vertices = True
+        self.draw_vertex_costs = True
 
         self.iterations = []
         self.iteration_index = 0
@@ -198,21 +179,6 @@ class Visualizer:
         self.curr_y = 0
         self.start_heading = 0
         self.index = 0
-        # self.reset()
-
-    def get_start_index(self):
-        if len(self.starts) == 0:
-            return 0
-        else:
-            return self.starts[self.startIndex]
-
-    def update_start_index(self, diff):
-        self.startIndex += diff
-        if self.startIndex < 0:
-            self.startIndex = 0
-        elif self.startIndex >= len(self.starts):
-            self.startIndex = len(self.starts) - 1
-        self.index = self.starts[self.startIndex]
 
     def on_event(self, event):
         if event.type == QUIT:
@@ -280,46 +246,53 @@ class Visualizer:
                 exit(0)
 
             # visualization-related events
-            elif event.key == pygame.K_r:
-                # re-read the vis data
-                # self.reset()
-                pass  # TODO
             elif event.key == pygame.K_n:
                 # show the next vis item
                 self.iterations[self.iteration_index].increment()
-                # self.index += 1
-                # if self.index >= len(self.obs):
-                #     self.index = len(self.obs) - 1
-                # if self.obs[self.index].tag == "start":
-                #     self.update_start_index(1)
             elif event.key == pygame.K_BACKSPACE or event.key == pygame.K_b:
                 # show the previous vis item
                 self.iterations[self.iteration_index].decrement()
-                # if self.obs[self.index].tag == "start":
-                #     self.startIndex -= 1
-                #     if self.startIndex < 0:
-                #         self.startIndex = 0
-                #     elif self.startIndex >= len(self.starts):
-                #         self.startIndex = len(self.starts) - 1
-                # self.index -= 1
-                # if self.index < 0:
-                #     self.index = 0
             elif event.key == pygame.K_j:
-                # jump to the previous (or start of this) planning iteration
-                self.iterations[self.iteration_index].reset()
-                if self.iteration_index > 0:
-                    self.iteration_index -= 1
-                # self.update_start_index(-1)
+                # jump to the previous planning iteration
+                # shift means jump to previous goal found
+                self.decrement_iteration(pygame.key.get_mods() & pygame.KMOD_SHIFT)
             elif event.key == pygame.K_k:
                 # jump to the next planning iteration
-                self.iterations[self.iteration_index].reset()
-                self.iteration_index += 1
-                if self.iteration_index >= len(self.iterations):
-                    self.iteration_index -= 1
-                # self.update_start_index(1)
+                # shift means jump to next goal found
+                self.increment_iteration(pygame.key.get_mods() & pygame.KMOD_SHIFT)
             elif event.key == pygame.K_t:
                 # toggle showing trajectories
                 self.draw_trajectories = not self.draw_trajectories
+            elif event.key == pygame.K_s:
+                # toggle showing samples
+                self.draw_samples = not self.draw_samples
+            elif event.key == pygame.K_r:
+                # toggle showing ribbons
+                self.draw_ribbons = not self.draw_ribbons
+            elif event.key == pygame.K_v:
+                # toggle showing vertices (why not?)
+                self.draw_vertices = not self.draw_vertices
+            elif event.key == pygame.K_c:
+                # toggle showing vertex costs (again, why not)
+                self.draw_vertex_costs = not self.draw_vertex_costs
+
+    def increment_iteration(self, jump_to_goal):
+        self.iterations[self.iteration_index].reset()
+        self.iteration_index += 1
+        if self.iteration_index >= len(self.iterations):
+            self.iteration_index -= 1
+        else:
+            if jump_to_goal and not self.iterations[self.iteration_index].contains_plan:
+                # keep going until we hit a goal
+                self.increment_iteration(jump_to_goal)
+
+    def decrement_iteration(self, jump_to_goal):
+        self.iterations[self.iteration_index].reset()
+        if self.iteration_index > 0:
+            self.iteration_index -= 1
+            if jump_to_goal and not self.iterations[self.iteration_index].contains_plan:
+                # keep going until we hit a goal
+                self.decrement_iteration(jump_to_goal)
 
     def on_render(self):
         self.display.blit(self.background, (0, 0))
@@ -343,25 +316,6 @@ class Visualizer:
             pygame.draw.line(self.display, Color_line_middle, self.scale_xy(0, i * scaleh), self.scale_xy(self.scaleW, i * scaleh))
             pygame.draw.line(self.display, Color_line_middle, self.scale_xy(i * scalew, 0), self.scale_xy(i * scalew, self.scaleH))
 
-    def update_information(self, x, y, heading, h, cost, tag):
-        if tag == "trajectory" or tag == "sample":
-            obs = Obs(x, y, heading, cost + h, tag)
-            if len(self.obs) == 0 or self.obs[-1].tag != tag:
-                self.obs.append(obs)
-            else:
-                self.obs[-1].children.append(obs)
-        elif tag == "plan":
-            if self.obs[-1].tag == "plan":
-                obs = Obs(x, y, heading, cost + h, tag)
-                self.obs[-1].children.append(obs)
-            else:
-                self.obs.append(Obs(x, y, heading, cost + h, tag))
-        else:
-            self.obs.append(Obs(x, y, heading, cost + h, tag))
-        if tag == "vertex":
-            self.maxColor = max(self.maxColor, cost + h, 1)
-            self.minColor = min(self.minColor, cost + h)
-
     def get_color(self, cost):
         return self.iterations[self.iteration_index].get_color(cost)
 
@@ -370,52 +324,44 @@ class Visualizer:
             self.draw_static_obs(Color_BLACK, *obs)
         current_it = self.iterations[self.iteration_index]
         self.draw_vehicle(current_it.start[2], Color_BLUE, *self.scale_item(current_it.start[0], current_it.start[1]))
-        for sample in current_it.samples:
-            self.draw_circle(Color_GREY, *self.scale_item(sample[0], sample[1]))
-        for item in self.iterations[self.iteration_index].get_display_items():
-            self.draw_obs(item, item.cost)
-        # for index in range(self.get_start_index(), self.index):
-        #     self.draw_obs(self.obs[index], self.f_value(index))
+        if self.draw_samples:
+            for sample in current_it.samples:
+                self.draw_circle(Color_GREY, *self.scale_item(sample[0], sample[1]))
+        if self.draw_ribbons:
+            for ribbon in current_it.ribbons:
+                self.draw_ribbon(ribbon)
+        for item in current_it.get_display_items():
+            self.draw_item(item)
 
-    def draw_obs(self, obs, cost):
-        if obs.tag == "vertex":
-            yy = self.draw_vehicle(obs.h, self.get_color(cost), *self.scale_item(obs.x, obs.y))
-            self.draw_text_cost(cost, self.scale_item(obs.x, obs.y)[0], yy)
-        elif obs.tag == "lastPlanEnd":
-            yy = self.draw_vehicle(obs.h, Color_BLACK, *self.scale_item(obs.x, obs.y))
-            self.draw_text_cost(cost, self.scale_item(obs.x, obs.y)[0], yy)
-        # elif obs.tag == "start":
-        #     self.draw_vehicle(obs.h, Color_BLUE, *self.scale_item(obs.x, obs.y))
-        elif obs.tag == "plan":
-            self.draw_circle(Color_GREEN, *self.scale_item(obs.x, obs.y))
-        elif obs.tag == "goal":
-            self.draw_circle(Color_GREEN_dark, *self.scale_item(obs.x, obs.y))
-
-        # elif obs.tag == "sample":
-        #     self.draw_circle(Color_GREY, *self.scale_item(obs.x, obs.y))
-        # elif obs.tag == "incumbent f":
-        #     self.incumbent_f = obs.cost
+    def draw_item(self, item):
+        if item.tag == "vertex":
+            if self.draw_vertices:
+                yy = self.draw_vehicle(item.h, self.get_color(item.cost), *self.scale_item(item.x, item.y))
+                self.draw_text_cost(item.cost, self.scale_item(item.x, item.y)[0], yy)
+        elif item.tag == "lastPlanEnd":
+            yy = self.draw_vehicle(item.h, Color_BLACK, *self.scale_item(item.x, item.y))
+            self.draw_text_cost(item.cost, self.scale_item(item.x, item.y)[0], yy)
+        elif item.tag == "plan":
+            self.draw_circle(Color_BLUE, *self.scale_item(item.x, item.y))
+        elif item.tag == "goal":
+            self.draw_circle(Color_GREEN_dark, *self.scale_item(item.x, item.y))
+        elif item.tag == "dummy":
+            # TODO! -- figure out why dummy vertices aren't getting overwritten
+            # since it's a dummy there was no vertex to end the trajectory, so don't draw the children
+            return
         else:
             # not sure what this would be but we'll just draw a circle I guess?
-            print ("Unknown tag getting drawn as a circle with cost: " + str(cost))
-            self.draw_circle(self.get_color(cost), *self.scale_item(obs.x, obs.y))
-        for child in obs.children:
-            # cost = cost if obs.children[index].cost == 0 else obs.children[index].cost
-            # self.draw_obs(child, cost)  # keep the parent's cost in case trajectories have zero cost (they don't???)
-            if obs.tag == "plan":
-                self.draw_circle(Color_GREEN, *self.scale_item(child.x, child.y))
-            elif self.draw_trajectories: # assume they're trajectories at this point
-                self.draw_circle(self.get_color(obs.cost), *self.scale_item(child.x, child.y))
+            print ("Unknown tag (" + item.tag + ") getting drawn as a circle with cost: " + str(item.cost))
+            self.draw_circle(self.get_color(item.cost), *self.scale_item(item.x, item.y))
+        for child in item.children:
+            if item.tag == "plan":
+                self.draw_circle(Color_BLUE, *self.scale_item(child.x, child.y))
+            elif self.draw_trajectories:  # assume they're trajectories at this point
+                self.draw_circle(self.get_color(item.cost), *self.scale_item(child.x, child.y))
 
     def draw_static_obs(self, color, x, y):
         pygame.draw.polygon(self.display, color, (self.scale_item(x, y), self.scale_item(
             x + 1, y), self.scale_item(x + 1, y + 1), self.scale_item(x, y + 1)))
-
-    def draw_goal(self, x, y, covered=False):
-        if covered:
-            self.draw_static_obs((0, 255, 255), x, y)
-        else:
-            self.draw_static_obs((0, 255, 0), x, y)
 
     def draw_dot(self, color, x, y):
         pygame.draw.polygon(self.display, color, (self.scale_item(x, y), self.scale_item(
@@ -435,7 +381,13 @@ class Visualizer:
     def draw_circle(self, color, x, y):
         pygame.draw.circle(self.display, color, (int(x), int(y)), 2)
 
+    def draw_ribbon(self, ribbon):
+        pygame.draw.line(self.display, Color_Red, self.scale_item(ribbon[0], ribbon[1]),
+                         self.scale_item(ribbon[2], ribbon[3]), 5)
+
     def draw_text_cost(self, cost, x, y):
+        if not self.draw_vertex_costs:
+            return
         text = str(int(cost))
         text_surface = self.font.render(text, True, (0, 0, 0))
         y += text_surface.get_height()
@@ -491,16 +443,14 @@ class Visualizer:
                 x / float(self.maxX)), self.originY + self.startH + self.scaleH - self.scaleH * (
                        y / float(self.maxY))
 
-    def f_value(self, n):
-        return self.obs[n].cost
-
     def load(self, file_name):
         with open(file_name, "r") as input_file:
             input_lines = input_file.readlines()
+        pygame.display.set_caption('Visualizing ' + file_name)
         self.iterations = []
         self.iteration_index = 0
 
-        # not sure what I'm gonna do about this so I'll leave it for now
+        # Ribbons need special treatment because they look different than vertices
         adding_ribbons = False
 
         for line in input_lines:
@@ -509,14 +459,13 @@ class Visualizer:
             line = line.split(' ')
 
             # ribbon-related bits
-            if line == "End Ribbons":
+            if line[0] == "End" and line[1] == "Ribbons":
                 adding_ribbons = False
-            elif line == "Ribbons":
+            elif line[0] == "Ribbons":
                 adding_ribbons = True
-                self.ribbons.append(Ribbons())
             elif adding_ribbons:
                 # ribbon mode means input will look different, hence the flag
-                self.ribbons[-1].append([float(line[1]), float(line[2]), float(line[4]), float(line[5])])
+                self.iterations[-1].ribbons.append([float(line[0]), float(line[1]), float(line[3]), float(line[4])])
 
             elif line[0] == "Trajectory":
                 if len(self.iterations) != 0:  # make sure there's been a start already
@@ -538,55 +487,6 @@ class Visualizer:
                         continue
                     self.iterations[-1].append(DisplayItem(x, y, h, cost + heuristic, tag))
 
-    def reset(self):
-        with open(self.input_file_name, "r") as input_file:
-            input_lines = input_file.readlines()
-        self.maxColor = -1000000
-        self.minColor = 1000000
-        self.index = 0
-        self.obs = []
-        addingRibbons = False
-        for line in input_lines:
-            for c in "():,\n":  # drop extra characters
-                line = line.replace(c, "")
-            line = line.split(' ')
-            if line == "End Ribbons":
-                addingRibbons = False
-                continue
-            elif line == "Ribbons":
-                addingRibbons = True
-                self.ribbons.append(Ribbons())
-                continue
-            if addingRibbons:
-                # ribbon mode means input will look different, hence the flag
-                self.ribbons[-1].append([float(line[1]), float(line[2]), float(line[4]), float(line[5])])
-                continue
-
-            if line[0] == "Trajectory":
-                if len(self.obs) > 0 and self.obs[-1].tag == "vertex":
-                    self.obs[-1].children = []
-                continue
-
-            if line[0] == "Incumbent" and line[1] == "f-value":
-                self.update_information(0, 0, 0, 0, float(line[2]), "incumbent f")
-                continue
-            # if len(line) < 3 or line[0].strip().lower() != 'planner' or line[1].strip().lower() != 'visualization:':
-            #     continue
-            # if line[2].strip().lower() == 'done':
-            #     continue  # ignore "done" for now
-            # break
-            # if len(line) > 18 and line[18].strip().lower() != 'vis2':
-            #     continue
-            xobs = (float(line[1]))
-            yobs = (float(line[2]))
-            hobs = (float(line[3]))
-            costobs = (float(line[9]))
-            heauristicobs = (float(line[11]))
-            tag = line[12].strip().lower()
-            if tag == "start":
-                self.starts.append(len(self.obs))
-            self.update_information(xobs, yobs, hobs, heauristicobs, costobs, tag)
-
 
 def dist(x, x1, y, y1):
     return (x - x1) ** 2 + (y - y1) ** 2
@@ -598,26 +498,31 @@ if __name__ == "__main__":
     if len(sys.argv) == 3:
         map_file_name = sys.argv[1]
         input_file_name = sys.argv[2]
-
+    elif len(sys.argv) == 2:
+        input_file_name = sys.argv[1]
     else:
-        print 'Usage: "./visualizer.py mapfile inputfile"\n'
+        print 'Usage: "./visualizer.py map_file input_file or"\n' \
+            '"./visualizer.py input_file"'
         exit(0)
 
-    # load map
-    with open(map_file_name, "r") as map_file:
-        map_contents = map_file.readlines()
     static_obs = []
-    goal_location = []
-    # max_x = np.abs(int(int(map_contents[1])))
-    # max_y = np.abs(int(int(map_contents[2])))
-    max_x = max(len(x) for x in map_contents)
-    max_y = len(map_contents)
-    for i in range(1, len(map_contents)):
-        for j in range(0, len(map_contents[i])):
-            if map_contents[i][j] == '#':
-                static_obs.append((j, (max_y - i + 1)))
+    # load map
+    if map_file_name:
+        with open(map_file_name, "r") as map_file:
+            map_contents = map_file.readlines()
+        # max_x = np.abs(int(int(map_contents[1])))
+        # max_y = np.abs(int(int(map_contents[2])))
+        max_x = max(len(x) for x in map_contents)
+        max_y = len(map_contents)
+        for i in range(1, len(map_contents)):
+            for j in range(0, len(map_contents[i])):
+                if map_contents[i][j] == '#':
+                    static_obs.append((j, (max_y - i + 1)))
+    else:
+        max_x = 100
+        max_y = 100
 
-    theApp = Visualizer(static_obs, max_x, max_y, input_file_name)
+    theApp = Visualizer(static_obs, max_x, max_y)
     theApp.on_init()
     theApp.load(input_file_name)
 

@@ -63,6 +63,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         visualizeVertex(startV, "start");
         if (m_Config.visualizations()) {
             m_Config.visualizationStream() << "Incumbent f-value: " << (m_BestVertex? m_BestVertex->f() : 0) << std::endl;
+            m_Config.visualizationStream() << m_RibbonManager.dumpRibbons() << "End Ribbons" << std::endl;
         }
         pushVertexQueue(startV);
         if (lastPlanEnd != startV) pushVertexQueue(lastPlanEnd);

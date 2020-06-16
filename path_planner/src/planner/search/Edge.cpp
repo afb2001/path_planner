@@ -74,14 +74,15 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     if (end()->coverageAllowed()) {
         turningRadius = config.coverageTurningRadius();
     }
-    if (m_ApproxCost == -1) computeApproxCost(speed, turningRadius);
-    if (m_ApproxCost <= 0) throw std::runtime_error("Could not compute approximate cost");
+    if (m_ApproxCost == -1 || (m_DubinsWrapper.getRho() != turningRadius || m_DubinsWrapper.getSpeed() != speed))
+        // if the parameters are different now we need to re-calculate the curve
+        computeApproxCost(speed, turningRadius);
+    if (m_ApproxCost < 0) throw std::runtime_error("Could not compute approximate cost");
     double collisionPenalty = 0;
     std::vector<std::pair<double, double>> result;
     State intermediate(start()->state());
-    double length = m_DubinsWrapper.length();
     // truncate longer edges than 30 seconds
-    auto endTime = fmin(DubinsPlan::timeHorizon() + 1 + config.startStateTime(), length / speed + start()->state().time());
+    auto endTime = fmin(DubinsPlan::timeHorizon() + 1 + config.startStateTime(),m_DubinsWrapper.getEndTime());
 
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
@@ -166,6 +167,7 @@ std::shared_ptr<Vertex> Edge::setEnd(const DubinsWrapper& path) {
     State s;
     s.time() = path.getEndTime();
     path.sample(s);
+    m_ApproxCost = (s.time() - start()->state().time()) * timePenaltyFactor();
     return setEnd(s);
 }
 

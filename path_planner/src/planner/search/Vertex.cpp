@@ -25,10 +25,13 @@ std::shared_ptr<Vertex> Vertex::connect(const std::shared_ptr<Vertex> &start, co
     return v;
 }
 
-Vertex::SharedPtr Vertex::connect(const Vertex::SharedPtr& start, const DubinsWrapper& wrapper) {
+Vertex::SharedPtr Vertex::connect(const Vertex::SharedPtr& start, const DubinsWrapper& wrapper,
+                                  bool coverageAllowed) {
     auto e = new Edge(start);
     auto v = e->setEnd(wrapper);
     v->m_RibbonManager = start->m_RibbonManager;
+    v->m_CoverageIsAllowed = coverageAllowed;
+    v->m_TurningRadius = wrapper.getRho();
     return v;
 }
 

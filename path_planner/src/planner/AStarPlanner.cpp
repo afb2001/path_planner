@@ -41,16 +41,13 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     if (!previousPlan.empty()) {
 //        auto p = previousPlan.get().front();
         for (const auto& p : previousPlan.get()) {
-            lastPlanEnd = Vertex::connect(lastPlanEnd, p);
+            if (p.getEndTime() <= start.time()) continue;
+            lastPlanEnd = Vertex::connect(lastPlanEnd, p, p.getRho() == m_Config.coverageTurningRadius());
             lastPlanEnd->parentEdge()->computeTrueCost(m_Config);
             if (lastPlanEnd->parentEdge()->infeasible()) {
                 lastPlanEnd = startV;
                 break;
             }
-        }
-        if (lastPlanEnd != startV){
-//            *m_Config.output() << "Last plan f value: " << lastPlanEnd->f() << std::endl;
-            visualizeVertex(lastPlanEnd, "lastPlanEnd");
         }
     }
     // big loop
@@ -61,6 +58,22 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
             break;
         }
         visualizeVertex(startV, "start");
+
+        // copied here for debugging - definitely remove once this is sorted out
+//        lastPlanEnd = startV;
+//        if (!previousPlan.empty()) {
+//            for (const auto& p : previousPlan.get()) {
+//                lastPlanEnd = Vertex::connect(lastPlanEnd, p, p.getRho() == m_Config.coverageTurningRadius());
+//                lastPlanEnd->parentEdge()->computeTrueCost(m_Config);
+//                lastPlanEnd->computeApproxToGo();
+//                visualizeVertex(lastPlanEnd, "lastPlanEnd");
+//                if (lastPlanEnd->parentEdge()->infeasible()) {
+//                    lastPlanEnd = startV;
+//                    break;
+//                }
+//            }
+//        } // end debugging copy
+
         if (m_Config.visualizations()) {
             m_Config.visualizationStream() << "Incumbent f-value: " << (m_BestVertex? m_BestVertex->f() : 0) << std::endl;
             m_Config.visualizationStream() << m_RibbonManager.dumpRibbons() << "End Ribbons" << std::endl;

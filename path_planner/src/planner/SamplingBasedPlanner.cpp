@@ -39,7 +39,7 @@ std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getS
 }
 
 bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) {
-    return vertex->state().time() + 1e-5 > m_StartStateTime + DubinsPlan::timeHorizon() ||
+    return vertex->state().time() + 1e-5 > m_StartStateTime + 30 /*DubinsPlan::timeHorizon()*/ ||
            (vertex->done() && vertex->state().time() > m_StartStateTime + DubinsPlan::timeMinimum());
 }
 

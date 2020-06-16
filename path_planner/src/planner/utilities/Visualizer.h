@@ -11,7 +11,7 @@ public:
     typedef std::shared_ptr<Visualizer> SharedPtr;
     typedef std::unique_ptr<Visualizer> UniquePtr;
     explicit Visualizer(const std::string& path) {
-        m_Stream.open(path, std::ios::app | std::ios::out);
+        m_Stream.open(path, std::ios::trunc | std::ios::out);
     }
 
     std::ofstream& stream() {

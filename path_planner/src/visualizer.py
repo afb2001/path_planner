@@ -85,7 +85,7 @@ class Iteration:
         elif item.tag == "trajectory":
             # assume there's at least a dummy item (could probably check that)
             self.items[-1].children.append(item)
-        elif item.tag == "vertex":
+        elif item.tag == "vertex" or item.tag == "lastplanend":
             if len(self.items) != 0 and self.items[-1].tag == "dummy":
                 # overwrite dummy with vertex, keeping trajectory
                 self.items[-1].x = item.x
@@ -93,6 +93,10 @@ class Iteration:
                 self.items[-1].h = item.h
                 self.items[-1].cost = item.cost
                 self.items[-1].tag = item.tag
+            else:
+                # allow vertex without a dummy trajectory
+                self.items.append(item)
+            # let lastPlanEnd participate in color scheme, for now, even though it's displayed with its own color
             self.cost_min = min(self.cost_min, item.cost)
             self.cost_max = max(self.cost_max, item.cost)
         elif item.tag == "plan":
@@ -338,7 +342,7 @@ class Visualizer:
             if self.draw_vertices:
                 yy = self.draw_vehicle(item.h, self.get_color(item.cost), *self.scale_item(item.x, item.y))
                 self.draw_text_cost(item.cost, self.scale_item(item.x, item.y)[0], yy)
-        elif item.tag == "lastPlanEnd":
+        elif item.tag == "lastplanend":
             yy = self.draw_vehicle(item.h, Color_BLACK, *self.scale_item(item.x, item.y))
             self.draw_text_cost(item.cost, self.scale_item(item.x, item.y)[0], yy)
         elif item.tag == "plan":

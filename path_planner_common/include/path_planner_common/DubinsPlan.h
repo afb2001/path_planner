@@ -74,9 +74,9 @@ public:
 
     /**
      * Truncate this plan to start at the given time. Hey this doesn't actually do anything. Huh. Should look into that.
-     * @param time
+     * @param startTime
      */
-    void changeIntoSuffix(double time);
+    void changeIntoSuffix(double startTime);
 
     /**
      * Get samples at half second intervals.

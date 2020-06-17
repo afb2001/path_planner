@@ -151,6 +151,7 @@ class Visualizer:
         self.draw_ribbons = True
         self.draw_vertices = True
         self.draw_vertex_costs = True
+        self.draw_costs_as_ints = True
 
         self.iterations = []
         self.iteration_index = 0
@@ -279,6 +280,9 @@ class Visualizer:
             elif event.key == pygame.K_c:
                 # toggle showing vertex costs (again, why not)
                 self.draw_vertex_costs = not self.draw_vertex_costs
+            elif event.key == pygame.K_f:
+                # toggle showing costs as ints (vs floats)
+                self.draw_costs_as_ints = not self.draw_costs_as_ints
 
     def increment_iteration(self, jump_to_goal):
         self.iterations[self.iteration_index].reset()
@@ -392,7 +396,7 @@ class Visualizer:
     def draw_text_cost(self, cost, x, y):
         if not self.draw_vertex_costs:
             return
-        text = str(int(cost))
+        text = str(int(cost) if self.draw_costs_as_ints else cost)
         text_surface = self.font.render(text, True, (0, 0, 0))
         y += text_surface.get_height()
         self.display.blit(text_surface, (x, y))
@@ -468,6 +472,8 @@ class Visualizer:
             elif line[0] == "Ribbons":
                 adding_ribbons = True
             elif adding_ribbons:
+                if line[0] == "None":
+                    continue
                 # ribbon mode means input will look different, hence the flag
                 self.iterations[-1].ribbons.append([float(line[0]), float(line[1]), float(line[3]), float(line[4])])
 

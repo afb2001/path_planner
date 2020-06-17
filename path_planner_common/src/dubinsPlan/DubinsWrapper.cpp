@@ -26,7 +26,8 @@ bool DubinsWrapper::containsTime(double time) const {
 }
 
 void DubinsWrapper::sample(State& s) const {
-    if (!containsTime(s.time())) throw std::runtime_error("Invalid time in sample for Dubins path");
+    if (!containsTime(s.time()))
+        throw std::runtime_error("Invalid time in sample for Dubins path");
     double distance = (s.time() - m_StartTime) * m_Speed;
     // heading comes back as yaw
     int err = dubins_path_sample(&m_DubinsPath, distance, s.pose());

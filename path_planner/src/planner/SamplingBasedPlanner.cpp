@@ -39,7 +39,7 @@ std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getS
 }
 
 bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) {
-    return vertex->state().time() + 1e-5 > m_StartStateTime + 30 /*DubinsPlan::timeHorizon()*/ ||
+    return vertex->state().time() + 1e-5 > m_StartStateTime + /*30*/ DubinsPlan::timeHorizon() ||
            (vertex->done() && vertex->state().time() > m_StartStateTime + DubinsPlan::timeMinimum());
 }
 
@@ -49,9 +49,9 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
     // add nearest point to cover
     if (!sourceVertex->done()) {
         auto s = sourceVertex->getNearestPointAsState();
+        // TODO! -- get some set of near points
         if (sourceVertex->state().distanceTo(s) > Edge::collisionCheckingIncrement()) {
             s.speed() = m_Config.maxSpeed();
-            // TODO! -- what heading for points?
             auto destinationVertex = Vertex::connect(sourceVertex, s, m_Config.turningRadius(), false);
             destinationVertex->parentEdge()->computeTrueCost(m_Config);
             pushVertexQueue(destinationVertex);

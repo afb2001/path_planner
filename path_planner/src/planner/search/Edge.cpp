@@ -83,6 +83,7 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     State intermediate(start()->state());
     // truncate longer edges than 30 seconds
     auto endTime = fmin(DubinsPlan::timeHorizon() + 1 + config.startStateTime(),m_DubinsWrapper.getEndTime());
+    auto minGoalTime = fmin(m_DubinsWrapper.getEndTime(), DubinsPlan::timeMinimum() + config.startStateTime() + 1e-5);
 
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
@@ -141,6 +142,10 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
             toCoverDistance = end()->ribbonManager().minDistanceFrom(intermediate.x(), intermediate.y());
             if (end()->coverageAllowed() || lastHeading == intermediate.heading()) {
                 end()->ribbonManager().cover(intermediate.x(), intermediate.y());
+            }
+            if (end()->ribbonManager().done()) {
+                // make it so we only need the min time if we finish covering
+                endTime = fmax(minGoalTime, intermediate.time());
             }
 
         }

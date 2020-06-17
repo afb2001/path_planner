@@ -42,6 +42,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
 //        auto p = previousPlan.get().front();
         for (const auto& p : previousPlan.get()) {
             if (p.getEndTime() <= start.time()) continue;
+            if (p.getNetTime() == 0) continue; // There is sometimes a zero length edge at the end. Not sure why
             lastPlanEnd = Vertex::connect(lastPlanEnd, p, p.getRho() == m_Config.coverageTurningRadius());
             lastPlanEnd->parentEdge()->computeTrueCost(m_Config);
             if (lastPlanEnd->parentEdge()->infeasible()) {
@@ -59,20 +60,24 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         }
         visualizeVertex(startV, "start");
 
-        // copied here for debugging - definitely remove once this is sorted out
-//        lastPlanEnd = startV;
-//        if (!previousPlan.empty()) {
-//            for (const auto& p : previousPlan.get()) {
-//                lastPlanEnd = Vertex::connect(lastPlanEnd, p, p.getRho() == m_Config.coverageTurningRadius());
-//                lastPlanEnd->parentEdge()->computeTrueCost(m_Config);
-//                lastPlanEnd->computeApproxToGo();
-//                visualizeVertex(lastPlanEnd, "lastPlanEnd");
-//                if (lastPlanEnd->parentEdge()->infeasible()) {
-//                    lastPlanEnd = startV;
-//                    break;
-//                }
-//            }
-//        } // end debugging copy
+        if (m_Config.visualizations()) {
+            // copied here for debugging but it's necessary for visualizing the previous plan
+            lastPlanEnd = startV;
+            if (!previousPlan.empty()) {
+                for (const auto& p : previousPlan.get()) {
+                    if (p.getEndTime() <= start.time()) continue;
+                    if (p.getNetTime() == 0) continue; // just trying this I guess
+                    lastPlanEnd = Vertex::connect(lastPlanEnd, p, p.getRho() == m_Config.coverageTurningRadius());
+                    lastPlanEnd->parentEdge()->computeTrueCost(m_Config);
+                    lastPlanEnd->computeApproxToGo();
+                    visualizeVertex(lastPlanEnd, "lastPlanEnd");
+                    if (lastPlanEnd->parentEdge()->infeasible()) {
+                        lastPlanEnd = startV;
+                        break;
+                    }
+                }
+            }
+        }
 
         if (m_Config.visualizations()) {
             m_Config.visualizationStream() << "Incumbent f-value: " << (m_BestVertex? m_BestVertex->f() : 0) << std::endl;
@@ -82,8 +87,10 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         if (lastPlanEnd != startV) pushVertexQueue(lastPlanEnd);
         // manually expand starting node to include states on nearby ribbons far enough away such that the boat doesn't
         // have to loop around
-        expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles(), true);
-        expandToCoverSpecificSamples(startV, otherRibbonSamples, m_Config.obstacles(), true);
+
+        // TODO! -- add configuration options to toggle these on the fly
+//        expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles(), true);
+//        expandToCoverSpecificSamples(startV, otherRibbonSamples, m_Config.obstacles(), true);
         // On the first iteration add c_InitialSamples samples, otherwise just double them
         if (m_Samples.size() < c_InitialSamples) addSamples(generator, c_InitialSamples);
         else addSamples(generator); // linearly increase samples (changed to not double)
@@ -120,8 +127,8 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
 shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles, double endTime) {
     auto vertex = popVertexQueue();
     while (now() < endTime) {
-        // with filter on vertex queue this second check is unnecessary
-        if (goalCondition(vertex) && (!m_BestVertex || vertex->f() < m_BestVertex->f())) {
+        // relying on the filter on the vertex queue to give us a better goal
+        if (goalCondition(vertex)) {
             visualizeVertex(vertex, "vertex");
             return vertex;
         }

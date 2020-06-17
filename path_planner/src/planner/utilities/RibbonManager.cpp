@@ -171,6 +171,7 @@ State RibbonManager::getNearestEndpointAsState(const State& state) const {
                 // we actually want the state at the other end of the ribbon
                 ret = r.endAsState();
                 ret.heading() = s.heading();
+                ret.move(-Ribbon::minLength() + 1e-5); // pull back up the ribbon a little because technically the ribbon can end here
             } else {
                 ret = s;
             }
@@ -183,6 +184,7 @@ State RibbonManager::getNearestEndpointAsState(const State& state) const {
                 // we actually want the state at the other end of the ribbon
                 ret = r.startAsState();
                 ret.heading() = s.heading();
+                ret.move(-Ribbon::minLength() + 1e-5); // pull back up the ribbon a little because technically the ribbon can end here
             } else {
                 ret = s;
             }

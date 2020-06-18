@@ -21,7 +21,7 @@ auto plannerConfig = PlannerConfig(&std::cerr);
 
 void validatePlan(DubinsPlan plan, PlannerConfig config) {
     auto wrappers = plan.get();
-    auto timeIncrement = Edge::collisionCheckingIncrement() / config.maxSpeed();
+    auto timeIncrement = plannerConfig.collisionCheckingIncrement() / config.maxSpeed();
     for (int i = 0; i < wrappers.size() - 1; i++) {
         auto& w1 = wrappers[i]; auto& w2 = wrappers[i + 1];
         EXPECT_NEAR(w1.getEndTime(), w2.getStartTime(), 1e-5);
@@ -30,8 +30,8 @@ void validatePlan(DubinsPlan plan, PlannerConfig config) {
         s2.time() = w2.getStartTime();
         w1.sample(s1); w2.sample(s2);
         // TODO! -- this should probably be zero, not the dubins increment, but I can't be bothered with that now
-        EXPECT_NEAR(s1.distanceTo(s2), 0, Edge::collisionCheckingIncrement() + 1e-5);
-        EXPECT_NEAR(s1.headingDifference(s2), 0, Edge::collisionCheckingIncrement() / config.turningRadius() + 1e-5);
+        EXPECT_NEAR(s1.distanceTo(s2), 0, plannerConfig.collisionCheckingIncrement() + 1e-5);
+        EXPECT_NEAR(s1.headingDifference(s2), 0, plannerConfig.collisionCheckingIncrement() / config.turningRadius() + 1e-5);
     }
 }
 
@@ -285,7 +285,7 @@ TEST(UnitTests, DubinsSuffixTest) {
 //        cerr << endState.time() << endl;
         State sample;
         for (sample.time() = startState.time(); sample.time() < endState.time() - 1; sample.time() +=
-                                                                                             Edge::collisionCheckingIncrement() / plannerConfig.maxSpeed()) {
+                                                                                             plannerConfig.collisionCheckingIncrement() / plannerConfig.maxSpeed()) {
             path.sample(sample);
             DubinsWrapper path2(sample, endState, plannerConfig.turningRadius() - radiusShrink);
 //            EXPECT_DOUBLE_EQ(endState.time(), path2.getEndTime());
@@ -333,7 +333,7 @@ TEST(UnitTests, DubinsSuffixTest) {
 //        cerr << endState.time() << endl;
         State sample;
         for (sample.time() = startState.time(); sample.time() < endState.time() - 1; sample.time() +=
-                                                                                             Edge::collisionCheckingIncrement() / plannerConfig.maxSpeed()) {
+                                                                                             plannerConfig.collisionCheckingIncrement() / plannerConfig.maxSpeed()) {
             path.sample(sample);
             DubinsWrapper path2(sample, endState, radius - radiusShrink);
 //            EXPECT_DOUBLE_EQ(endState.time(), path2.getEndTime());
@@ -820,7 +820,7 @@ TEST(UnitTests, ComputeEdgeCostTest) {
 
 TEST(UnitTests, RunStateGenerationTest) {
     double minX, maxX, minY, maxY, minSpeed = 2.5, maxSpeed = 2.5;
-    double magnitude = 2.5 * DubinsPlan::timeHorizon();
+    double magnitude = 2.5 * plannerConfig.timeHorizon();
     minX = -magnitude;
     maxX = magnitude;
     minY = -magnitude;
@@ -1024,7 +1024,7 @@ TEST(UnitTests, ExpandDifferentTurningRadiiTest) {
 }
 
 TEST(UnitTests, AngleConsistencyTest) {
-    auto minAngleChange = 2 * (Edge::collisionCheckingIncrement() / plannerConfig.turningRadius() + 1e-5); // arc length / radius + tolerance
+    auto minAngleChange = 2 * (plannerConfig.collisionCheckingIncrement() / plannerConfig.turningRadius() + 1e-5); // arc length / radius + tolerance
     StateGenerator generator(-50, 50, -50, 50, plannerConfig.maxSpeed(), plannerConfig.maxSpeed(), 7);
     auto rootState = generator.generate();
     rootState.time() = 1;
@@ -1035,7 +1035,7 @@ TEST(UnitTests, AngleConsistencyTest) {
     for (int i = 0; i < 10; i++) {
         auto startState = generator.generate();
         auto start = Vertex::connect(root, startState);
-        if (start->parentEdge()->computeTrueCost(plannerConfig) > DubinsPlan::timeHorizon() - 1){
+        if (start->parentEdge()->computeTrueCost(plannerConfig) > plannerConfig.timeHorizon() - 1){
             i--;
             continue;
         }
@@ -1043,7 +1043,7 @@ TEST(UnitTests, AngleConsistencyTest) {
         auto end = Vertex::connect(start, endState);
         end->parentEdge()->computeTrueCost(plannerConfig);
         State sample;
-        sample.time() = end->state().time() - Edge::collisionCheckingIncrement() / plannerConfig.maxSpeed();
+        sample.time() = end->state().time() - plannerConfig.collisionCheckingIncrement() / plannerConfig.maxSpeed();
         auto plan = end->parentEdge()->getPlan(plannerConfig);
         plan.sample(sample);
         EXPECT_NEAR(sample.headingDifference(end->state().heading()), 0, minAngleChange);
@@ -1051,7 +1051,7 @@ TEST(UnitTests, AngleConsistencyTest) {
         plan.sample(sample);
 //        EXPECT_DOUBLE_EQ(sample.heading(), end->state().heading());
         auto sPrev = startState;
-        auto samples = plan.getSamples(Edge::collisionCheckingIncrement() / plannerConfig.maxSpeed(), 0);
+        auto samples = plan.getSamples(plannerConfig.collisionCheckingIncrement() / plannerConfig.maxSpeed(), 0);
         for (const auto& s : samples) {
             EXPECT_NEAR(sPrev.headingDifference(s.heading()), 0, minAngleChange);
             sPrev = s;
@@ -1061,7 +1061,7 @@ TEST(UnitTests, AngleConsistencyTest) {
 }
 
 TEST(UnitTests, AngleConsitencyTest2) {
-    auto minAngleChange = (Edge::collisionCheckingIncrement() / plannerConfig.turningRadius() + 1e-5); // arc length / radius + tolerance
+    auto minAngleChange = (plannerConfig.collisionCheckingIncrement() / plannerConfig.turningRadius() + 1e-5); // arc length / radius + tolerance
     StateGenerator generator(-50, 50, -50, 50, plannerConfig.maxSpeed(), plannerConfig.maxSpeed(), 7);
     generator.generate(); // waste a state for the root state in prev test so we can have same states
     for (int i = 0; i < 10; i++) {
@@ -1075,7 +1075,7 @@ TEST(UnitTests, AngleConsitencyTest2) {
         EXPECT_NEAR(sample.headingDifference(endState.heading()), 0, minAngleChange);
         wrapper.sample(sample); // for stepping through with a debugger
         auto sPrev = startState;
-        auto samples = wrapper.getSamples(Edge::collisionCheckingIncrement() / plannerConfig.maxSpeed(), 0);
+        auto samples = wrapper.getSamples(plannerConfig.collisionCheckingIncrement() / plannerConfig.maxSpeed(), 0);
         for (const auto& s : samples) {
             EXPECT_NEAR(sPrev.headingDifference(s.heading()), 0, minAngleChange);
             sPrev = s;
@@ -1102,7 +1102,7 @@ TEST(UnitTests, EdgeTruncation) {
     d = v2->parentEdge()->computeApproxCost(plannerConfig.maxSpeed(), plannerConfig.turningRadius());
     EXPECT_DOUBLE_EQ(d, 40);
     d = v2->parentEdge()->computeTrueCost(plannerConfig);
-    EXPECT_DOUBLE_EQ(d, DubinsPlan::timeHorizon());
+    EXPECT_DOUBLE_EQ(d, plannerConfig.timeHorizon());
     auto s5 = v2->state();
     EXPECT_FALSE(s5.isCoLocated(s2));
 

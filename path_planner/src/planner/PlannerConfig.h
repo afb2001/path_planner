@@ -114,16 +114,75 @@ public:
         m_StartStateTime = startStateTime;
     }
 
+    double timeHorizon() const {
+        return m_TimeHorizon;
+    }
+
+    void setTimeHorizon(double timeHorizon) {
+        m_TimeHorizon = timeHorizon;
+    }
+
+    bool useBrownPaths() const {
+        return m_UseBrownPaths;
+    }
+
+    void setUseBrownPaths(bool useBrownPaths) {
+        m_UseBrownPaths = useBrownPaths;
+    }
+
+    int initialSamples() const {
+        return m_InitialSamples;
+    }
+
+    void setInitialSamples(int initialSamples) {
+        m_InitialSamples = initialSamples;
+    }
+
+    double collisionCheckingIncrement() const {
+        return m_CollisionCheckingIncrement;
+    }
+
+    void setCollisionCheckingIncrement(double collisionCheckingIncrement) {
+        m_CollisionCheckingIncrement = collisionCheckingIncrement;
+    }
+
+    double timeMinimum() const {
+        return m_TimeMinimum;
+    }
+
+    void setTimeMinimum(double timeMinimum) {
+        m_TimeMinimum = timeMinimum;
+    }
+
 private:
+    // search branching factor
     int m_BranchingFactor = 9;
+    // vehicle configuration (radii for Dubins model)
     double m_MaxSpeed = 2.5, m_TurningRadius = 8, m_CoverageTurningRadius = 16;
+    // time horizon and minimum plan duration
+    double m_TimeHorizon = 30, m_TimeMinimum = 5;
+    // increment at which plans are collision checked (m)
+    // TODO! -- really oughta be in seconds because when we have different speeds slower will accrue less collision
+    //  penalty per second of being within an obstacle's probability distribution
+    double m_CollisionCheckingIncrement = 1;
+    // initial number of samples each planning iteration
+    int m_InitialSamples = 100;
+    // whether or not to be clever about getting onto the ribbon with some hand-picked curves
+    bool m_UseBrownPaths = false;
+    // whether to dump the motion tree to a file. tends to make search go a little slower, and files get big fast
     bool m_Visualizations = false;
     Visualizer::UniquePtr* m_Visualizer;
+    // I don't remember why this was a good idea but it works well enough and I'm too scared to change it
     std::ostream** m_VisualizationStream = nullptr; // pointer to a pointer so we can change streams across copies
+    // static map
     Map::SharedPtr m_Map;
+    // dynamic obstacles
     DynamicObstaclesManager m_Obstacles;
+    // Stream for output. Maybe this should go to its own ROS topic?
     std::ostream* m_Output;
+    // function we pass in to let the planner check the time
     std::function<double()> m_NowFunction;
+    // handy place to keep track of the starting time this iteration
     double m_StartStateTime;
 
 };

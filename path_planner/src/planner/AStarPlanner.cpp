@@ -21,7 +21,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     m_StartStateTime = start.time();
     m_Samples.clear();
     double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
-    double magnitude = m_Config.maxSpeed() * DubinsPlan::timeHorizon();
+    double magnitude = m_Config.maxSpeed() * m_Config.timeHorizon();
     minX = start.x() - magnitude;
     maxX = start.x() + magnitude;
     minY = start.y() - magnitude;
@@ -31,8 +31,11 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     startV->state().speed() = m_Config.maxSpeed(); // state's speed is used to compute h so need to use max
     startV->computeApproxToGo();
     m_BestVertex = nullptr;
-    auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
-    auto otherRibbonSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());
+//    auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
+    std::vector<State> brownPathSamples;
+    if (m_Config.useBrownPaths()) {
+        brownPathSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());
+    }
 
     // redundant start visualization because we do other vis before we actually start search
 //    visualizeVertex(startV, "start");
@@ -88,12 +91,11 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         // manually expand starting node to include states on nearby ribbons far enough away such that the boat doesn't
         // have to loop around
 
-        // TODO! -- add configuration options to toggle these on the fly
 //        expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles(), true);
-//        expandToCoverSpecificSamples(startV, otherRibbonSamples, m_Config.obstacles(), true);
-        // On the first iteration add c_InitialSamples samples, otherwise just double them
-        if (m_Samples.size() < c_InitialSamples) addSamples(generator, c_InitialSamples);
-        else addSamples(generator); // linearly increase samples (changed to not double)
+        expandToCoverSpecificSamples(startV, brownPathSamples, m_Config.obstacles(), true);
+        // On the first iteration add initialSamples samples, otherwise just double them
+        if (m_Samples.size() < m_Config.initialSamples()) addSamples(generator, m_Config.initialSamples());
+        else addSamples(generator); // double samples (BIT* linearly increases them...)
         // visualize all samples each iteration
         if (m_Config.visualizations()) {
             for (const auto& s : m_Samples)

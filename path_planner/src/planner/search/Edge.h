@@ -120,11 +120,7 @@ public:
      * @return
      */
     static double collisionPenaltyFactor() { return c_CollisionPenaltyFactor; }
-    /**
-     * Increment for collision checking.
-     * @return
-     */
-    static double collisionCheckingIncrement() { return c_CollisionCheckingIncrement; }
+
     /**
      * Time penalty factor. This can be seen as a conversion from seconds to score units.
      * @return
@@ -152,7 +148,6 @@ private:
     double netTime();
 
     static constexpr double c_CollisionPenaltyFactor = 10; // no idea how to set this but this is probably too low (try 600)
-    static constexpr double c_CollisionCheckingIncrement = 1;
     static constexpr double c_TimePenaltyFactor = 1;
 };
 

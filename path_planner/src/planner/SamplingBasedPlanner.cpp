@@ -39,8 +39,8 @@ std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getS
 }
 
 bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) {
-    return vertex->state().time() + 1e-5 > m_StartStateTime + /*30*/ DubinsPlan::timeHorizon() ||
-           (vertex->done() && vertex->state().time() > m_StartStateTime + DubinsPlan::timeMinimum());
+    return vertex->state().time() + 1e-5 > m_StartStateTime + m_Config.timeHorizon() ||
+           (vertex->done() && vertex->state().time() > m_StartStateTime + m_Config.timeMinimum());
 }
 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, const DynamicObstaclesManager& obstacles) {
@@ -50,7 +50,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
     if (!sourceVertex->done()) {
         auto s = sourceVertex->getNearestPointAsState();
         // TODO! -- get some set of near points
-        if (sourceVertex->state().distanceTo(s) > Edge::collisionCheckingIncrement()) {
+        if (sourceVertex->state().distanceTo(s) > m_Config.collisionCheckingIncrement()) {
             s.speed() = m_Config.maxSpeed();
             auto destinationVertex = Vertex::connect(sourceVertex, s, m_Config.turningRadius(), false);
             destinationVertex->parentEdge()->computeTrueCost(m_Config);
@@ -75,7 +75,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
         std::pop_heap(m_Samples.begin(), m_Samples.end() - i, comp);
         if (!regularDone && (bestSamples.size() < k() ||
             bestSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
-            if (sourceVertex->state().distanceTo(sample) > Edge::collisionCheckingIncrement()) {
+            if (sourceVertex->state().distanceTo(sample) > m_Config.collisionCheckingIncrement()) {
                 // don't force speed to be anything in particular, allowing samples to come with unique speeds
                 bestSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.turningRadius(), false));
                 bestSamples.back()->parentEdge()->computeApproxCost();
@@ -90,7 +90,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
         }
         if (!coverageDone && (bestCoverageSamples.size() < k() ||
             bestCoverageSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
-            if (sourceVertex->state().distanceTo(sample) > Edge::collisionCheckingIncrement()) {
+            if (sourceVertex->state().distanceTo(sample) > m_Config.collisionCheckingIncrement()) {
                 bestCoverageSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.coverageTurningRadius(), true));
                 bestCoverageSamples.back()->parentEdge()->computeApproxCost();
                 std::push_heap(bestCoverageSamples.begin(), bestCoverageSamples.end(), dubinsComp);
@@ -157,7 +157,7 @@ DubinsPlan SamplingBasedPlanner::plan(const RibbonManager&, const State& start, 
     m_Samples.clear();
     m_VertexQueue.clear();
     double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
-    double magnitude = m_Config.maxSpeed() * DubinsPlan::timeHorizon();
+    double magnitude = m_Config.maxSpeed() * m_Config.timeHorizon();
     minX = start.x() - magnitude;
     maxX = start.x() + magnitude;
     minY = start.y() - magnitude;

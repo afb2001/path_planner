@@ -95,7 +95,9 @@ public:
      * @param k
      * @param heuristic
      */
-    void setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double lineWidth, int k, int heuristic);
+    void setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double lineWidth, int k,
+                          int heuristic, double timeHorizon, double timeMinimum, double collisionCheckingIncrement,
+                          int initialSamples, bool useBrownPaths);
 
     /**
      * Update the planner visualization status with a new visualization file. If visualize is false the path is ignored.

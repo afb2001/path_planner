@@ -286,22 +286,30 @@ void Executive::clearRibbons() {
     m_RibbonManager = RibbonManager(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons, m_PlannerConfig.turningRadius(), 2);
 }
 
-void Executive::setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed,
-                                 double lineWidth, int k, int heuristic) {
-    m_PlannerConfig.setMaxSpeed(maxSpeed);
+void Executive::setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double lineWidth,
+                                 int k,
+                                 int heuristic, double timeHorizon, double timeMinimum,
+                                 double collisionCheckingIncrement,
+                                 int initialSamples, bool useBrownPaths) {
     m_PlannerConfig.setTurningRadius(turningRadius);
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
+    m_PlannerConfig.setMaxSpeed(maxSpeed);
     RibbonManager::setRibbonWidth(lineWidth);
     m_PlannerConfig.setBranchingFactor(k);
     switch (heuristic) {
         // check the .cfg file if this is breaking or if you change these
-        case 0: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::MaxDistance); break;
-        case 1: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitAllRibbons); break;
-        case 2: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons); break;
+        case 0: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitAllRibbons); break;
+        case 1: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons); break;
+        case 2: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::MaxDistance); break;
         case 3: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspDubinsNoSplitAllRibbons); break;
         case 4: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspDubinsNoSplitKRibbons); break;
-        default: cerr << "Unknown heuristic. Ignoring." << endl; break;
+        default: *m_PlannerConfig.output() << "Unknown heuristic. Ignoring." << endl; break;
     }
+    m_PlannerConfig.setTimeHorizon(timeHorizon);
+    m_PlannerConfig.setTimeMinimum(timeMinimum);
+    m_PlannerConfig.setCollisionCheckingIncrement(collisionCheckingIncrement);
+    m_PlannerConfig.setInitialSamples(initialSamples);
+    m_PlannerConfig.setUseBrownPaths(useBrownPaths);
 }
 
 void Executive::startPlanner() {

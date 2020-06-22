@@ -1255,9 +1255,9 @@ TEST(PlannerTests, RHRSAStarSingleRibbonTSP) {
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = true; // assume coverage
     DubinsPlan plan;
-//    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_test_visualizations"));
-//    plannerConfig.setVisualizations(true);
-//    plannerConfig.setVisualizer(&visualizer);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_test_visualizations"));
+    plannerConfig.setVisualizations(true);
+    plannerConfig.setVisualizer(&visualizer);
     while(!ribbonManager.done()) {
         /*if (!headingChanged)*/ ribbonManager.cover(start.x(), start.y());
         plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5);

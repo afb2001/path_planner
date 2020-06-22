@@ -42,12 +42,14 @@ def dist_square(x1, y1, x2, y2):
 
 
 class DisplayItem:
-    def __init__(self, x, y, h, cost, tag):
+    def __init__(self, pointer, x, y, h, cost, tag, expanded):
+        self.id = pointer  # integer of the pointer value (for disambiguation)
         self.x = x
         self.y = y
         self.h = h
         self.cost = cost
         self.tag = tag
+        self.expanded = expanded
         self.children = []  # trajectory, probably
 
 
@@ -58,6 +60,8 @@ class Iteration:
         self.cost_min = 0
         self.cost_max = 0
         self.items = []
+        self.generated = []
+        self.expanded = []
         self.ribbons = []
         self.display_index = 0
         self.incumbent_f = 0
@@ -110,19 +114,37 @@ class Iteration:
 
     def reset(self):
         self.display_index = 0
+        self.generated = []
+        self.expanded = []
 
     def increment(self):
         # deciding to wrap around
         self.display_index += 1
         if self.display_index == len(self.items):
             self.display_index = 0
+        #     self.generated = []
+        #     self.expanded = []
+        # else:
+        #     if self.items[self.display_index].expanded:
+        #         self.expanded.append(self.items[self.display_index])
+        #         for item in self.generated:
+        #             if item.children and item.id == self.items[self.display_index].id:
+        #                 self.expanded[-1].children = item.children
+        #         self.generated = [item for item in self.generated if item.id != self.items[self.display_index].id]
+        #     else:
+        #         self.generated.append(self.items[self.display_index])
 
     def decrement(self):
+        # if self.items[self.display_index].expanded:
+        #
         self.display_index -= 1
         if self.display_index < 0:
             self.display_index += len(self.items)
+            # while self.display_index < len(self.items) - 1:
+            #     self.increment()  # increment so we add everything to expanded/generated as expected
 
-    def get_display_items(self):
+    def get_display_items(self, display_generated=True, display_expanded=True):
+        # return (self.generated if display_generated else []) + (self.expanded if display_expanded else [])
         return self.items[0:self.display_index]
 
 
@@ -152,6 +174,9 @@ class Visualizer:
         self.draw_vertices = True
         self.draw_vertex_costs = True
         self.draw_costs_as_ints = True
+        # unused for now because it's complicated
+        self.draw_generated = True
+        self.draw_expanded = True
 
         self.iterations = []
         self.iteration_index = 0
@@ -277,6 +302,12 @@ class Visualizer:
             elif event.key == pygame.K_v:
                 # toggle showing vertices (why not?)
                 self.draw_vertices = not self.draw_vertices
+            elif event.key == pygame.K_g:
+                # toggle showing generated (but not expanded) vertices
+                self.draw_generated = not self.draw_generated
+            elif event.key == pygame.K_e:
+                # toggle showing expanded vertices
+                self.draw_expanded = not self.draw_expanded
             elif event.key == pygame.K_c:
                 # toggle showing vertex costs (again, why not)
                 self.draw_vertex_costs = not self.draw_vertex_costs
@@ -338,7 +369,7 @@ class Visualizer:
         if self.draw_ribbons:
             for ribbon in current_it.ribbons:
                 self.draw_ribbon(ribbon)
-        for item in current_it.get_display_items():
+        for item in current_it.get_display_items(self.draw_generated, self.draw_expanded):
             self.draw_item(item)
 
     def draw_item(self, item):
@@ -465,6 +496,19 @@ class Visualizer:
             for c in "():,\n":  # drop extra characters
                 line = line.replace(c, "")
             line = line.split(' ')
+            if line[-1] == "":
+                line = line[:-1]
+
+            if line[0] == "Expanded":
+                expanded = True
+                line = line[1:]
+                # for now, ignore expanded vertices
+                continue
+            elif line[0] == "Generated":
+                expanded = False
+                line = line[1:]
+            else:
+                expanded = None
 
             # ribbon-related bits
             if line[0] == "End" and line[1] == "Ribbons":
@@ -479,10 +523,10 @@ class Visualizer:
 
             elif line[0] == "Trajectory":
                 if len(self.iterations) != 0:  # make sure there's been a start already
-                    self.iterations[-1].append(DisplayItem(0, 0, 0, 0, "dummy"))  # append a dummy item to be replaced
+                    self.iterations[-1].append(DisplayItem(0, 0, 0, 0, 0, "dummy", None))  # append a dummy item to be replaced
             elif line[0] == "Incumbent" and line[1] == "f-value":
                 if len(self.iterations) != 0:  # make sure there's been a start already
-                    self.iterations[-1].append(DisplayItem(0, 0, 0, float(line[2]), "incumbent f"))
+                    self.iterations[-1].append(DisplayItem(0, 0, 0, 0, float(line[2]), "incumbent f", None))
             else:
                 x = (float(line[1]))
                 y = (float(line[2]))
@@ -490,12 +534,16 @@ class Visualizer:
                 cost = (float(line[9]))
                 heuristic = (float(line[11]))
                 tag = line[12].strip().lower()
+                if tag == "vertex" or tag == "lastplanend":
+                    pointer = int(line[-1])
+                else:
+                    pointer = 0
                 if tag == "start":
                     self.iterations.append(Iteration(x, y, h))
                 else:
                     if len(self.iterations) == 0:
                         continue
-                    self.iterations[-1].append(DisplayItem(x, y, h, cost + heuristic, tag))
+                    self.iterations[-1].append(DisplayItem(pointer, x, y, h, cost + heuristic, tag, expanded))
 
 
 def dist(x, x1, y, y1):

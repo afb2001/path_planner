@@ -14,7 +14,7 @@ void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     m_VertexQueue.push_back(vertex);
     std::push_heap(m_VertexQueue.begin(), m_VertexQueue.end(), getVertexComparator());
 //    std::cerr << "Pushing to vertex queue: " << vertex->toString() << std::endl;
-    visualizeVertex(vertex, "vertex");
+    visualizeVertex(vertex, "vertex", false);
 }
 
 std::shared_ptr<Vertex> SamplingBasedPlanner::popVertexQueue() {
@@ -46,6 +46,7 @@ bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, const DynamicObstaclesManager& obstacles) {
     
 //    std::cerr << "Expanding vertex " << sourceVertex->toString() << std::endl;
+    visualizeVertex(sourceVertex, "vertex", true);
     // add nearest point to cover
     if (!sourceVertex->done()) {
         auto s = sourceVertex->getNearestPointAsState();
@@ -173,9 +174,10 @@ DubinsPlan SamplingBasedPlanner::plan(const RibbonManager&, const State& start, 
     return tracePlan(vertex, false, m_Config.obstacles());
 }
 
-void SamplingBasedPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag) {
+void SamplingBasedPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag, bool expanded) {
     if (m_Config.visualizations()) {
-        m_Config.visualizationStream() << v->toString() << " " << tag << " " << v->getPointerTreeString() << std::endl;
+        m_Config.visualizationStream() << (expanded? "Expanded " : "Generated ") <<
+        v->toString() << " " << tag << " " << v->getPointerTreeString() << std::endl;
     }
 }
 

@@ -61,7 +61,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
             *m_Config.output() << "Found best possible plan, assuming heuristic admissibility" << std::endl;
             break;
         }
-        visualizeVertex(startV, "start");
+        visualizeVertex(startV, "start", false);
 
         if (m_Config.visualizations()) {
             // copied here for debugging but it's necessary for visualizing the previous plan
@@ -73,7 +73,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                     lastPlanEnd = Vertex::connect(lastPlanEnd, p, p.getRho() == m_Config.coverageTurningRadius());
                     lastPlanEnd->parentEdge()->computeTrueCost(m_Config);
                     lastPlanEnd->computeApproxToGo();
-                    visualizeVertex(lastPlanEnd, "lastPlanEnd");
+                    visualizeVertex(lastPlanEnd, "lastPlanEnd", false);
                     if (lastPlanEnd->parentEdge()->infeasible()) {
                         lastPlanEnd = startV;
                         break;
@@ -108,7 +108,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
             m_BestVertex = v;
             if (v && m_Config.visualizations()) {
                 visualizePlan(tracePlan(v, false, m_Config.obstacles()));
-                visualizeVertex(v, "goal");
+                visualizeVertex(v, "goal", false);
             }
         }
         m_IterationCount++;
@@ -131,7 +131,7 @@ shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles,
     while (now() < endTime) {
         // relying on the filter on the vertex queue to give us a better goal
         if (goalCondition(vertex)) {
-            visualizeVertex(vertex, "vertex");
+            visualizeVertex(vertex, "vertex", false);
             return vertex;
         }
         expand(vertex, obstacles);

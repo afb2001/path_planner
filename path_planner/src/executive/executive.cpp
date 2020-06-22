@@ -63,6 +63,9 @@ void Executive::planLoop() {
         // declare plan here so that it persists between loops
         DubinsPlan plan;
 
+        // keep track of how many times in a row we fail to find a plan
+        int failureCount = 0;
+
         while (true) {
             double startTime = m_TrajectoryPublisher->getTime();
 
@@ -132,8 +135,9 @@ void Executive::planLoop() {
             } catch (const std::exception& e) {
                 cerr << "Exception thrown while planning:" << endl;
                 cerr << e.what() << endl;
-                cerr << "Pausing." << endl;
-                cancelPlanner();
+                cerr << "Ignoring that and just trying to proceed." << endl;
+                plan = DubinsPlan();
+//                cancelPlanner();
             } catch (...) {
                 cerr << "Unknown exception thrown while planning; pausing" << endl;
                 cancelPlanner();
@@ -151,6 +155,7 @@ void Executive::planLoop() {
             m_TrajectoryPublisher->displayTrajectory(plan.getHalfSecondSamples(), true);
 
             if (!plan.empty()) {
+                failureCount = 0;
                 // send trajectory to controller
                 try {
                     startState = m_TrajectoryPublisher->publishPlan(plan);
@@ -212,6 +217,12 @@ void Executive::planLoop() {
             } else {
                 cerr << "Planner returned empty trajectory." << endl;
                 startState = State();
+                failureCount++;
+                if (failureCount > 2) {
+                    cerr << "Failed too many times in a row. Halving time horizon" << std::endl;
+                    m_PlannerConfig.setTimeHorizon(m_PlannerConfig.timeHorizon() / 2);
+                    failureCount = 0;
+                }
             }
         }
     }

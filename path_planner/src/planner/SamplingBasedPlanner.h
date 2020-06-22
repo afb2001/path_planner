@@ -82,7 +82,7 @@ protected:
      * @param v
      * @param tag
      */
-    void visualizeVertex(Vertex::SharedPtr v, const std::string& tag);
+    void visualizeVertex(Vertex::SharedPtr v, const std::string& tag, bool expanded);
 
     void visualizePlan(const DubinsPlan& plan);
 

@@ -284,11 +284,11 @@ std::vector<Distribution> Executive::inventDistributions(State obstacle) {
     std::vector<Distribution> distributions;
     double mean[2] = {obstacle.x(), obstacle.y()};
     double covariance[2][2] = {{1, 0},{0, 1}};
-    distributions.emplace_back(mean, covariance, obstacle.heading(), obstacle.time());
+    distributions.emplace_back(mean, covariance, 5, 5, obstacle.heading(), obstacle.time());
     obstacle = obstacle.push(1);
     mean[0] = obstacle.x(); mean[1] = obstacle.y();
 //    double covariance2[2][2] = {{2, 0}, {0, 2}}; // grow variance over time
-    distributions.emplace_back(mean, covariance, obstacle.heading(), obstacle.time());
+    distributions.emplace_back(mean, covariance, 5, 5, obstacle.heading(), obstacle.time());
     return distributions;
 }
 

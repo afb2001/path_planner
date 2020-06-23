@@ -147,7 +147,7 @@ private:
      */
     double netTime();
 
-    static constexpr double c_CollisionPenaltyFactor = 10; // no idea how to set this but this is probably too low (try 600)
+    static constexpr double c_CollisionPenaltyFactor = 600; // no idea how to set this but this is probably too low (try 600)
     static constexpr double c_TimePenaltyFactor = 1;
 };
 

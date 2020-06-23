@@ -131,9 +131,11 @@ TEST(UnitTests, PlanTransferTest1) {
 TEST(UnitTests, GaussianDensityTest) {
     double sigma[2][2] = {1, 0.1, 0.1, 1};
     double mean[2] = {0, 0};
-    Distribution distribution(mean, sigma, 0, 2);
-    EXPECT_NEAR(distribution.density(distribution, 2, 0, 0), 0.16, 1e-4);
-    EXPECT_NEAR(distribution.density(distribution, 2, 0.6, 0.6), 0.1153, 1e-4);
+    Distribution distribution(mean, sigma, 5, 5, 0, 2);
+//    EXPECT_NEAR(distribution.density(distribution, 2, 0, 0), 0.16, 1e-4);
+//    EXPECT_NEAR(distribution.density(distribution, 2, 0.6, 0.6), 0.1153, 1e-4);
+    EXPECT_DOUBLE_EQ(distribution.density(distribution, 2, 0, 0), 1);
+    EXPECT_DOUBLE_EQ(distribution.density(distribution, 2, 0.6, 0.6), 1);
 }
 
 TEST(UnitTests, GaussianInterpolationTest) {
@@ -141,16 +143,18 @@ TEST(UnitTests, GaussianInterpolationTest) {
     double mean1[2] = {-1, -1};
     double sigma2[2][2] = {1, 0.1, 0.1, 1};
     double mean2[2] = {1, 1};
-    Distribution distribution1(mean1, sigma1, 0, 2);
-    Distribution distribution2(mean2, sigma2, 0, 4);
-    EXPECT_NEAR(distribution1.density(distribution2, 3, 0, 0), 0.16, 1e-4);
-    EXPECT_NEAR(distribution1.density(distribution2, 3, 0.6, 0.6), 0.1153, 1e-4);
+    Distribution distribution1(mean1, sigma1, 5, 5, 0, 2);
+    Distribution distribution2(mean2, sigma2, 5, 5, 0, 4);
+//    EXPECT_NEAR(distribution1.density(distribution2, 3, 0, 0), 0.16, 1e-4);
+//    EXPECT_NEAR(distribution1.density(distribution2, 3, 0.6, 0.6), 0.1153, 1e-4);
+    EXPECT_DOUBLE_EQ(distribution1.density(distribution2, 3, 0, 0), 1);
+    EXPECT_DOUBLE_EQ(distribution1.density(distribution2, 3, 0.6, 0.6), 1);
 }
 
 TEST(UnitTests, GaussianTruncateTest) {
     double sigma[2][2] = {{1, 0}, {0, 1}};
     double mean[2] = {0, 0};
-    Distribution distribution(mean, sigma, 0, 2);
+    Distribution distribution(mean, sigma, 3, 3, 0, 2);
     // When sigma is the identity matrix, Mahalanobis distance is Euclidean distance, so we should get
     // a zero (truncated) density value for (1.5, 2) (distance to (0, 0) is 2.5)
     EXPECT_DOUBLE_EQ(0, distribution.density(1.5, 2));
@@ -164,29 +168,29 @@ TEST(UnitTests, DynamicObstacleTest1) {
     double sigma[2][2] = {{1, 0}, {0, 1}};
     double mean[2] = {0, 0};
     std::vector<Distribution> distributions;
-    distributions.emplace_back(mean, sigma, 0, 2);
-    distributions.emplace_back(mean, sigma, 0, 3);
+    distributions.emplace_back(mean, sigma, 5, 5, 0, 2);
+    distributions.emplace_back(mean, sigma, 5, 5, 0, 3);
     obstaclesManager.update(1, distributions);
     auto p = obstaclesManager.collisionExists(3, 4.5, 10);
     EXPECT_DOUBLE_EQ(p, 0);
-    p = obstaclesManager.collisionExists(2.5, 2.5, 10);
+    p = obstaclesManager.collisionExists(2.2, 2.2, 10);
     EXPECT_LT(0, p);
-    p = obstaclesManager.collisionExists(0, 3.6, 10);
+    p = obstaclesManager.collisionExists(0, 3, 10);
     EXPECT_DOUBLE_EQ(p, 0);
     distributions.clear();
-    distributions.emplace_back(mean, sigma, M_PI / 4, 2);
-    distributions.emplace_back(mean, sigma, M_PI / 4, 3);
+    distributions.emplace_back(mean, sigma, 5, 5, M_PI / 4, 2);
+    distributions.emplace_back(mean, sigma, 5, 5, M_PI / 4, 3);
     obstaclesManager.update(1, distributions);
-    p = obstaclesManager.collisionExists(0, 3.6, 10);
+    p = obstaclesManager.collisionExists(0, 3, 10);
     EXPECT_LT(0, p);
     distributions.clear();
     // shift and interpolate headings
     double mean1[2] = {1, 1};
     double sigma1[2][2] = {{1, 0}, {0, 1}};
-    distributions.emplace_back(mean1, sigma1, M_PI / 6, 2);
-    distributions.emplace_back(mean1, sigma1, M_PI / 3, 4);
+    distributions.emplace_back(mean1, sigma1, 5, 5, M_PI / 6, 2);
+    distributions.emplace_back(mean1, sigma1, 5, 5, M_PI / 3, 4);
     obstaclesManager.update(1, distributions);
-    auto p1 = obstaclesManager.collisionExists(1, 4.6, 3);
+    auto p1 = obstaclesManager.collisionExists(1, 4, 3);
     EXPECT_NEAR(p1, p, 0.00001);
 }
 

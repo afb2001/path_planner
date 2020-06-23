@@ -21,7 +21,7 @@ auto plannerConfig = PlannerConfig(&std::cerr);
 
 void validatePlan(DubinsPlan plan, PlannerConfig config) {
     auto wrappers = plan.get();
-    auto timeIncrement = Edge::collisionCheckingIncrement() / config.maxSpeed();
+    auto timeIncrement = plannerConfig.collisionCheckingIncrement() / config.maxSpeed();
     for (int i = 0; i < wrappers.size() - 1; i++) {
         auto& w1 = wrappers[i]; auto& w2 = wrappers[i + 1];
         EXPECT_NEAR(w1.getEndTime(), w2.getStartTime(), 1e-5);
@@ -30,8 +30,8 @@ void validatePlan(DubinsPlan plan, PlannerConfig config) {
         s2.time() = w2.getStartTime();
         w1.sample(s1); w2.sample(s2);
         // TODO! -- this should probably be zero, not the dubins increment, but I can't be bothered with that now
-        EXPECT_NEAR(s1.distanceTo(s2), 0, Edge::collisionCheckingIncrement() + 1e-5);
-        EXPECT_NEAR(s1.headingDifference(s2), 0, Edge::collisionCheckingIncrement() / config.turningRadius() + 1e-5);
+        EXPECT_NEAR(s1.distanceTo(s2), 0, plannerConfig.collisionCheckingIncrement() + 1e-5);
+        EXPECT_NEAR(s1.headingDifference(s2), 0, plannerConfig.collisionCheckingIncrement() / config.turningRadius() + 1e-5);
     }
 }
 
@@ -90,7 +90,7 @@ TEST(UnitTests, PlanTransferTest1) {
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
     for (int i = 2; i < 5; i++){
-        ribbonManager.cover(start.x(), start.y());
+        ribbonManager.cover(start.x(), start.y(), false);
         auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
@@ -131,9 +131,11 @@ TEST(UnitTests, PlanTransferTest1) {
 TEST(UnitTests, GaussianDensityTest) {
     double sigma[2][2] = {1, 0.1, 0.1, 1};
     double mean[2] = {0, 0};
-    Distribution distribution(mean, sigma, 0, 2);
-    EXPECT_NEAR(distribution.density(distribution, 2, 0, 0), 0.16, 1e-4);
-    EXPECT_NEAR(distribution.density(distribution, 2, 0.6, 0.6), 0.1153, 1e-4);
+    Distribution distribution(mean, sigma, 5, 5, 0, 2);
+//    EXPECT_NEAR(distribution.density(distribution, 2, 0, 0), 0.16, 1e-4);
+//    EXPECT_NEAR(distribution.density(distribution, 2, 0.6, 0.6), 0.1153, 1e-4);
+    EXPECT_DOUBLE_EQ(distribution.density(distribution, 2, 0, 0), 1);
+    EXPECT_DOUBLE_EQ(distribution.density(distribution, 2, 0.6, 0.6), 1);
 }
 
 TEST(UnitTests, GaussianInterpolationTest) {
@@ -141,16 +143,18 @@ TEST(UnitTests, GaussianInterpolationTest) {
     double mean1[2] = {-1, -1};
     double sigma2[2][2] = {1, 0.1, 0.1, 1};
     double mean2[2] = {1, 1};
-    Distribution distribution1(mean1, sigma1, 0, 2);
-    Distribution distribution2(mean2, sigma2, 0, 4);
-    EXPECT_NEAR(distribution1.density(distribution2, 3, 0, 0), 0.16, 1e-4);
-    EXPECT_NEAR(distribution1.density(distribution2, 3, 0.6, 0.6), 0.1153, 1e-4);
+    Distribution distribution1(mean1, sigma1, 5, 5, 0, 2);
+    Distribution distribution2(mean2, sigma2, 5, 5, 0, 4);
+//    EXPECT_NEAR(distribution1.density(distribution2, 3, 0, 0), 0.16, 1e-4);
+//    EXPECT_NEAR(distribution1.density(distribution2, 3, 0.6, 0.6), 0.1153, 1e-4);
+    EXPECT_DOUBLE_EQ(distribution1.density(distribution2, 3, 0, 0), 1);
+    EXPECT_DOUBLE_EQ(distribution1.density(distribution2, 3, 0.6, 0.6), 1);
 }
 
 TEST(UnitTests, GaussianTruncateTest) {
     double sigma[2][2] = {{1, 0}, {0, 1}};
     double mean[2] = {0, 0};
-    Distribution distribution(mean, sigma, 0, 2);
+    Distribution distribution(mean, sigma, 3, 3, 0, 2);
     // When sigma is the identity matrix, Mahalanobis distance is Euclidean distance, so we should get
     // a zero (truncated) density value for (1.5, 2) (distance to (0, 0) is 2.5)
     EXPECT_DOUBLE_EQ(0, distribution.density(1.5, 2));
@@ -164,29 +168,29 @@ TEST(UnitTests, DynamicObstacleTest1) {
     double sigma[2][2] = {{1, 0}, {0, 1}};
     double mean[2] = {0, 0};
     std::vector<Distribution> distributions;
-    distributions.emplace_back(mean, sigma, 0, 2);
-    distributions.emplace_back(mean, sigma, 0, 3);
+    distributions.emplace_back(mean, sigma, 5, 5, 0, 2);
+    distributions.emplace_back(mean, sigma, 5, 5, 0, 3);
     obstaclesManager.update(1, distributions);
     auto p = obstaclesManager.collisionExists(3, 4.5, 10);
     EXPECT_DOUBLE_EQ(p, 0);
-    p = obstaclesManager.collisionExists(2.5, 2.5, 10);
+    p = obstaclesManager.collisionExists(2.2, 2.2, 10);
     EXPECT_LT(0, p);
-    p = obstaclesManager.collisionExists(0, 3.6, 10);
+    p = obstaclesManager.collisionExists(0, 3, 10);
     EXPECT_DOUBLE_EQ(p, 0);
     distributions.clear();
-    distributions.emplace_back(mean, sigma, M_PI / 4, 2);
-    distributions.emplace_back(mean, sigma, M_PI / 4, 3);
+    distributions.emplace_back(mean, sigma, 5, 5, M_PI / 4, 2);
+    distributions.emplace_back(mean, sigma, 5, 5, M_PI / 4, 3);
     obstaclesManager.update(1, distributions);
-    p = obstaclesManager.collisionExists(0, 3.6, 10);
+    p = obstaclesManager.collisionExists(0, 3, 10);
     EXPECT_LT(0, p);
     distributions.clear();
     // shift and interpolate headings
     double mean1[2] = {1, 1};
     double sigma1[2][2] = {{1, 0}, {0, 1}};
-    distributions.emplace_back(mean1, sigma1, M_PI / 6, 2);
-    distributions.emplace_back(mean1, sigma1, M_PI / 3, 4);
+    distributions.emplace_back(mean1, sigma1, 5, 5, M_PI / 6, 2);
+    distributions.emplace_back(mean1, sigma1, 5, 5, M_PI / 3, 4);
     obstaclesManager.update(1, distributions);
-    auto p1 = obstaclesManager.collisionExists(1, 4.6, 3);
+    auto p1 = obstaclesManager.collisionExists(1, 4, 3);
     EXPECT_NEAR(p1, p, 0.00001);
 }
 
@@ -285,7 +289,7 @@ TEST(UnitTests, DubinsSuffixTest) {
 //        cerr << endState.time() << endl;
         State sample;
         for (sample.time() = startState.time(); sample.time() < endState.time() - 1; sample.time() +=
-                                                                                             Edge::collisionCheckingIncrement() / plannerConfig.maxSpeed()) {
+                                                                                             plannerConfig.collisionCheckingIncrement() / plannerConfig.maxSpeed()) {
             path.sample(sample);
             DubinsWrapper path2(sample, endState, plannerConfig.turningRadius() - radiusShrink);
 //            EXPECT_DOUBLE_EQ(endState.time(), path2.getEndTime());
@@ -333,7 +337,7 @@ TEST(UnitTests, DubinsSuffixTest) {
 //        cerr << endState.time() << endl;
         State sample;
         for (sample.time() = startState.time(); sample.time() < endState.time() - 1; sample.time() +=
-                                                                                             Edge::collisionCheckingIncrement() / plannerConfig.maxSpeed()) {
+                                                                                             plannerConfig.collisionCheckingIncrement() / plannerConfig.maxSpeed()) {
             path.sample(sample);
             DubinsWrapper path2(sample, endState, radius - radiusShrink);
 //            EXPECT_DOUBLE_EQ(endState.time(), path2.getEndTime());
@@ -381,6 +385,7 @@ TEST(UnitTests, DubinsReverseTest) {
 TEST(UnitTests, RibbonsTest1) {
     RibbonManager ribbonManager;
     ribbonManager.add(0, 0, 1000, 0);
+    // TODO! -- subtract 2* min ribbon length
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(0, 0, 0), 1000);
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(-100, 0, 0), 1100);
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(0, 1000, 0), 2000);
@@ -412,9 +417,9 @@ TEST(UnitTests, RibbonsTest2) {
 
 TEST(UnitTests, RibbonSplitTest) {
     Ribbon r1(40, 100, -70, -120);
-    auto r = r1.split(0, 0);
+    auto r = r1.split(0, 0, false);
     EXPECT_TRUE(r.length() < 3);
-    auto r2 = r1.split(-10, 0);
+    auto r2 = r1.split(-10, 0, false);
     EXPECT_EQ(r2.end(), std::make_pair(-10.0, 0.0));
     EXPECT_EQ(r2.start(), std::make_pair(40.0, 100.0));
     EXPECT_EQ(r2.end(), r1.start());
@@ -423,14 +428,14 @@ TEST(UnitTests, RibbonSplitTest) {
 TEST(UnitTests, RibbonsTest3) {
     RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitAllRibbons);
     ribbonManager.add(0, 0, 1000, 0);
-    ribbonManager.cover(2, 0);
+    ribbonManager.cover(2, 0, false);
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(2, 0, 0), 998);
 }
 
 TEST(UnitTests, RibbonsTest4) {
     RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitAllRibbons);
     ribbonManager.add(0, 0, 1000, 0);
-    ribbonManager.cover(1, 1);
+    ribbonManager.cover(1, 1, false);
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(1, 0, 0), 999);
 }
 
@@ -484,6 +489,145 @@ TEST(UnitTests, RibbonTest7) {
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(0, 1000, 0), 3000);
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(1000, 1000, 0), 3000);
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(100, 120, 0), 2020 + sqrt(2)*100);
+}
+
+TEST(UnitTests, HeuristicConsistency1) {
+    // ribbon dead ahead
+    auto heuristics = {
+            RibbonManager::MaxDistance,
+            RibbonManager::TspPointRobotNoSplitAllRibbons,
+            RibbonManager::TspPointRobotNoSplitKRibbons,
+            // Dubins heuristics are way off near ribbon ends that are being covered (rounding error again)
+//            RibbonManager::TspDubinsNoSplitAllRibbons,
+//            RibbonManager::TspDubinsNoSplitKRibbons
+    };
+    for (auto heuristic : heuristics) {
+        RibbonManager ribbonManager(heuristic, 8, 2);
+        ribbonManager.add(0, 0, 0, 75);
+        State s1(0, 0, 0, 2.5, 1), s2(0, 75, 0, 2.5, 31);
+        DubinsWrapper path(s1, s2, 8);
+        while (path.containsTime(s1.time())) {
+            path.sample(s1);
+            ribbonManager.cover(s1.x(), s1.y(), false);
+            if (ribbonManager.done()) break;
+            auto h = ribbonManager.approximateDistanceUntilDone(s1.x(), s1.y(), s1.yaw()) / 2.5;
+            EXPECT_DOUBLE_EQ(s1.time() + h, s2.time());
+            s1.time() += 1;
+        }
+    }
+}
+
+TEST(UnitTests, HeuristicConsistency2) {
+    // curve then ribbon
+    RibbonManager ribbonManager(RibbonManager::MaxDistance, 8, 2);
+    ribbonManager.add(16, 0, 16, -75);
+    State s1(0, 0, 0, 2.5, 1), s2(16, -75, M_PI, 2.5, 0);
+    DubinsWrapper path(s1, s2, 8);
+    while (path.containsTime(s1.time())) {
+        path.sample(s1);
+        auto contained = ribbonManager.get().front().containsProjection(std::make_pair(s1.x(), s1.y()));
+        ribbonManager.cover(s1.x(), s1.y(), false);
+        if (ribbonManager.done()) break;
+        auto h = ribbonManager.approximateDistanceUntilDone(s1.x(), s1.y(), s1.yaw()) / 2.5;
+        if (contained) {
+            EXPECT_DOUBLE_EQ(s1.time() + h, path.getEndTime());
+        } else
+        {
+            EXPECT_LE(s1.time() + h, path.getEndTime());
+        }
+        s1.time() += 1;
+    }
+}
+
+TEST(UnitTests, HeuristicConsistency3) {
+    // start from a random state, go to the start of the line, cover it
+    RibbonManager ribbonManager(RibbonManager::MaxDistance, 8, 2);
+    ribbonManager.add(0, 0, 0, 10);
+    StateGenerator generator(-100, 100, -100, 100, 2.5, 2.5, 42);
+    State s1(0, 0, 0, 2.5, 0), s2(0, 10, 0, 2.5, 0), s3 = generator.generate();
+    s3.time() = 1;
+    DubinsPlan plan;
+    plan.append(DubinsWrapper(s3, s1, 8));
+    s1.time() = plan.getEndTime();
+    plan.append(DubinsWrapper(s1, s2, 8));
+    while (plan.containsTime(s3.time())) {
+        plan.sample(s3);
+        auto r = ribbonManager.get().front();
+        auto contained = r.contains(s3.x(), s3.y(), r.getProjection(s3.x(), s3.y()), false);
+        ribbonManager.cover(s3.x(), s3.y(), false);
+        if (ribbonManager.done()) break;
+        auto h = ribbonManager.approximateDistanceUntilDone(s3.x(), s3.y(), s3.yaw()) / 2.5;
+        if (contained) {
+            EXPECT_DOUBLE_EQ(s3.time() + h, plan.getEndTime());
+        } else
+        {
+            EXPECT_LE(s3.time() + h, plan.getEndTime());
+        }
+        s3.time() += 1;
+    }
+}
+
+TEST(UnitTests, HeuristicConsistency4) {
+    plannerConfig.setMaxSpeed(2.5); // this is default but make sure anyway
+    plannerConfig.setStartStateTime(1);
+    RibbonManager ribbonManager(RibbonManager::MaxDistance, 8, 2);
+    ribbonManager.add(0, 0, 0, 80);
+    State s1(0, 0, 0, plannerConfig.maxSpeed(), 1), s2(0, 75, 0, plannerConfig.maxSpeed(), 31);
+    ribbonManager.coverBetween(0, -2.5, 0, 0); // this happens in the real version so let's do it here; we've come from somewhere
+    auto root = Vertex::makeRoot(s1, ribbonManager);
+    auto v1 = Vertex::connect(root, s2);
+    v1->parentEdge()->computeTrueCost(plannerConfig);
+    auto f1 = v1->f();
+    auto path = v1->parentEdge()->getPlan(plannerConfig);
+    // append a state on the end of the last plan and make sure the heuristic is consistent
+    State s3(0, 0, 0, 0, 2), s4(0, 77.5, 0, 2.5, 32);
+    path.sample(s3);
+    path.updateStartTime(2);
+    ribbonManager.coverBetween(0, 0, s3.x(), s3.y());
+    plannerConfig.setStartStateTime(2);
+    auto root2 = Vertex::makeRoot(s3, ribbonManager);
+    auto v2 = Vertex::connect(root2, path, path.getRho() == plannerConfig.coverageTurningRadius());
+    v2->parentEdge()->computeTrueCost(plannerConfig);
+    auto v3 = Vertex::connect(v2, s4);
+    v3->parentEdge()->computeTrueCost(plannerConfig);
+    auto f2 = v3->f();
+    EXPECT_NEAR(f1 - 1, f2, 1e-5); // time has gone down
+}
+
+TEST(UnitTests, HeuristicComparison5) {
+    // okay how do I get more realistic than that?
+    // maybe let's have the planner make the plan?
+    RibbonManager ribbonManager(RibbonManager::MaxDistance, 2);
+    ribbonManager.add(0, 0, 0, 80);
+    plannerConfig.setMaxSpeed(2.5); // this is default but make sure anyway
+    plannerConfig.setTurningRadius(8);
+    plannerConfig.setCoverageTurningRadius(16); // eh probably don't need this but whatever
+    State start(-20, -20, 0, 2.5, 1);
+    AStarPlanner planner;
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    EXPECT_FALSE(plan.empty());
+    auto previousConfig = plannerConfig;
+    // done with that iteration, let's test what happens in the next one
+    plannerConfig.setStartStateTime(2);
+    start.time() = 2;
+    plan.sample(start);
+    // ignoring ribbon manager coverage because we're far enough away not to matter
+    auto root = Vertex::makeRoot(start, ribbonManager);
+    auto lastPlanEnd = root;
+    auto previousEndVertex = root;
+    for (const auto& p : plan.get()) {
+        lastPlanEnd = Vertex::connect(lastPlanEnd, p, p.getRho() == plannerConfig.coverageTurningRadius());
+        lastPlanEnd->parentEdge()->computeTrueCost(plannerConfig);
+        previousEndVertex = Vertex::connect(previousEndVertex, p, p.getRho() == plannerConfig.coverageTurningRadius());
+        previousEndVertex->parentEdge()->computeTrueCost(previousConfig);
+    }
+    State s(0, 80, 0, 2.5, 0);
+    auto endV = Vertex::connect(lastPlanEnd, s);
+    endV->parentEdge()->computeTrueCost(plannerConfig); // should truncate
+    cerr << endV->toString() << endl;
+    EXPECT_NEAR(endV->state().x(), 0, 1e-12);
+    EXPECT_NEAR(endV->state().heading(), 0, 1e-12);
+    EXPECT_DOUBLE_EQ(previousEndVertex->f(), endV->f());
 }
 
 TEST(UnitTests, RibbonManagerGetNearestEndpointTest) {
@@ -600,7 +744,7 @@ TEST(Benchmarks, RibbonCoverBenchmark) {
         int times;
         for (times = 1; times <= maxTimes; times++) {
             auto s = generator.generate();
-            ribbonManager.cover(s.x(), s.y());
+            ribbonManager.cover(s.x(), s.y(), false);
         }
         auto endTime = std::chrono::system_clock::now();
         auto seconds = (double)((endTime - startTime).count()) / 1e9;
@@ -652,7 +796,7 @@ TEST(UnitTests, MakePlanTest) {
     // will return dubins wrapper now
     auto plan = e->getPlan(plannerConfig);
     EXPECT_GE(plan.getEndTime() - plan.getStartTime(), 5);
-    auto samples = plan.getSamples(0.5);
+    auto samples = plan.getSamples(0.5, 0);
     for (const auto& s : samples) cerr << s.toString() << endl;
     State sample(s1);
     plan.sample(s1);
@@ -663,8 +807,8 @@ TEST(UnitTests, MakePlanTest) {
 }
 
 TEST(UnitTests, ComputeEdgeCostTest) {
-    State s1(0, 0, 0, 1, 1);
-    State s2(0, 5, 0, 1, 0);
+    State s1(0, 0, 0, plannerConfig.maxSpeed(), 1);
+    State s2(0, 5, 0, plannerConfig.maxSpeed(), 0);
     auto v1 = Vertex::makeRoot(s1, RibbonManager());
     auto v2 = Vertex::connect(v1, s2);
     auto e = v2->parentEdge();
@@ -680,7 +824,7 @@ TEST(UnitTests, ComputeEdgeCostTest) {
 
 TEST(UnitTests, RunStateGenerationTest) {
     double minX, maxX, minY, maxY, minSpeed = 2.5, maxSpeed = 2.5;
-    double magnitude = 2.5 * DubinsPlan::timeHorizon();
+    double magnitude = 2.5 * plannerConfig.timeHorizon();
     minX = -magnitude;
     maxX = magnitude;
     minY = -magnitude;
@@ -720,7 +864,7 @@ TEST(UnitTests, VertexTests2) {
     auto t = v1->parentEdge()->computeTrueCost(plannerConfig);
     EXPECT_DOUBLE_EQ(c, t);
     auto h = v1->computeApproxToGo();
-    EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 10 + 50) / 2.5, h);
+    EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 10 + 50 - 2 * Ribbon::minLength()) / 2.5, h);
 }
 
 TEST(UnitTests, VertexTests3) {
@@ -735,7 +879,18 @@ TEST(UnitTests, VertexTests3) {
     DynamicObstaclesManager obstacles;
     v1->parentEdge()->computeTrueCost(plannerConfig);
     auto h = v1->computeApproxToGo();
-    EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 50) / 2.5, h);
+    EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 50 - 2 * Ribbon::minLength()) / 2.5, h);
+}
+
+TEST(UnitTests, PointerTreeStringTest) {
+    // make sure the function runs and doesn't print out anything unreasonable
+    RibbonManager ribbonManager(RibbonManager::MaxDistance);
+    ribbonManager.add(30, 30, 50, 50);
+    ribbonManager.add(50, 60, 100, 60);
+    auto root = Vertex::makeRoot(State(5, 5, M_PI, 2.5, 1), ribbonManager);
+    auto v1 = Vertex::connect(root, State(5, -20, M_PI, 2.5, 0));
+    cerr << root->getPointerTreeString() << endl;
+    cerr << v1->getPointerTreeString() << endl;
 }
 
 //TEST(PlannerTests, DISABLED_DubinsWalkTest) {
@@ -856,6 +1011,7 @@ TEST(UnitTests, ExpandTest1Ribbons) {
 }
 
 TEST(UnitTests, ExpandDifferentTurningRadiiTest) {
+    // Obsolete test - why should the top vertex have coverage allowed?
     State start(0, 0, 0, 2.5, 1);
     RibbonManager ribbonManager;
     ribbonManager.add(0, 0, 0, 30);
@@ -872,7 +1028,7 @@ TEST(UnitTests, ExpandDifferentTurningRadiiTest) {
 }
 
 TEST(UnitTests, AngleConsistencyTest) {
-    auto minAngleChange = 2 * (Edge::collisionCheckingIncrement() / plannerConfig.turningRadius() + 1e-5); // arc length / radius + tolerance
+    auto minAngleChange = 2 * (plannerConfig.collisionCheckingIncrement() / plannerConfig.turningRadius() + 1e-5); // arc length / radius + tolerance
     StateGenerator generator(-50, 50, -50, 50, plannerConfig.maxSpeed(), plannerConfig.maxSpeed(), 7);
     auto rootState = generator.generate();
     rootState.time() = 1;
@@ -883,7 +1039,7 @@ TEST(UnitTests, AngleConsistencyTest) {
     for (int i = 0; i < 10; i++) {
         auto startState = generator.generate();
         auto start = Vertex::connect(root, startState);
-        if (start->parentEdge()->computeTrueCost(plannerConfig) > DubinsPlan::timeHorizon() - 1){
+        if (start->parentEdge()->computeTrueCost(plannerConfig) > plannerConfig.timeHorizon() - 1){
             i--;
             continue;
         }
@@ -891,7 +1047,7 @@ TEST(UnitTests, AngleConsistencyTest) {
         auto end = Vertex::connect(start, endState);
         end->parentEdge()->computeTrueCost(plannerConfig);
         State sample;
-        sample.time() = end->state().time() - Edge::collisionCheckingIncrement() / plannerConfig.maxSpeed();
+        sample.time() = end->state().time() - plannerConfig.collisionCheckingIncrement() / plannerConfig.maxSpeed();
         auto plan = end->parentEdge()->getPlan(plannerConfig);
         plan.sample(sample);
         EXPECT_NEAR(sample.headingDifference(end->state().heading()), 0, minAngleChange);
@@ -899,7 +1055,7 @@ TEST(UnitTests, AngleConsistencyTest) {
         plan.sample(sample);
 //        EXPECT_DOUBLE_EQ(sample.heading(), end->state().heading());
         auto sPrev = startState;
-        auto samples = plan.getSamples(Edge::collisionCheckingIncrement() / plannerConfig.maxSpeed());
+        auto samples = plan.getSamples(plannerConfig.collisionCheckingIncrement() / plannerConfig.maxSpeed(), 0);
         for (const auto& s : samples) {
             EXPECT_NEAR(sPrev.headingDifference(s.heading()), 0, minAngleChange);
             sPrev = s;
@@ -909,7 +1065,7 @@ TEST(UnitTests, AngleConsistencyTest) {
 }
 
 TEST(UnitTests, AngleConsitencyTest2) {
-    auto minAngleChange = (Edge::collisionCheckingIncrement() / plannerConfig.turningRadius() + 1e-5); // arc length / radius + tolerance
+    auto minAngleChange = (plannerConfig.collisionCheckingIncrement() / plannerConfig.turningRadius() + 1e-5); // arc length / radius + tolerance
     StateGenerator generator(-50, 50, -50, 50, plannerConfig.maxSpeed(), plannerConfig.maxSpeed(), 7);
     generator.generate(); // waste a state for the root state in prev test so we can have same states
     for (int i = 0; i < 10; i++) {
@@ -923,7 +1079,7 @@ TEST(UnitTests, AngleConsitencyTest2) {
         EXPECT_NEAR(sample.headingDifference(endState.heading()), 0, minAngleChange);
         wrapper.sample(sample); // for stepping through with a debugger
         auto sPrev = startState;
-        auto samples = wrapper.getSamples(Edge::collisionCheckingIncrement() / plannerConfig.maxSpeed());
+        auto samples = wrapper.getSamples(plannerConfig.collisionCheckingIncrement() / plannerConfig.maxSpeed(), 0);
         for (const auto& s : samples) {
             EXPECT_NEAR(sPrev.headingDifference(s.heading()), 0, minAngleChange);
             sPrev = s;
@@ -950,7 +1106,7 @@ TEST(UnitTests, EdgeTruncation) {
     d = v2->parentEdge()->computeApproxCost(plannerConfig.maxSpeed(), plannerConfig.turningRadius());
     EXPECT_DOUBLE_EQ(d, 40);
     d = v2->parentEdge()->computeTrueCost(plannerConfig);
-    EXPECT_DOUBLE_EQ(d, DubinsPlan::timeHorizon());
+    EXPECT_DOUBLE_EQ(d, plannerConfig.timeHorizon());
     auto s5 = v2->state();
     EXPECT_FALSE(s5.isCoLocated(s2));
 
@@ -959,6 +1115,9 @@ TEST(UnitTests, EdgeTruncation) {
 TEST(PlannerTests, UsePreviousPlan) {
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 0, 30);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_test_visualizations"));
+    plannerConfig.setVisualizations(true);
+    plannerConfig.setVisualizer(&visualizer);
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
     auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
@@ -969,6 +1128,54 @@ TEST(PlannerTests, UsePreviousPlan) {
     auto plan2 = planner.plan(ribbonManager, start, plannerConfig, plan, 0.95);
     EXPECT_FALSE(plan2.empty());
     validatePlan(plan2, plannerConfig);
+}
+
+TEST(UnitTests, UsePreviousPlanUnitTest) {
+    RibbonManager ribbonManager;
+    ribbonManager.add(0, 10, 0, 30);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_test_visualizations"));
+    plannerConfig.setVisualizations(true);
+    plannerConfig.setVisualizer(&visualizer);
+    AStarPlanner planner;
+    State start(0, 0, 0, 2.5, 1);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    EXPECT_FALSE(plan.empty());
+    start.time() = 2;
+    plan.sample(start);
+
+    plan.changeIntoSuffix(2);
+    auto startV = Vertex::makeRoot(start, ribbonManager);
+//    plannerConfig.setVisualizations(true);
+
+    Vertex::SharedPtr lastPlanEnd = startV;
+    if (!plan.empty()) {
+//        auto p = plan.get().front();
+        for (const auto& p : plan.get()) {
+            lastPlanEnd = Vertex::connect(lastPlanEnd, p, p.getRho() == plannerConfig.coverageTurningRadius());
+            lastPlanEnd->parentEdge()->computeTrueCost(plannerConfig);
+            if (lastPlanEnd->parentEdge()->infeasible()) {
+                FAIL();
+//                lastPlanEnd = startV;
+//                break;
+            }
+        }
+    }
+
+    auto newPlan = planner.tracePlan(lastPlanEnd, false, plannerConfig.obstacles());
+    State s1 = start, s2 = start;
+    while (s1.time() < newPlan.getEndTime()) {
+        plan.sample(s1);
+        newPlan.sample(s2);
+        EXPECT_NEAR(s1.distanceTo(s2), 0, 1e-5);
+        s1.time() += 1; s2.time() += 1;
+    }
+
+    auto plan1Samples = plan.getHalfSecondSamples();
+    auto plan2Samples = newPlan.getHalfSecondSamples();
+    for (unsigned long i = 0; i < plan1Samples.size(); i++) {
+        EXPECT_NEAR(plan1Samples[i].distanceTo(plan2Samples[i]), 0, 1e-5);
+    }
+
 }
 
 TEST(PlannerTests, RHRSAStarTest1Ribbons) {
@@ -989,7 +1196,7 @@ TEST(PlannerTests, RHRSAStarTest2Ribbons) {
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
     while(!ribbonManager.done()) {
-        ribbonManager.cover(start.x(), start.y());
+        ribbonManager.cover(start.x(), start.y(), false);
         auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.5); // quick iterations
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
@@ -1000,7 +1207,7 @@ TEST(PlannerTests, RHRSAStarTest2Ribbons) {
 }
 
 TEST(PlannerTests, RHRSAStarTest4Ribbons) {
-    RibbonManager ribbonManager;
+    RibbonManager ribbonManager(RibbonManager::MaxDistance);
     ribbonManager.add(0, 20, 20, 20);
     ribbonManager.add(0, 40, 20, 40);
     ribbonManager.add(0, 60, 20, 60);
@@ -1011,12 +1218,16 @@ TEST(PlannerTests, RHRSAStarTest4Ribbons) {
     bool headingChanged = false;
     DubinsPlan plan;
     while(!ribbonManager.done()) {
-        if (!headingChanged) ribbonManager.cover(start.x(), start.y());
+        if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
         plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.95);
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
+        ASSERT_DOUBLE_EQ(plan.getStartTime(), start.time());
         headingChanged = plan.getHalfSecondSamples()[1].headingDifference(start.heading()) > 0.1;
         start = plan.getHalfSecondSamples()[1];
+        ASSERT_DOUBLE_EQ(plan.getStartTime() + 0.5, start.time());
+//        start.time() += 1;
+//        plan.sample(start);
         ASSERT_LT(start.time(), 180);
         cerr << "Remaining " << ribbonManager.dumpRibbons() << endl;
         cerr << start.toString() << endl;
@@ -1047,14 +1258,18 @@ TEST(PlannerTests, RHRSAStarSingleRibbonTSP) {
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = true; // assume coverage
+    DubinsPlan plan;
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_test_visualizations"));
+    plannerConfig.setVisualizations(true);
+    plannerConfig.setVisualizer(&visualizer);
     while(!ribbonManager.done()) {
-        /*if (!headingChanged)*/ ribbonManager.cover(start.x(), start.y());
-        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+        /*if (!headingChanged)*/ ribbonManager.cover(start.x(), start.y(), false);
+        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5);
         ASSERT_FALSE(plan.empty());
 //        headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
         start.time() += 1;
         plan.sample(start);
-        for (const auto& s : plan.getHalfSecondSamples()) cerr << s.toString() << endl;
+//        for (const auto& s : plan.getHalfSecondSamples()) cerr << s.toString() << endl;
         ASSERT_LT(start.time(), 180);
         cerr << "Remaining " << ribbonManager.dumpRibbons() << endl;
         cerr << start.toString() << endl;
@@ -1073,7 +1288,7 @@ TEST(PlannerTests, RHRSAStarTest5TspRibbons) {
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
-        if (!headingChanged) ribbonManager.cover(start.x(), start.y());
+        if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
         auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
@@ -1095,7 +1310,7 @@ TEST(PlannerTests, RHRSAStarTest6DubinsRibbons) {
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
-        if (!headingChanged) ribbonManager.cover(start.x(), start.y());
+        if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
         auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
@@ -1116,7 +1331,7 @@ TEST(PlannerTests, RHRSAStarSeparateThreadTest) {
     State start(0, 0, 0, 1, 1);
     std::thread t ([&]{
         while(!ribbonManager.done()) {
-            ribbonManager.cover(start.x(), start.y());
+            ribbonManager.cover(start.x(), start.y(), false);
             auto plan = planner->plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
             ASSERT_FALSE(plan.empty());
             start = plan.getHalfSecondSamples()[1];
@@ -1175,7 +1390,7 @@ TEST(PlannerTests, VisualizationLongerTest) {
     config.setObstacles(DynamicObstaclesManager());
     std::thread t ([&]{
         while(!ribbonManager.done()) {
-            ribbonManager.cover(start.x(), start.y());
+            ribbonManager.cover(start.x(), start.y(), false);
             auto plan = planner.plan(ribbonManager, start, config, DubinsPlan(), 0.95);
             ASSERT_FALSE(plan.empty());
             start = plan.getHalfSecondSamples()[1];

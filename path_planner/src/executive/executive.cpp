@@ -33,7 +33,7 @@ void Executive::updateCovered(double x, double y, double speed, double heading, 
 {
     if ((m_LastHeading - heading) / m_LastUpdateTime <= c_CoverageHeadingRateMax) {
         std::lock_guard<std::mutex> lock(m_RibbonManagerMutex);
-        m_RibbonManager.cover(x, y);
+        m_RibbonManager.cover(x, y, false);
     }
     m_LastUpdateTime = t; m_LastHeading = heading;
     m_LastState = State(x, y, heading, speed, t);
@@ -62,6 +62,9 @@ void Executive::planLoop() {
         State startState;
         // declare plan here so that it persists between loops
         DubinsPlan plan;
+
+        // keep track of how many times in a row we fail to find a plan
+        int failureCount = 0;
 
         while (true) {
             double startTime = m_TrajectoryPublisher->getTime();
@@ -132,8 +135,9 @@ void Executive::planLoop() {
             } catch (const std::exception& e) {
                 cerr << "Exception thrown while planning:" << endl;
                 cerr << e.what() << endl;
-                cerr << "Pausing." << endl;
-                cancelPlanner();
+                cerr << "Ignoring that and just trying to proceed." << endl;
+                plan = DubinsPlan();
+//                cancelPlanner();
             } catch (...) {
                 cerr << "Unknown exception thrown while planning; pausing" << endl;
                 cancelPlanner();
@@ -151,6 +155,7 @@ void Executive::planLoop() {
             m_TrajectoryPublisher->displayTrajectory(plan.getHalfSecondSamples(), true);
 
             if (!plan.empty()) {
+                failureCount = 0;
                 // send trajectory to controller
                 try {
                     startState = m_TrajectoryPublisher->publishPlan(plan);
@@ -212,6 +217,12 @@ void Executive::planLoop() {
             } else {
                 cerr << "Planner returned empty trajectory." << endl;
                 startState = State();
+                failureCount++;
+                if (failureCount > 2) {
+                    m_PlannerConfig.setTimeHorizon(m_PlannerConfig.timeHorizon() / 2);
+                    cerr << "Failed " << failureCount << " times in a row. Reducing time horizon to " << m_PlannerConfig.timeHorizon() << std::endl;
+                    failureCount = 0;
+                }
             }
         }
     }
@@ -273,11 +284,11 @@ std::vector<Distribution> Executive::inventDistributions(State obstacle) {
     std::vector<Distribution> distributions;
     double mean[2] = {obstacle.x(), obstacle.y()};
     double covariance[2][2] = {{1, 0},{0, 1}};
-    distributions.emplace_back(mean, covariance, obstacle.heading(), obstacle.time());
+    distributions.emplace_back(mean, covariance, 5, 5, obstacle.heading(), obstacle.time());
     obstacle = obstacle.push(1);
     mean[0] = obstacle.x(); mean[1] = obstacle.y();
 //    double covariance2[2][2] = {{2, 0}, {0, 2}}; // grow variance over time
-    distributions.emplace_back(mean, covariance, obstacle.heading(), obstacle.time());
+    distributions.emplace_back(mean, covariance, 5, 5, obstacle.heading(), obstacle.time());
     return distributions;
 }
 
@@ -286,22 +297,30 @@ void Executive::clearRibbons() {
     m_RibbonManager = RibbonManager(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons, m_PlannerConfig.turningRadius(), 2);
 }
 
-void Executive::setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed,
-                                 double lineWidth, int k, int heuristic) {
-    m_PlannerConfig.setMaxSpeed(maxSpeed);
+void Executive::setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double lineWidth,
+                                 int k,
+                                 int heuristic, double timeHorizon, double timeMinimum,
+                                 double collisionCheckingIncrement,
+                                 int initialSamples, bool useBrownPaths) {
     m_PlannerConfig.setTurningRadius(turningRadius);
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
+    m_PlannerConfig.setMaxSpeed(maxSpeed);
     RibbonManager::setRibbonWidth(lineWidth);
     m_PlannerConfig.setBranchingFactor(k);
     switch (heuristic) {
         // check the .cfg file if this is breaking or if you change these
-        case 0: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::MaxDistance); break;
-        case 1: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitAllRibbons); break;
-        case 2: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons); break;
+        case 0: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitAllRibbons); break;
+        case 1: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons); break;
+        case 2: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::MaxDistance); break;
         case 3: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspDubinsNoSplitAllRibbons); break;
         case 4: m_RibbonManager.setHeuristic(RibbonManager::Heuristic::TspDubinsNoSplitKRibbons); break;
-        default: cerr << "Unknown heuristic. Ignoring." << endl; break;
+        default: *m_PlannerConfig.output() << "Unknown heuristic. Ignoring." << endl; break;
     }
+    m_PlannerConfig.setTimeHorizon(timeHorizon);
+    m_PlannerConfig.setTimeMinimum(timeMinimum);
+    m_PlannerConfig.setCollisionCheckingIncrement(collisionCheckingIncrement);
+    m_PlannerConfig.setInitialSamples(initialSamples);
+    m_PlannerConfig.setUseBrownPaths(useBrownPaths);
 }
 
 void Executive::startPlanner() {

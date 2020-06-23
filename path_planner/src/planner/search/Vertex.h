@@ -51,7 +51,8 @@ public:
      */
     static std::shared_ptr<Vertex> connect(const std::shared_ptr<Vertex>& start, const State& next);
     static std::shared_ptr<Vertex> connect(const std::shared_ptr<Vertex>& start, const State& next, double turningRadius, bool coverageAllowed);
-    static SharedPtr connect(const SharedPtr& start, const DubinsWrapper& wrapper);
+    static Vertex::SharedPtr connect(const Vertex::SharedPtr& start, const DubinsWrapper& wrapper,
+                                     bool coverageAllowed);
 
     /**
      * Construct a root vertex.
@@ -156,6 +157,12 @@ public:
      * @return
      */
     std::string toString() const;
+
+    /**
+     * Get the pointer values for the motion tree to this vertex concatenated into a string.
+     * @return
+     */
+    std::string getPointerTreeString() const;
 
     /**
      * Retrieve the turning radius.

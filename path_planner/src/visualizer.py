@@ -41,26 +41,118 @@ def dist_square(x1, y1, x2, y2):
     return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2)
 
 
-class Obs:
-    def __init__(self, x, y, h, cost, tag):
+class DisplayItem:
+    def __init__(self, pointer, x, y, h, cost, tag, expanded):
+        self.id = pointer  # integer of the pointer value (for disambiguation)
         self.x = x
         self.y = y
         self.h = h
         self.cost = cost
         self.tag = tag
-        self.children = []
+        self.expanded = expanded
+        self.children = []  # trajectory, probably
 
 
-class Ribbons:
-    def __init__(self):
+class Iteration:
+    def __init__(self, x, y, h):
+        self.start = [x, y, h]
+        self.samples = []
+        self.cost_min = 0
+        self.cost_max = 0
+        self.items = []
+        self.generated = []
+        self.expanded = []
         self.ribbons = []
+        self.display_index = 0
+        self.incumbent_f = 0
+        self.contains_plan = False
+
+    def get_color(self, cost):
+        if cost > self.cost_max:
+            return Color_BLACK
+        if cost < self.cost_min:
+            print ("bad cost: ", cost, self.cost_min, self.cost_max)
+            return Color_BLACK
+        r, g, b = colorsys.hsv_to_rgb(1 - ((cost - self.cost_min) / self.cost_max), 0.9, 0.75)
+        return r * 255, g * 255, b * 255
+
+    def append(self, item):
+        if item.tag == "sample":
+            self.samples.append([item.x, item.y])
+        elif item.tag == "incumbent f":
+            self.incumbent_f = item.cost
+        elif item.tag == "dummy":
+            if len(self.items) == 0 or self.items[-1].tag != "dummy":
+                self.items.append(item)
+            else:
+                self.items[-1].children = []
+        elif item.tag == "trajectory":
+            # assume there's at least a dummy item (could probably check that)
+            self.items[-1].children.append(item)
+        elif item.tag == "vertex" or item.tag == "lastplanend":
+            if len(self.items) != 0 and self.items[-1].tag == "dummy":
+                # overwrite dummy with vertex, keeping trajectory
+                self.items[-1].x = item.x
+                self.items[-1].y = item.y
+                self.items[-1].h = item.h
+                self.items[-1].cost = item.cost
+                self.items[-1].tag = item.tag
+            else:
+                # allow vertex without a dummy trajectory
+                self.items.append(item)
+            # let lastPlanEnd participate in color scheme, for now, even though it's displayed with its own color
+            self.cost_min = min(self.cost_min, item.cost)
+            self.cost_max = max(self.cost_max, item.cost)
+        elif item.tag == "plan":
+            self.contains_plan = True
+            if len(self.items) == 0 or self.items[-1].tag != "plan":  # for now, stack plan in a plan item
+                self.items.append(item)
+            else:
+                self.items[-1].children.append(item)
+        else:
+            self.items.append(item)
+
+    def reset(self):
+        self.display_index = 0
+        self.generated = []
+        self.expanded = []
+
+    def increment(self):
+        # deciding to wrap around
+        self.display_index += 1
+        if self.display_index == len(self.items):
+            self.display_index = 0
+        #     self.generated = []
+        #     self.expanded = []
+        # else:
+        #     if self.items[self.display_index].expanded:
+        #         self.expanded.append(self.items[self.display_index])
+        #         for item in self.generated:
+        #             if item.children and item.id == self.items[self.display_index].id:
+        #                 self.expanded[-1].children = item.children
+        #         self.generated = [item for item in self.generated if item.id != self.items[self.display_index].id]
+        #     else:
+        #         self.generated.append(self.items[self.display_index])
+
+    def decrement(self):
+        # if self.items[self.display_index].expanded:
+        #
+        self.display_index -= 1
+        if self.display_index < 0:
+            self.display_index += len(self.items)
+            # while self.display_index < len(self.items) - 1:
+            #     self.increment()  # increment so we add everything to expanded/generated as expected
+
+    def get_display_items(self, display_generated=True, display_expanded=True):
+        # return (self.generated if display_generated else []) + (self.expanded if display_expanded else [])
+        return self.items[0:self.display_index]
 
 
-class PLOT:
-    def __init__(self, blocked, xlim, ylim, goal, in_file_name):
+class Visualizer:
+    def __init__(self, blocked, xlim, ylim):
         self.display = None
-        self.screenH = 800
-        self.screenW = 600
+        self.screenH = 1400
+        self.screenW = 1200
         self.maxX = xlim
         self.maxY = ylim
         self.xLim = xlim
@@ -70,18 +162,25 @@ class PLOT:
         self.originY = 0
         self.moveX = 0
         self.moveY = 0
-        self.goals = goal
-        self.covered_goals = []
+
         self.triangleX = (0, -5, 5)
         self.triangleY = (-10, 10, 10)
+
         self.static_obs = blocked
-        self.maxColor = -10000000
-        self.minColor = 100000000
-        self.input_file_name = in_file_name
-        self.obs = []
-        self.starts = []
-        self.startIndex = 0
-        self.ribbons = []
+
+        self.draw_trajectories = True
+        self.draw_samples = True
+        self.draw_ribbons = True
+        self.draw_vertices = True
+        self.draw_vertex_costs = True
+        self.draw_costs_as_ints = True
+        # unused for now because it's complicated
+        self.draw_generated = True
+        self.draw_expanded = True
+
+        self.iterations = []
+        self.iteration_index = 0
+
         # declare stuff defined in on_init
         self.w, self.h, self.scaleW, self.scaleH, self.startW, self.startH = 0, 0, 0, 0, 0, 0
         self.curr_x, self.curr_y, self.start_heading, self.index = 0, 0, 0, 0
@@ -110,27 +209,13 @@ class PLOT:
         self.curr_y = 0
         self.start_heading = 0
         self.index = 0
-        self.reset()
-
-    def get_start_index(self):
-        if len(self.starts) == 0:
-            return 0
-        else:
-            return self.starts[self.startIndex]
-
-    def update_start_index(self, diff):
-        self.startIndex += diff
-        if self.startIndex < 0:
-            self.startIndex = 0
-        elif self.startIndex >= len(self.starts):
-            self.startIndex = len(self.starts) - 1
-        self.index = self.starts[self.startIndex]
 
     def on_event(self, event):
         if event.type == QUIT:
             pygame.quit()
             exit(0)
         elif event.type == pygame.KEYDOWN:
+            # pan the view
             if event.key == pygame.K_LEFT:
                 self.originX -= self.scaleW / (self.lines + 1)
                 self.moveX += self.maxX / (self.lines + 1)
@@ -143,6 +228,8 @@ class PLOT:
             elif event.key == pygame.K_UP:
                 self.originY -= self.scaleH / (self.lines + 1)
                 self.moveY -= self.maxY / (self.lines + 1)
+
+            # scale the view
             elif event.key == pygame.K_MINUS:
                 d = 1 if self.maxX < 100 and self.maxY < 100 else 10
                 p = d * 10
@@ -172,6 +259,8 @@ class PLOT:
                     cx = (int(self.curr_x) / d) * d
                     self.moveY = cy - y * self.maxY / (self.lines + 1)
                     self.moveX = cx - x * self.maxX / (self.lines + 1)
+
+            # reset the view
             elif event.key == pygame.K_SPACE:
                 d = 10 if self.maxX >= 100 and self.maxY >= 100 else 1
                 self.maxY = self.yLim
@@ -180,37 +269,77 @@ class PLOT:
                 self.originX = -self.scaleW * ((int(self.curr_x) / d) * d / float(self.maxX))
                 self.moveY = (int(self.curr_y) / d) * d
                 self.moveX = (int(self.curr_x) / d) * d
-            elif event.key == pygame.K_r:
-                self.reset()
-            elif event.key == pygame.K_n:
-                self.index += 1
-                if self.index >= len(self.obs):
-                    self.index = len(self.obs) - 1
-                if self.obs[self.index].tag == "start":
-                    self.update_start_index(1)
-            elif event.key == pygame.K_BACKSPACE or event.key == pygame.K_b:
-                if self.obs[self.index].tag == "start":
-                    self.startIndex -= 1
-                    if self.startIndex < 0:
-                        self.startIndex = 0
-                    elif self.startIndex >= len(self.starts):
-                        self.startIndex = len(self.starts) - 1
-                self.index -= 1
-                if self.index < 0:
-                    self.index = 0
-            elif event.key == pygame.K_j:
-                self.update_start_index(-1)
-            elif event.key == pygame.K_k:
-                self.update_start_index(1)
+
             elif event.key == pygame.K_ESCAPE:
+                # exit alias (convenience)
                 pygame.quit()
                 exit(0)
+
+            # visualization-related events
+            elif event.key == pygame.K_n:
+                # show the next vis item
+                self.iterations[self.iteration_index].increment()
+            elif event.key == pygame.K_BACKSPACE or event.key == pygame.K_b:
+                # show the previous vis item
+                self.iterations[self.iteration_index].decrement()
+            elif event.key == pygame.K_j:
+                # jump to the previous planning iteration
+                # shift means jump to previous goal found
+                self.decrement_iteration(pygame.key.get_mods() & pygame.KMOD_SHIFT)
+            elif event.key == pygame.K_k:
+                # jump to the next planning iteration
+                # shift means jump to next goal found
+                self.increment_iteration(pygame.key.get_mods() & pygame.KMOD_SHIFT)
+            elif event.key == pygame.K_t:
+                # toggle showing trajectories
+                self.draw_trajectories = not self.draw_trajectories
+            elif event.key == pygame.K_s:
+                # toggle showing samples
+                self.draw_samples = not self.draw_samples
+            elif event.key == pygame.K_r:
+                # toggle showing ribbons
+                self.draw_ribbons = not self.draw_ribbons
+            elif event.key == pygame.K_v:
+                # toggle showing vertices (why not?)
+                self.draw_vertices = not self.draw_vertices
+            elif event.key == pygame.K_g:
+                # toggle showing generated (but not expanded) vertices
+                self.draw_generated = not self.draw_generated
+            elif event.key == pygame.K_e:
+                # toggle showing expanded vertices
+                self.draw_expanded = not self.draw_expanded
+            elif event.key == pygame.K_c:
+                # toggle showing vertex costs (again, why not)
+                self.draw_vertex_costs = not self.draw_vertex_costs
+            elif event.key == pygame.K_f:
+                # toggle showing costs as ints (vs floats)
+                self.draw_costs_as_ints = not self.draw_costs_as_ints
+
+    def increment_iteration(self, jump_to_goal):
+        self.iterations[self.iteration_index].reset()
+        self.iteration_index += 1
+        if self.iteration_index >= len(self.iterations):
+            self.iteration_index -= 1
+        else:
+            if jump_to_goal and not self.iterations[self.iteration_index].contains_plan:
+                # keep going until we hit a goal
+                self.increment_iteration(jump_to_goal)
+
+    def decrement_iteration(self, jump_to_goal):
+        self.iterations[self.iteration_index].reset()
+        if self.iteration_index > 0:
+            self.iteration_index -= 1
+            if jump_to_goal and not self.iterations[self.iteration_index].contains_plan:
+                # keep going until we hit a goal
+                self.decrement_iteration(jump_to_goal)
 
     def on_render(self):
         self.display.blit(self.background, (0, 0))
         self.draw_line()
         self.draw_text()
         self.draw()
+        self.draw_incumbent_f()
+        self.draw_found_goal_text()
         sprites.draw(self.display)
         sprites.update()
         pygame.display.flip()
@@ -226,82 +355,52 @@ class PLOT:
             pygame.draw.line(self.display, Color_line_middle, self.scale_xy(0, i * scaleh), self.scale_xy(self.scaleW, i * scaleh))
             pygame.draw.line(self.display, Color_line_middle, self.scale_xy(i * scalew, 0), self.scale_xy(i * scalew, self.scaleH))
 
-    def update_information(self, x, y, heading, h, cost, tag):
-        if tag == "trajectory" or tag == "sample":
-            obs = Obs(x, y, heading, cost + h, tag)
-            if len(self.obs) == 0 or self.obs[-1].tag != tag:
-                self.obs.append(obs)
-            else:
-                self.obs[-1].children.append(obs)
-        elif tag == "plan":
-            if self.obs[-1].tag == "plan":
-                obs = Obs(x, y, heading, cost + h, tag)
-                self.obs[-1].children.append(obs)
-            else:
-                self.obs.append(Obs(x, y, heading, cost + h, tag))
-        else:
-            self.obs.append(Obs(x, y, heading, cost + h, tag))
-        if tag == "vertex":
-            self.maxColor = max(self.maxColor, cost + h, 1)
-            self.minColor = min(self.minColor, cost + h)
-
-    # TODO -- set color limits
     def get_color(self, cost):
-        if cost >= 500:
-            return Color_BLACK
-        else:
-            if not (self.minColor <= cost <= self.maxColor):
-                print ("bad cost: ", cost, self.minColor, self.maxColor)
-            assert self.minColor <= cost <= self.maxColor
-            r, g, b = colorsys.hsv_to_rgb(1 - ((cost - self.minColor) / self.maxColor), 0.9, 0.75)
-            return r * 255, g * 255, b * 255
-            # return 0, 0, 255 - ((cost - self.minColor) / self.displayNumber) * color_range
+        return self.iterations[self.iteration_index].get_color(cost)
 
     def draw(self):
         for obs in self.static_obs:
             self.draw_static_obs(Color_BLACK, *obs)
-        for index in range(self.get_start_index(), self.index):
-            self.draw_obs(self.obs[index], self.f_value(index))
-        for i in range(len(self.goals)):
-            if dist_square(self.curr_x, self.curr_y, *self.goals[i]) <= 10:
-                self.covered_goals.append(self.goals.pop(i))
-                break
+        current_it = self.iterations[self.iteration_index]
+        self.draw_vehicle(current_it.start[2], Color_BLUE, *self.scale_item(current_it.start[0], current_it.start[1]))
+        if self.draw_samples:
+            for sample in current_it.samples:
+                self.draw_circle(Color_GREY, *self.scale_item(sample[0], sample[1]))
+        if self.draw_ribbons:
+            for ribbon in current_it.ribbons:
+                self.draw_ribbon(ribbon)
+        for item in current_it.get_display_items(self.draw_generated, self.draw_expanded):
+            self.draw_item(item)
 
-        for goal in self.goals:
-            self.draw_static_obs((0, 255, 0), *goal)
-
-        for goal in self.covered_goals:
-            self.draw_static_obs((0, 255, 255), *goal)
-
-    def draw_obs(self, obs, cost):
-        if obs.tag == "vertex":
-            yy = self.draw_vehicle(obs.h, self.get_color(cost), *self.scale_item(obs.x, obs.y))
-            self.draw_text_cost(cost, self.scale_item(obs.x, obs.y)[0], yy)
-        elif obs.tag == "start":
-            self.draw_vehicle(obs.h, Color_BLUE, *self.scale_item(obs.x, obs.y))
-        elif obs.tag == "plan":
-            self.draw_circle(Color_CYAN, *self.scale_item(obs.x, obs.y))
-        elif obs.tag == "goal":
-            self.draw_circle(Color_WHITE, *self.scale_item(obs.x, obs.y))
-        elif obs.tag == "sample":
-            self.draw_circle(Color_GREY, *self.scale_item(obs.x, obs.y))
+    def draw_item(self, item):
+        if item.tag == "vertex":
+            if self.draw_vertices:
+                yy = self.draw_vehicle(item.h, self.get_color(item.cost), *self.scale_item(item.x, item.y))
+                self.draw_text_cost(item.cost, self.scale_item(item.x, item.y)[0], yy)
+        elif item.tag == "lastplanend":
+            yy = self.draw_vehicle(item.h, Color_BLACK, *self.scale_item(item.x, item.y))
+            self.draw_text_cost(item.cost, self.scale_item(item.x, item.y)[0], yy)
+        elif item.tag == "plan":
+            self.draw_circle(Color_BLUE, *self.scale_item(item.x, item.y))
+        elif item.tag == "goal":
+            self.draw_circle(Color_GREEN_dark, *self.scale_item(item.x, item.y))
+        elif item.tag == "dummy":
+            # TODO! -- figure out why dummy vertices aren't getting overwritten
+            # since it's a dummy there was no vertex to end the trajectory, so don't draw the children
+            return
         else:
-            # TODO -- draw trajectory in same color as end vertex
-            # self.draw_circle(self.get_color(cost), *self.scale_item(obs.x, obs.y))
-            self.draw_circle(Color_BLUE, *self.scale_item(obs.x, obs.y))
-        for index in range(len(obs.children)):
-            cost = cost if obs.children[index].cost == 0 else obs.children[index].cost
-            self.draw_obs(obs.children[index], cost)
+            # not sure what this would be but we'll just draw a circle I guess?
+            print ("Unknown tag (" + item.tag + ") getting drawn as a circle with cost: " + str(item.cost))
+            self.draw_circle(self.get_color(item.cost), *self.scale_item(item.x, item.y))
+        for child in item.children:
+            if item.tag == "plan":
+                self.draw_circle(Color_BLUE, *self.scale_item(child.x, child.y))
+            elif self.draw_trajectories:  # assume they're trajectories at this point
+                self.draw_circle(self.get_color(item.cost), *self.scale_item(child.x, child.y))
 
     def draw_static_obs(self, color, x, y):
         pygame.draw.polygon(self.display, color, (self.scale_item(x, y), self.scale_item(
             x + 1, y), self.scale_item(x + 1, y + 1), self.scale_item(x, y + 1)))
-
-    def draw_goal(self, x, y, covered=False):
-        if covered:
-            self.draw_static_obs((0, 255, 255), x, y)
-        else:
-            self.draw_static_obs((0, 255, 0), x, y)
 
     def draw_dot(self, color, x, y):
         pygame.draw.polygon(self.display, color, (self.scale_item(x, y), self.scale_item(
@@ -321,11 +420,30 @@ class PLOT:
     def draw_circle(self, color, x, y):
         pygame.draw.circle(self.display, color, (int(x), int(y)), 2)
 
+    def draw_ribbon(self, ribbon):
+        pygame.draw.line(self.display, Color_Red, self.scale_item(ribbon[0], ribbon[1]),
+                         self.scale_item(ribbon[2], ribbon[3]), 5)
+
     def draw_text_cost(self, cost, x, y):
-        text = str(int(cost))
+        if not self.draw_vertex_costs:
+            return
+        text = str(int(cost) if self.draw_costs_as_ints else cost)
         text_surface = self.font.render(text, True, (0, 0, 0))
         y += text_surface.get_height()
         self.display.blit(text_surface, (x, y))
+
+    def draw_incumbent_f(self):
+        text = "Incumbent f-value: " + str(self.iterations[self.iteration_index].incumbent_f)
+        text_surface = self.font.render(text, True, (0, 0, 0))
+        self.display.blit(text_surface, (10, 10))
+
+    def draw_found_goal_text(self):
+        text = "No better goal exists this iteration"
+        for item in self.iterations[self.iteration_index].items:
+            if item.tag == "goal":
+                text = "Found goal this iteration with f-value " + str(item.cost)
+        text_surface = self.font.render(text, True, (0, 0, 0))
+        self.display.blit(text_surface, (200, 10))
 
     def draw_text(self):
         scale_h = self.scaleH / (self.lines + 1)
@@ -364,48 +482,68 @@ class PLOT:
                 x / float(self.maxX)), self.originY + self.startH + self.scaleH - self.scaleH * (
                        y / float(self.maxY))
 
-    def f_value(self, n):
-        return self.obs[n].cost
-
-    def reset(self):
-        with open(self.input_file_name, "r") as input_file:
+    def load(self, file_name):
+        with open(file_name, "r") as input_file:
             input_lines = input_file.readlines()
-        self.maxColor = -1000000
-        self.minColor = 1000000
-        self.index = 0
-        self.obs = []
-        addingRibbons = False
+        pygame.display.set_caption('Visualizing ' + file_name)
+        self.iterations = []
+        self.iteration_index = 0
+
+        # Ribbons need special treatment because they look different than vertices
+        adding_ribbons = False
+
         for line in input_lines:
-            for c in "():,":  # drop extra characters
+            for c in "():,\n":  # drop extra characters
                 line = line.replace(c, "")
             line = line.split(' ')
-            if line == "End Ribbons":
-                addingRibbons = False
-                continue
-            elif line == "Ribbons":
-                addingRibbons = True
-                self.ribbons.append(Ribbons())
-                continue
-            if addingRibbons:
-                # ribbon mode means input will look different, hence the flag
-                self.ribbons[-1].append([float(line[1]), float(line[2]), float(line[4]), float(line[5])])
+            if line[-1] == "":
+                line = line[:-1]
 
-            # if len(line) < 3 or line[0].strip().lower() != 'planner' or line[1].strip().lower() != 'visualization:':
-            #     continue
-            # if line[2].strip().lower() == 'done':
-            #     continue  # ignore "done" for now
-            # break
-            # if len(line) > 18 and line[18].strip().lower() != 'vis2':
-            #     continue
-            xobs = (float(line[1]))
-            yobs = (float(line[2]))
-            hobs = (float(line[3]))
-            costobs = (float(line[9]))
-            heauristicobs = (float(line[11]))
-            tag = line[12].strip().lower()
-            if tag == "start":
-                self.starts.append(len(self.obs))
-            theApp.update_information(xobs, yobs, hobs, heauristicobs, costobs, tag)
+            if line[0] == "Expanded":
+                expanded = True
+                line = line[1:]
+                # for now, ignore expanded vertices
+                continue
+            elif line[0] == "Generated":
+                expanded = False
+                line = line[1:]
+            else:
+                expanded = None
+
+            # ribbon-related bits
+            if line[0] == "End" and line[1] == "Ribbons":
+                adding_ribbons = False
+            elif line[0] == "Ribbons":
+                adding_ribbons = True
+            elif adding_ribbons:
+                if line[0] == "None":
+                    continue
+                # ribbon mode means input will look different, hence the flag
+                self.iterations[-1].ribbons.append([float(line[0]), float(line[1]), float(line[3]), float(line[4])])
+
+            elif line[0] == "Trajectory":
+                if len(self.iterations) != 0:  # make sure there's been a start already
+                    self.iterations[-1].append(DisplayItem(0, 0, 0, 0, 0, "dummy", None))  # append a dummy item to be replaced
+            elif line[0] == "Incumbent" and line[1] == "f-value":
+                if len(self.iterations) != 0:  # make sure there's been a start already
+                    self.iterations[-1].append(DisplayItem(0, 0, 0, 0, float(line[2]), "incumbent f", None))
+            else:
+                x = (float(line[1]))
+                y = (float(line[2]))
+                h = (float(line[3]))
+                cost = (float(line[9]))
+                heuristic = (float(line[11]))
+                tag = line[12].strip().lower()
+                if tag == "vertex" or tag == "lastplanend":
+                    pointer = int(line[-1])
+                else:
+                    pointer = 0
+                if tag == "start":
+                    self.iterations.append(Iteration(x, y, h))
+                else:
+                    if len(self.iterations) == 0:
+                        continue
+                    self.iterations[-1].append(DisplayItem(pointer, x, y, h, cost + heuristic, tag, expanded))
 
 
 def dist(x, x1, y, y1):
@@ -414,45 +552,37 @@ def dist(x, x1, y, y1):
 
 if __name__ == "__main__":
 
-    map_file_name = goal_file_name = input_file_name = None
-    if len(sys.argv) == 4 and sys.argv[1] == "-test":
-        base_name = sys.argv[2]
-        map_file_name = base_name + ".map"
-        goal_file_name = base_name + ".goal"
-        input_file_name = sys.argv[3]
-
-    elif len(sys.argv) == 3:
+    map_file_name = input_file_name = None
+    if len(sys.argv) == 3:
         map_file_name = sys.argv[1]
-        # goal_file_name = sys.argv[2]
         input_file_name = sys.argv[2]
-
+    elif len(sys.argv) == 2:
+        input_file_name = sys.argv[1]
     else:
-        print 'Usage: "./step_by_step.py mapfile goalfile inputfile" or\n       ' \
-              '"./step_by_step.py -test testname inputfile"\n'
+        print 'Usage: "./visualizer.py map_file input_file or"\n' \
+            '"./visualizer.py input_file"'
         exit(0)
 
-    with open(map_file_name, "r") as map_file:
-        map_contents = map_file.readlines()
     static_obs = []
-    goal_location = []
-    # max_x = np.abs(int(int(map_contents[1])))
-    # max_y = np.abs(int(int(map_contents[2])))
-    max_x = max(len(x) for x in map_contents)
-    max_y = len(map_contents)
-    for i in range(1, len(map_contents)):
-        for j in range(0, len(map_contents[i])):
-            if map_contents[i][j] == '#':
-                static_obs.append((j, (max_y - i + 1)))
+    # load map
+    if map_file_name:
+        with open(map_file_name, "r") as map_file:
+            map_contents = map_file.readlines()
+        # max_x = np.abs(int(int(map_contents[1])))
+        # max_y = np.abs(int(int(map_contents[2])))
+        max_x = max(len(x) for x in map_contents)
+        max_y = len(map_contents)
+        for i in range(1, len(map_contents)):
+            for j in range(0, len(map_contents[i])):
+                if map_contents[i][j] == '#':
+                    static_obs.append((j, (max_y - i + 1)))
+    else:
+        max_x = 100
+        max_y = 100
 
-    # with open(goal_file_name, "r") as goal_file:
-    #     goal_file_contents = goal_file.readlines()
-    # numOfGoal = int(goal_file_contents[0])
-    # for i in range(1, len(goal_file_contents)):
-    #     s = goal_file_contents[i].split(' ')
-    #     goal_location.append((float(s[0]), float(s[1])))
-
-    theApp = PLOT(static_obs, max_x, max_y, goal_location, input_file_name)
+    theApp = Visualizer(static_obs, max_x, max_y)
     theApp.on_init()
+    theApp.load(input_file_name)
 
     try:
         while True:

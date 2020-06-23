@@ -6,10 +6,10 @@ double Ribbon::RibbonWidth = 1.5;
 Ribbon::Ribbon(double startX, double startY, double endX, double endY)
     : m_StartX(startX), m_StartY(startY), m_EndX(endX), m_EndY(endY){}
 
-Ribbon Ribbon::split(double x, double y) {
+Ribbon Ribbon::split(double x, double y, bool strict) {
     // Project <x, y> onto the line spanned by this ribbon
     auto projected = getProjection(x, y);
-    if (!contains(x, y, projected)) return Ribbon::empty();
+    if (!contains(x, y, projected, strict)) return Ribbon::empty();
     // Split the ribbon at the projected coordinates
     Ribbon r(m_StartX, m_StartY, projected.first, projected.second);
     m_StartX = projected.first; m_StartY = projected.second;
@@ -36,10 +36,10 @@ std::pair<double, double> Ribbon::end() const {
     return std::make_pair(m_EndX, m_EndY);
 }
 
-bool Ribbon::contains(double x, double y, const std::pair<double, double>& projected) const {
+bool Ribbon::contains(double x, double y, const std::pair<double, double>& projected, bool strict) const {
     if (!containsProjection(projected)) return false;
     auto d = distance(x, y);
-    return d < RibbonWidth;
+    return d < (strict? RibbonWidth / 8 : RibbonWidth);
 }
 
 std::string Ribbon::toString() const {

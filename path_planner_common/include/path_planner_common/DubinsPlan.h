@@ -74,9 +74,9 @@ public:
 
     /**
      * Truncate this plan to start at the given time. Hey this doesn't actually do anything. Huh. Should look into that.
-     * @param time
+     * @param startTime
      */
-    void changeIntoSuffix(double time);
+    void changeIntoSuffix(double startTime);
 
     /**
      * Get samples at half second intervals.
@@ -91,18 +91,6 @@ public:
     const std::vector<DubinsWrapper>& get() const;
 
     /**
-     * The planning time horizon.
-     * @return
-     */
-    static constexpr double timeHorizon() { return c_TimeHorizon; }
-
-    /**
-     * The minimum duration for a plan.
-     * @return
-     */
-    static constexpr double timeMinimum() { return c_TimeMinimum; }
-
-    /**
      * The old density at which plans were sampled. I don't think this needs to still be here.
      * @return
      */
@@ -111,8 +99,6 @@ public:
 private:
     std::vector<DubinsWrapper> m_DubinsPaths;
 
-    static constexpr double c_TimeHorizon = 30;
-    static constexpr double c_TimeMinimum = 5;
     static constexpr double c_PlanTimeDensity = 0.5;
 };
 

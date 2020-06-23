@@ -74,19 +74,21 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     if (end()->coverageAllowed()) {
         turningRadius = config.coverageTurningRadius();
     }
-    if (m_ApproxCost == -1) computeApproxCost(speed, turningRadius);
-    if (m_ApproxCost <= 0) throw std::runtime_error("Could not compute approximate cost");
+    if (m_ApproxCost == -1 || (m_DubinsWrapper.getRho() != turningRadius || m_DubinsWrapper.getSpeed() != speed))
+        // if the parameters are different now we need to re-calculate the curve
+        computeApproxCost(speed, turningRadius);
+    if (m_ApproxCost < 0) throw std::runtime_error("Could not compute approximate cost");
     double collisionPenalty = 0;
     std::vector<std::pair<double, double>> result;
     State intermediate(start()->state());
-    double length = m_DubinsWrapper.length();
     // truncate longer edges than 30 seconds
-    auto endTime = fmin(DubinsPlan::timeHorizon() + 1 + config.startStateTime(), length / speed + start()->state().time());
+    auto endTime = fmin(config.timeHorizon() + 1e-12 + config.startStateTime(),m_DubinsWrapper.getEndTime());
+    auto endTimeIfRibbonsDone = fmin(m_DubinsWrapper.getEndTime(), config.timeMinimum() + config.startStateTime() + 1e-12);
 
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
     double lastHeading = start()->state().heading();
-    int visCount = int(1.0 / Edge::collisionCheckingIncrement()); // counter to reduce visualization frequency
+    int visCount = int(1.0 / config.collisionCheckingIncrement()); // counter to reduce visualization frequency
 
     auto startG = start()->currentCost();
     auto startH = start()->approxToGo();
@@ -100,12 +102,14 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
         }
         m_Infeasible = true;
     }
+    if (config.visualizations())
+        config.visualizationStream() << "Trajectory:" << std::endl;
     // collision check along the curve (and watch out for newly covered points, too)
     while (intermediate.time() < endTime) {
         m_DubinsWrapper.sample(intermediate);
         // visualize
         if (config.visualizations() && visCount-- <= 0) {
-            visCount = int(1.0 / Edge::collisionCheckingIncrement());
+            visCount = int(1.0 / config.collisionCheckingIncrement());
             auto timeSoFar = intermediate.time() - start()->state().time();
             auto gSoFar = startG + timeSoFar + collisionPenalty;
             // should really put visualizeVertex somewhere accessible
@@ -113,35 +117,39 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
             config.visualizationStream() << "State: (" << intermediate.toStringRad() << "), f: " << gSoFar + startH <<
                 ", g: " << gSoFar << ", h: " << startH << " trajectory" << std::endl;
         }
-        if (config.map()->getUnblockedDistance(intermediate.x(), intermediate.y()) <= Edge::collisionCheckingIncrement()) {
+        if (config.map()->getUnblockedDistance(intermediate.x(), intermediate.y()) <= config.collisionCheckingIncrement()) {
             collisionPenalty += Edge::collisionPenaltyFactor();
             std::cerr << "Infeasible edge discovered" << std::endl;
             m_Infeasible = true;
             break;
         }
-        if (dynamicDistance > Edge::collisionCheckingIncrement()) {
-            dynamicDistance -= Edge::collisionCheckingIncrement();
+        if (dynamicDistance > config.collisionCheckingIncrement()) {
+            dynamicDistance -= config.collisionCheckingIncrement();
         } else {
             dynamicDistance = config.obstacles().distanceToNearestPossibleCollision(intermediate);
-            if (dynamicDistance <= Edge::collisionCheckingIncrement()) {
+            if (dynamicDistance <= config.collisionCheckingIncrement()) {
                 assert(std::isfinite(speed));
                 assert(std::isfinite(config.obstacles().collisionExists(intermediate)));
                 collisionPenalty += config.obstacles().collisionExists(intermediate) * Edge::collisionPenaltyFactor();
                 dynamicDistance = 0;
             }
         }
-        if (toCoverDistance > Edge::collisionCheckingIncrement()) {
-            toCoverDistance -= Edge::collisionCheckingIncrement();
+        if (toCoverDistance > config.collisionCheckingIncrement()) {
+            toCoverDistance -= config.collisionCheckingIncrement();
         } else {
             // do this first because cover splits ribbons so you'd never get one that "contains" the point so it
             // could be a bit more work
             toCoverDistance = end()->ribbonManager().minDistanceFrom(intermediate.x(), intermediate.y());
             if (end()->coverageAllowed() || lastHeading == intermediate.heading()) {
-                end()->ribbonManager().cover(intermediate.x(), intermediate.y());
+                end()->ribbonManager().cover(intermediate.x(), intermediate.y(), true);
+            }
+            if (end()->ribbonManager().done()) {
+                // make it so we only need the min time if we finish covering
+                endTime = fmax(endTimeIfRibbonsDone, intermediate.time());
             }
 
         }
-        intermediate.time() += Edge::collisionCheckingIncrement() / speed;
+        intermediate.time() += config.collisionCheckingIncrement() / speed;
         lastHeading = intermediate.heading();
     }
     // set to the end of the edge (potentially truncated)
@@ -164,6 +172,7 @@ std::shared_ptr<Vertex> Edge::setEnd(const DubinsWrapper& path) {
     State s;
     s.time() = path.getEndTime();
     path.sample(s);
+    m_ApproxCost = (s.time() - start()->state().time()) * timePenaltyFactor();
     return setEnd(s);
 }
 

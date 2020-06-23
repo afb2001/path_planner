@@ -29,8 +29,14 @@ bool DubinsPlan::empty() const {
 std::vector<State> DubinsPlan::getHalfSecondSamples() const {
     // should check for duplicates
     std::vector<State> result;
+    double offset = 0; // gotta keep track of offsets in times of paths if we want exactly 0.5s intervals
     for (const auto& p : m_DubinsPaths) {
-        auto r = p.getSamples(planTimeDensity());
+        if (p.getNetTime() < planTimeDensity()) {
+            offset += planTimeDensity() - p.getNetTime();
+            continue;
+        }
+        auto r = p.getSamples(planTimeDensity(), offset);
+        offset = planTimeDensity() - (p.getEndTime() - r.back().time());
         for (const auto& s : r) result.push_back(s);
     }
     return result;
@@ -60,11 +66,15 @@ double DubinsPlan::getEndTime() const {
     return m_DubinsPaths.back().getEndTime();
 }
 
-void DubinsPlan::changeIntoSuffix(double time) {
+void DubinsPlan::changeIntoSuffix(double startTime) {
     if (m_DubinsPaths.empty()) throw std::runtime_error("Cannot access empty plan");
-    for (auto& p : m_DubinsPaths) {
-        if (p.containsTime(time)) {
-
-        }
+//    for (auto& p : m_DubinsPaths) {
+//        if (p.containsTime(startTime)) {
+//            p.updateStartTime(startTime);
+//        }
+//    }
+    // drop segments now in the past
+    while (m_DubinsPaths.front().getEndTime() < startTime) {
+        m_DubinsPaths.erase(m_DubinsPaths.begin()); // yucky operation but it happens only rarely
     }
 }

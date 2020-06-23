@@ -21,11 +21,13 @@ double DubinsWrapper::length() const {
 }
 
 bool DubinsWrapper::containsTime(double time) const {
+    if (!isInitialized()) throw std::runtime_error("Checking time constraints on uninitialized Dubins wrapper");
     return m_UpdatedStartTime <= time && m_EndTime >= time;
 }
 
 void DubinsWrapper::sample(State& s) const {
-    if (!containsTime(s.time())) throw std::runtime_error("Invalid time in sample for Dubins path");
+    if (!containsTime(s.time()))
+        throw std::runtime_error("Invalid time in sample for Dubins path");
     double distance = (s.time() - m_StartTime) * m_Speed;
     // heading comes back as yaw
     int err = dubins_path_sample(&m_DubinsPath, distance, s.pose());
@@ -42,10 +44,11 @@ void DubinsWrapper::sample(State& s) const {
 }
 
 bool DubinsWrapper::isInitialized() const {
-    return m_StartTime > 0;
+    return m_StartTime >= 0;
 }
 
-std::vector<State> DubinsWrapper::getSamples(double timeInterval) const {
+std::vector<State> DubinsWrapper::getSamples(double timeInterval, double offset) const {
+    // TODO! -- offset
     std::vector<State> result;
     State intermediate;
     intermediate.speed() = m_Speed;
@@ -98,4 +101,13 @@ void DubinsWrapper::updateStartTime(double startTime) {
     if (!isInitialized()) throw std::runtime_error("Cannot access unset Dubins wrapper");
     if (startTime < m_StartTime) throw std::runtime_error("Invalid start time for Dubins wrapper");
     m_UpdatedStartTime = startTime;
+    // literally move it (thankfully Dubins lib has function for this)
+    auto d = (m_UpdatedStartTime - m_StartTime) * m_Speed;
+    m_StartTime = startTime;
+    auto copy = m_DubinsPath;
+    dubins_extract_subpath(&copy, d, &m_DubinsPath);
+}
+
+double DubinsWrapper::getNetTime() const {
+    return getEndTime() - getStartTime();
 }

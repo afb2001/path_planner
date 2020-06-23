@@ -11,10 +11,10 @@ void RibbonManager::add(double x1, double y1, double x2, double y2) {
     add(r, m_Ribbons.end());
 }
 
-void RibbonManager::cover(double x, double y) {
+void RibbonManager::cover(double x, double y, bool strict) {
     auto i = m_Ribbons.begin();
     while (i != m_Ribbons.end()) {
-        auto r = i->split(x, y);
+        auto r = i->split(x, y, strict);
         add(r, i);
         if (i->covered()) i = m_Ribbons.erase(i);
         else ++i;
@@ -57,9 +57,9 @@ double RibbonManager::tspPointRobotNoSplitAllRibbons(std::list<Ribbon> ribbonsLe
     for (auto it = ribbonsLeft.begin(); it != ribbonsLeft.end(); it++) {
         const Ribbon r = *it;
         it = ribbonsLeft.erase(it);
-        min = fmin(min, tspPointRobotNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min = fmin(min, tspPointRobotNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
                    distance(point, r.start()), r.end()));
-        min = fmin(min, tspPointRobotNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min = fmin(min, tspPointRobotNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
                    distance(point, r.end()), r.start()));
         it = ribbonsLeft.insert(it, r);
     }
@@ -85,9 +85,9 @@ double RibbonManager::tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft
         // TODO! -- this one and the other K-based one don't work because pop_back()
         const Ribbon r = *it;
         it = ribbonsLeft.erase(it);
-        min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length()- 2 * Ribbon::RibbonWidth +
                                                                     distance(point, r.start()), r.end()));
-        min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
                                                                     distance(point, r.end()), r.start()));
         it = ribbonsLeft.insert(it, r);
     }
@@ -105,9 +105,9 @@ double RibbonManager::tspDubinsNoSplitAllRibbons(std::list<Ribbon> ribbonsLeft, 
         it = ribbonsLeft.erase(it);
         auto start = r.startAsState();
         auto end = r.endAsState();
-        min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
             dubinsDistance(x, y, yaw, start), end.x(), end.y(), end.yaw()));
-        min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min  = fmin(min, tspDubinsNoSplitAllRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
             dubinsDistance(x, y, yaw, end), start.x(), start.y(), start.yaw()));
         it = ribbonsLeft.insert(it, r);
     }
@@ -131,9 +131,9 @@ double RibbonManager::tspDubinsNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, do
         it = ribbonsLeft.erase(it);
         auto start = r.startAsState();
         auto end = r.endAsState();
-        min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
                                                                  dubinsDistance(x, y, yaw, start), end.x(), end.y(), end.yaw()));
-        min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() +
+        min  = fmin(min, tspDubinsNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length() - 2 * Ribbon::RibbonWidth +
                                                                  dubinsDistance(x, y, yaw, end), start.x(), start.y(), start.yaw()));
         it = ribbonsLeft.insert(it, r);
     }
@@ -144,7 +144,7 @@ double RibbonManager::minDistanceFrom(double x, double y) const {
     if (m_Ribbons.empty()) return 0;
     auto min = DBL_MAX;
     for (const auto& r : m_Ribbons) {
-        if (r.contains(x, y, r.getProjection(x, y))) return 0;
+        if (r.contains(x, y, r.getProjection(x, y), false)) return 0;
         auto dStart = distance(r.start(), x, y);
         auto dEnd = distance(r.end(), x, y);
         min = fmin(fmin(min, dEnd), dStart);
@@ -171,6 +171,7 @@ State RibbonManager::getNearestEndpointAsState(const State& state) const {
                 // we actually want the state at the other end of the ribbon
                 ret = r.endAsState();
                 ret.heading() = s.heading();
+                ret.move(-Ribbon::minLength() + 1e-5); // pull back up the ribbon a little because technically the ribbon can end here
             } else {
                 ret = s;
             }
@@ -183,6 +184,7 @@ State RibbonManager::getNearestEndpointAsState(const State& state) const {
                 // we actually want the state at the other end of the ribbon
                 ret = r.startAsState();
                 ret.heading() = s.heading();
+                ret.move(-Ribbon::minLength() + 1e-5); // pull back up the ribbon a little because technically the ribbon can end here
             } else {
                 ret = s;
             }
@@ -236,7 +238,7 @@ double RibbonManager::maxDistance(double x, double y) const {
     // Both are technically inadmissible due to the "done" action but that's not implemented yet anywhere
     double sumLength = 0, min = DBL_MAX, max = 0;
     for (const auto& r : m_Ribbons) {
-        sumLength += r.length();
+        sumLength += r.length() - 2 * Ribbon::RibbonWidth; // can technically shortcut the ribbon on both ends
         auto dStart = distance(r.start(), x, y);
         auto dEnd = distance(r.end(), x, y);
         min = fmin(fmin(min, dEnd), dStart);
@@ -275,14 +277,14 @@ std::vector<State> RibbonManager::findStatesOnRibbonsOnCircle(const State& cente
         // took out checks to determine the points are actually in the ribbons because it might make sense to try to
         // drive to points past the ribbons anyway, and if these are only used once it won't matter much
         // EDIT -- put them back in (they're the if (r.contains(...)) checks)
-        if (r.contains(x1, y1, r.getProjection(x1, y1))) {
+        if (r.contains(x1, y1, r.getProjection(x1, y1), false)) {
             // give each intersecting point both headings
             states.emplace_back(x1, y1, start.heading(), start.speed(), 0);
             states.emplace_back(x1, y1, end.heading(), end.speed(), 0);
         }
         // if it's a tangent line then they will be the same point
         if (x1 != x2 && y1 != y2) {
-            if (r.contains(x1, y1, r.getProjection(x2, y2))) {
+            if (r.contains(x1, y1, r.getProjection(x2, y2), false)) {
                 states.emplace_back(x2, y2, start.heading(), start.speed(), 0);
                 states.emplace_back(x2, y2, end.heading(), end.speed(), 0);
             }
@@ -394,10 +396,10 @@ void RibbonManager::coverBetween(double x1, double y1, double x2, double y2) {
         auto d1 = distance(x1, y1, x2, y2);
         if (d1 > d) break; // ensure distance to go is decreasing
         else d = d1;
-        cover(x1, y1);
+        cover(x1, y1, false);
         x1 += Ribbon::minLength() * cos(theta) / 2; // so we don't overshoot
         y1 += Ribbon::minLength() * sin(theta) / 2;
     } while (d > Ribbon::minLength());
-    cover(x2, y2);
+    cover(x2, y2, false);
 }
 

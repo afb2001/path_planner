@@ -61,7 +61,7 @@ public:
      * @param timeInterval
      * @return
      */
-    std::vector<State> getSamples(double timeInterval) const;
+    std::vector<State> getSamples(double timeInterval, double offset) const;
 
     /**
      * @return the turning radius
@@ -83,6 +83,11 @@ public:
      * @return the end time, calculated based on the length and speed, or updated manually
      */
     double getEndTime() const;
+
+    /**
+     * @return the total time (end - start)
+     */
+    double getNetTime() const;
 
     /**
      * Truncate the path with a new (earlier) end time. Throws an exception if you try to make it longer (later end time).

@@ -42,7 +42,6 @@ protected:
     void expandToCoverSpecificSamples(Vertex::SharedPtr root, const std::vector<State>& samples,
                                       const DynamicObstaclesManager& obstacles, bool coverageAllowed);
 
-    static constexpr double c_InitialSamples = 100;
 };
 
 

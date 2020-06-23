@@ -85,7 +85,7 @@ public:
 
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 
-        for (int i = 0; i + 1 < goal->path.poses.size(); i++) {
+        for (int i = 0; i + 1 < goal->path.poses.size(); i+= 1) {
             // assume points represent track-line pairs
             geometry_msgs::PointStamped::_point_type start = m_CoordinateConverter.wgs84_to_map(goal->path.poses[i].pose.position);
             geometry_msgs::PointStamped::_point_type end = m_CoordinateConverter.wgs84_to_map(goal->path.poses[i + 1].pose.position);
@@ -187,7 +187,11 @@ public:
     void reconfigureCallback(path_planner::path_plannerConfig &config, uint32_t level) {
         m_Executive->refreshMap(config.planner_geotiff_map, m_origin.latitude, m_origin.longitude);
         m_Executive->setConfiguration(config.non_coverage_turning_radius, config.coverage_turning_radius,
-                                      config.max_speed, config.line_width, config.branching_factor, config.heuristic);
+                                      config.max_speed, config.line_width, config.branching_factor, config.heuristic,
+                                      config.time_horizon, config.time_minimum,
+                                      config.collision_checking_increment,
+                                      config.initial_samples,
+                                      config.use_brown_paths);
         m_Executive->setPlannerVisualization(config.dump_visualization, config.visualization_file);
     }
 

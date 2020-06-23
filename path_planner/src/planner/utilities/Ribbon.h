@@ -30,7 +30,7 @@ public:
      * @param y
      * @return
      */
-    Ribbon split(double x, double y);
+    Ribbon split(double x, double y, bool strict);
 
     /**
      * @return true iff the ribbon is below the minimum length (all covered).
@@ -78,7 +78,7 @@ public:
      * @param projected
      * @return
      */
-    bool contains(double x, double y, const std::pair<double, double>& projected) const;
+    bool contains(double x, double y, const std::pair<double, double>& projected, bool strict) const;
 
     /**
      * Determine whether a point already projected onto the ribbon line is contained within the ribbon.

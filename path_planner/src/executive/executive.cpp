@@ -33,7 +33,7 @@ void Executive::updateCovered(double x, double y, double speed, double heading, 
 {
     if ((m_LastHeading - heading) / m_LastUpdateTime <= c_CoverageHeadingRateMax) {
         std::lock_guard<std::mutex> lock(m_RibbonManagerMutex);
-        m_RibbonManager.cover(x, y);
+        m_RibbonManager.cover(x, y, false);
     }
     m_LastUpdateTime = t; m_LastHeading = heading;
     m_LastState = State(x, y, heading, speed, t);
@@ -219,8 +219,8 @@ void Executive::planLoop() {
                 startState = State();
                 failureCount++;
                 if (failureCount > 2) {
-                    cerr << "Failed too many times in a row. Halving time horizon" << std::endl;
                     m_PlannerConfig.setTimeHorizon(m_PlannerConfig.timeHorizon() / 2);
+                    cerr << "Failed " << failureCount << " times in a row. Reducing time horizon to " << m_PlannerConfig.timeHorizon() << std::endl;
                     failureCount = 0;
                 }
             }

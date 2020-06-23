@@ -82,8 +82,8 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     std::vector<std::pair<double, double>> result;
     State intermediate(start()->state());
     // truncate longer edges than 30 seconds
-    auto endTime = fmin(config.timeHorizon() + 1 + config.startStateTime(),m_DubinsWrapper.getEndTime());
-    auto minGoalTime = fmin(m_DubinsWrapper.getEndTime(), config.timeMinimum() + config.startStateTime() + 1e-5);
+    auto endTime = fmin(config.timeHorizon() + 1e-12 + config.startStateTime(),m_DubinsWrapper.getEndTime());
+    auto endTimeIfRibbonsDone = fmin(m_DubinsWrapper.getEndTime(), config.timeMinimum() + config.startStateTime() + 1e-12);
 
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
@@ -141,11 +141,11 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
             // could be a bit more work
             toCoverDistance = end()->ribbonManager().minDistanceFrom(intermediate.x(), intermediate.y());
             if (end()->coverageAllowed() || lastHeading == intermediate.heading()) {
-                end()->ribbonManager().cover(intermediate.x(), intermediate.y());
+                end()->ribbonManager().cover(intermediate.x(), intermediate.y(), true);
             }
             if (end()->ribbonManager().done()) {
                 // make it so we only need the min time if we finish covering
-                endTime = fmax(minGoalTime, intermediate.time());
+                endTime = fmax(endTimeIfRibbonsDone, intermediate.time());
             }
 
         }

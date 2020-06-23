@@ -11,10 +11,10 @@ void RibbonManager::add(double x1, double y1, double x2, double y2) {
     add(r, m_Ribbons.end());
 }
 
-void RibbonManager::cover(double x, double y) {
+void RibbonManager::cover(double x, double y, bool strict) {
     auto i = m_Ribbons.begin();
     while (i != m_Ribbons.end()) {
-        auto r = i->split(x, y);
+        auto r = i->split(x, y, strict);
         add(r, i);
         if (i->covered()) i = m_Ribbons.erase(i);
         else ++i;
@@ -144,7 +144,7 @@ double RibbonManager::minDistanceFrom(double x, double y) const {
     if (m_Ribbons.empty()) return 0;
     auto min = DBL_MAX;
     for (const auto& r : m_Ribbons) {
-        if (r.contains(x, y, r.getProjection(x, y))) return 0;
+        if (r.contains(x, y, r.getProjection(x, y), false)) return 0;
         auto dStart = distance(r.start(), x, y);
         auto dEnd = distance(r.end(), x, y);
         min = fmin(fmin(min, dEnd), dStart);
@@ -277,14 +277,14 @@ std::vector<State> RibbonManager::findStatesOnRibbonsOnCircle(const State& cente
         // took out checks to determine the points are actually in the ribbons because it might make sense to try to
         // drive to points past the ribbons anyway, and if these are only used once it won't matter much
         // EDIT -- put them back in (they're the if (r.contains(...)) checks)
-        if (r.contains(x1, y1, r.getProjection(x1, y1))) {
+        if (r.contains(x1, y1, r.getProjection(x1, y1), false)) {
             // give each intersecting point both headings
             states.emplace_back(x1, y1, start.heading(), start.speed(), 0);
             states.emplace_back(x1, y1, end.heading(), end.speed(), 0);
         }
         // if it's a tangent line then they will be the same point
         if (x1 != x2 && y1 != y2) {
-            if (r.contains(x1, y1, r.getProjection(x2, y2))) {
+            if (r.contains(x1, y1, r.getProjection(x2, y2), false)) {
                 states.emplace_back(x2, y2, start.heading(), start.speed(), 0);
                 states.emplace_back(x2, y2, end.heading(), end.speed(), 0);
             }
@@ -396,10 +396,10 @@ void RibbonManager::coverBetween(double x1, double y1, double x2, double y2) {
         auto d1 = distance(x1, y1, x2, y2);
         if (d1 > d) break; // ensure distance to go is decreasing
         else d = d1;
-        cover(x1, y1);
+        cover(x1, y1, false);
         x1 += Ribbon::minLength() * cos(theta) / 2; // so we don't overshoot
         y1 += Ribbon::minLength() * sin(theta) / 2;
     } while (d > Ribbon::minLength());
-    cover(x2, y2);
+    cover(x2, y2, false);
 }
 

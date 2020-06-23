@@ -90,7 +90,7 @@ TEST(UnitTests, PlanTransferTest1) {
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
     for (int i = 2; i < 5; i++){
-        ribbonManager.cover(start.x(), start.y());
+        ribbonManager.cover(start.x(), start.y(), false);
         auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
@@ -417,9 +417,9 @@ TEST(UnitTests, RibbonsTest2) {
 
 TEST(UnitTests, RibbonSplitTest) {
     Ribbon r1(40, 100, -70, -120);
-    auto r = r1.split(0, 0);
+    auto r = r1.split(0, 0, false);
     EXPECT_TRUE(r.length() < 3);
-    auto r2 = r1.split(-10, 0);
+    auto r2 = r1.split(-10, 0, false);
     EXPECT_EQ(r2.end(), std::make_pair(-10.0, 0.0));
     EXPECT_EQ(r2.start(), std::make_pair(40.0, 100.0));
     EXPECT_EQ(r2.end(), r1.start());
@@ -428,14 +428,14 @@ TEST(UnitTests, RibbonSplitTest) {
 TEST(UnitTests, RibbonsTest3) {
     RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitAllRibbons);
     ribbonManager.add(0, 0, 1000, 0);
-    ribbonManager.cover(2, 0);
+    ribbonManager.cover(2, 0, false);
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(2, 0, 0), 998);
 }
 
 TEST(UnitTests, RibbonsTest4) {
     RibbonManager ribbonManager(RibbonManager::TspPointRobotNoSplitAllRibbons);
     ribbonManager.add(0, 0, 1000, 0);
-    ribbonManager.cover(1, 1);
+    ribbonManager.cover(1, 1, false);
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(1, 0, 0), 999);
 }
 
@@ -508,7 +508,7 @@ TEST(UnitTests, HeuristicConsistency1) {
         DubinsWrapper path(s1, s2, 8);
         while (path.containsTime(s1.time())) {
             path.sample(s1);
-            ribbonManager.cover(s1.x(), s1.y());
+            ribbonManager.cover(s1.x(), s1.y(), false);
             if (ribbonManager.done()) break;
             auto h = ribbonManager.approximateDistanceUntilDone(s1.x(), s1.y(), s1.yaw()) / 2.5;
             EXPECT_DOUBLE_EQ(s1.time() + h, s2.time());
@@ -526,7 +526,7 @@ TEST(UnitTests, HeuristicConsistency2) {
     while (path.containsTime(s1.time())) {
         path.sample(s1);
         auto contained = ribbonManager.get().front().containsProjection(std::make_pair(s1.x(), s1.y()));
-        ribbonManager.cover(s1.x(), s1.y());
+        ribbonManager.cover(s1.x(), s1.y(), false);
         if (ribbonManager.done()) break;
         auto h = ribbonManager.approximateDistanceUntilDone(s1.x(), s1.y(), s1.yaw()) / 2.5;
         if (contained) {
@@ -553,8 +553,8 @@ TEST(UnitTests, HeuristicConsistency3) {
     while (plan.containsTime(s3.time())) {
         plan.sample(s3);
         auto r = ribbonManager.get().front();
-        auto contained = r.contains(s3.x(), s3.y(), r.getProjection(s3.x(), s3.y()));
-        ribbonManager.cover(s3.x(), s3.y());
+        auto contained = r.contains(s3.x(), s3.y(), r.getProjection(s3.x(), s3.y()), false);
+        ribbonManager.cover(s3.x(), s3.y(), false);
         if (ribbonManager.done()) break;
         auto h = ribbonManager.approximateDistanceUntilDone(s3.x(), s3.y(), s3.yaw()) / 2.5;
         if (contained) {
@@ -744,7 +744,7 @@ TEST(Benchmarks, RibbonCoverBenchmark) {
         int times;
         for (times = 1; times <= maxTimes; times++) {
             auto s = generator.generate();
-            ribbonManager.cover(s.x(), s.y());
+            ribbonManager.cover(s.x(), s.y(), false);
         }
         auto endTime = std::chrono::system_clock::now();
         auto seconds = (double)((endTime - startTime).count()) / 1e9;
@@ -1196,7 +1196,7 @@ TEST(PlannerTests, RHRSAStarTest2Ribbons) {
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
     while(!ribbonManager.done()) {
-        ribbonManager.cover(start.x(), start.y());
+        ribbonManager.cover(start.x(), start.y(), false);
         auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.5); // quick iterations
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
@@ -1218,7 +1218,7 @@ TEST(PlannerTests, RHRSAStarTest4Ribbons) {
     bool headingChanged = false;
     DubinsPlan plan;
     while(!ribbonManager.done()) {
-        if (!headingChanged) ribbonManager.cover(start.x(), start.y());
+        if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
         plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.95);
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
@@ -1263,7 +1263,7 @@ TEST(PlannerTests, RHRSAStarSingleRibbonTSP) {
     plannerConfig.setVisualizations(true);
     plannerConfig.setVisualizer(&visualizer);
     while(!ribbonManager.done()) {
-        /*if (!headingChanged)*/ ribbonManager.cover(start.x(), start.y());
+        /*if (!headingChanged)*/ ribbonManager.cover(start.x(), start.y(), false);
         plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5);
         ASSERT_FALSE(plan.empty());
 //        headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
@@ -1288,7 +1288,7 @@ TEST(PlannerTests, RHRSAStarTest5TspRibbons) {
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
-        if (!headingChanged) ribbonManager.cover(start.x(), start.y());
+        if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
         auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
@@ -1310,7 +1310,7 @@ TEST(PlannerTests, RHRSAStarTest6DubinsRibbons) {
     State start(0, 0, 0, 2.5, 1);
     bool headingChanged = false;
     while(!ribbonManager.done()) {
-        if (!headingChanged) ribbonManager.cover(start.x(), start.y());
+        if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
         auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
         ASSERT_FALSE(plan.empty());
         headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
@@ -1331,7 +1331,7 @@ TEST(PlannerTests, RHRSAStarSeparateThreadTest) {
     State start(0, 0, 0, 1, 1);
     std::thread t ([&]{
         while(!ribbonManager.done()) {
-            ribbonManager.cover(start.x(), start.y());
+            ribbonManager.cover(start.x(), start.y(), false);
             auto plan = planner->plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
             ASSERT_FALSE(plan.empty());
             start = plan.getHalfSecondSamples()[1];
@@ -1390,7 +1390,7 @@ TEST(PlannerTests, VisualizationLongerTest) {
     config.setObstacles(DynamicObstaclesManager());
     std::thread t ([&]{
         while(!ribbonManager.done()) {
-            ribbonManager.cover(start.x(), start.y());
+            ribbonManager.cover(start.x(), start.y(), false);
             auto plan = planner.plan(ribbonManager, start, config, DubinsPlan(), 0.95);
             ASSERT_FALSE(plan.empty());
             start = plan.getHalfSecondSamples()[1];

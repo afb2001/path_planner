@@ -65,7 +65,7 @@ public:
      * @param x
      * @param y
      */
-    void cover(double x, double y);
+    void cover(double x, double y, bool strict);
 
     /**
      * Update the ribbons by covering between (x1, y1) and (x2, y2)

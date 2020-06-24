@@ -103,7 +103,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                                            0 << " sample" << std::endl;
         }
         auto v = aStar(m_Config.obstacles(), endTime);
-        if (!m_BestVertex || (v && v->f() < m_BestVertex->f())) {
+        if (!m_BestVertex || (v && v->f() + 0.05 < m_BestVertex->f())) { // add fudge factor to favor earlier (simpler) plans
             // found a (better) plan
             m_BestVertex = v;
             if (v && m_Config.visualizations()) {

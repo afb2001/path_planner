@@ -20,8 +20,8 @@ Ribbon Ribbon::empty() {
     return Ribbon(0, 0, 0, 0);
 }
 
-bool Ribbon::covered() const {
-    return squaredLength() < minLength() * minLength();
+bool Ribbon::covered(bool strict) const {
+    return squaredLength() < minLength() * minLength() / (strict? c_StrictModifier * c_StrictModifier : 1);
 }
 
 double Ribbon::length() const {
@@ -39,7 +39,7 @@ std::pair<double, double> Ribbon::end() const {
 bool Ribbon::contains(double x, double y, const std::pair<double, double>& projected, bool strict) const {
     if (!containsProjection(projected)) return false;
     auto d = distance(x, y);
-    return d < (strict? RibbonWidth / 8 : RibbonWidth);
+    return d < (strict? RibbonWidth / c_StrictModifier : RibbonWidth);
 }
 
 std::string Ribbon::toString() const {

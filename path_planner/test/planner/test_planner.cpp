@@ -1206,6 +1206,27 @@ TEST(PlannerTests, RHRSAStarTest2Ribbons) {
     }
 }
 
+TEST(PlannerTests, RibbonFarAwayTest) {
+    RibbonManager ribbonManager;
+    ribbonManager.add(100, 110, 100, 130);
+    AStarPlanner planner;
+    State start(0, 0, 0, 2.5, 1);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_test_visualizations"));
+    plannerConfig.setVisualizations(true);
+    plannerConfig.setVisualizer(&visualizer);
+    DubinsPlan plan;
+    while(!ribbonManager.done()) {
+        ribbonManager.cover(start.x(), start.y(), false);
+        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5); // quick iterations
+        ASSERT_FALSE(plan.empty());
+        validatePlan(plan, plannerConfig);
+        start.time() += 1;
+        plan.sample(start);
+        ASSERT_LT(start.time(), 90);
+        cerr << start.toString() << endl;
+    }
+}
+
 TEST(PlannerTests, RHRSAStarTest4Ribbons) {
     RibbonManager ribbonManager(RibbonManager::MaxDistance);
     ribbonManager.add(0, 20, 20, 20);

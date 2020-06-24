@@ -35,7 +35,7 @@ public:
     /**
      * @return true iff the ribbon is below the minimum length (all covered).
      */
-    bool covered() const;
+    bool covered(bool strict) const;
 
     /**
      * Construct an empty ribbon.
@@ -120,11 +120,15 @@ public:
                sqrt(squaredLength());
     }
 
+    static constexpr double strictModifier() { return c_StrictModifier; }
+
 private:
     double m_StartX, m_StartY, m_EndX, m_EndY;
 
     // use a tolerance to compensate for floating point errors that were happening
     static constexpr double c_Tolerance = 1e-5;
+
+    static constexpr double c_StrictModifier = 8;
 
     double squaredLength() const {
         return (m_EndX - m_StartX) * (m_EndX - m_StartX) + (m_EndY - m_StartY) * (m_EndY - m_StartY);

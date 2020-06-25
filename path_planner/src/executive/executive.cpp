@@ -92,6 +92,12 @@ void Executive::planLoop() {
                 m_TrajectoryPublisher->displayRibbons(m_RibbonManager);
             }
 
+            // if the state estimator returned an error naively do it ourselves
+            if (startState.time() == -1) {
+                startState = m_LastState.push(
+                        m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds - m_LastState.time());
+            }
+
             // copy the map pointer if it's been set (don't wait for the mutex because it may be a while)
             if (m_MapMutex.try_lock()) {
                 if (m_NewMap) {
@@ -99,13 +105,16 @@ void Executive::planLoop() {
                     m_PlannerConfig.setMap(m_NewMap);
                 }
                 m_NewMap = nullptr;
-                m_MapMutex.unlock();
-            }
 
-            // if the state estimator returned an error naively do it ourselves
-            if (startState.time() == -1) {
-                startState = m_LastState.push(
-                        m_TrajectoryPublisher->getTime() + c_PlanningTimeSeconds - m_LastState.time());
+                // check if start state is blocked
+                if (m_PlannerConfig.map()->isBlocked(startState.x(), startState.y())) {
+                    cerr << "Starting state (" << startState.toString() << ") is blocked, according to most recent map. Trying again in 1s." << endl;
+                    m_MapMutex.unlock();
+                    sleep(1);
+                    continue;
+                }
+
+                m_MapMutex.unlock();
             }
 
             if (!c_ReusePlanEnabled) plan = DubinsPlan();
@@ -254,6 +263,12 @@ void Executive::refreshMap(const std::string& pathToMapFile, double latitude, do
     thread([this, pathToMapFile, latitude, longitude] {
         std::lock_guard<std::mutex> lock(m_MapMutex);
         if (m_CurrentMapPath != pathToMapFile) {
+            if (pathToMapFile.empty()) {
+                m_NewMap = make_shared<Map>();
+                m_CurrentMapPath = pathToMapFile;
+                *m_PlannerConfig.output() << "Map cleared. Using empty map now." << endl;
+                return;
+            }
             // could take some time for I/O, Dijkstra on entire map
             try {
                 // If the name looks like it's one of our gridworld maps, load it in that format, otherwise assume GeoTIFF
@@ -263,10 +278,12 @@ void Executive::refreshMap(const std::string& pathToMapFile, double latitude, do
                     m_NewMap = make_shared<GridWorldMap>(pathToMapFile);
                 }
                 m_CurrentMapPath = pathToMapFile;
+                *m_PlannerConfig.output() << "Loaded map file: " << pathToMapFile << endl;
             }
             catch (...) {
                 // swallow all errors in this thread
-                cerr << "Encountered an error loading map at path " << pathToMapFile << ".\nMap was not updated." << endl;
+                *m_PlannerConfig.output() << "Encountered an error loading map at path " << pathToMapFile << ".\nMap was not updated." << endl;
+                *m_PlannerConfig.output() << "Set the map path to an empty string to clear the map." << endl;
                 m_NewMap = nullptr;
                 m_CurrentMapPath = "";
             }

@@ -117,9 +117,10 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
             config.visualizationStream() << "State: (" << intermediate.toStringRad() << "), f: " << gSoFar + startH <<
                 ", g: " << gSoFar << ", h: " << startH << " trajectory" << std::endl;
         }
-        if (config.map()->getUnblockedDistance(intermediate.x(), intermediate.y()) <= config.collisionCheckingIncrement()) {
-            collisionPenalty += Edge::collisionPenaltyFactor();
-            std::cerr << "Infeasible edge discovered" << std::endl;
+        if (config.map()->isBlocked(intermediate.x(), intermediate.y())) {
+//        if (config.map()->getUnblockedDistance(intermediate.x(), intermediate.y()) <= config.collisionCheckingIncrement()) {
+//            collisionPenalty += Edge::collisionPenaltyFactor();
+//            std::cerr << "Infeasible edge discovered" << std::endl;
             m_Infeasible = true;
             break;
         }

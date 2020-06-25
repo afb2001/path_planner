@@ -4,6 +4,8 @@
 #include <functional>
 #include <assert.h>
 #include "utilities/Visualizer.h"
+#include "../common/map//Map.h"
+#include "../common/dynamic_obstacles/DynamicObstaclesManager.h"
 
 /**
  * Class that holds all the configurations for the planner. These need to get passed around periodically so it was

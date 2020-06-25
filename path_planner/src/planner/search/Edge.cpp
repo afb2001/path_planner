@@ -165,6 +165,8 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
 
     end()->setCurrentCost();
 
+    end()->computeApproxToGo(config);
+
     return m_TrueCost;
 }
 

@@ -4,9 +4,9 @@
 #include <memory>
 #include <path_planner_common/State.h>
 #include "Edge.h"
-//#include "../utilities/Path.h"
 #include "../utilities/RibbonManager.h"
 #include "path_planner_common/DubinsWrapper.h"
+#include "../PlannerConfig.h"
 
 // forward declaration to resolve circular dependency
 class Edge;

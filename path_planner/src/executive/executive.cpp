@@ -68,6 +68,8 @@ void Executive::planLoop() {
 
         while (true) {
             double startTime = m_TrajectoryPublisher->getTime();
+            // logging time each time through the loop for making sure we're hitting the time bound
+//            *m_PlannerConfig.output() << "Top of plan loop at time " << std::to_string(startTime) << std::endl;
 
             { // new scope for RAII again
                 unique_lock<mutex> lock(m_PlannerStateMutex);

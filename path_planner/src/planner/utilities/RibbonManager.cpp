@@ -82,7 +82,6 @@ double RibbonManager::tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft
     int i = 0;
     for (auto it = ribbonsLeft.begin(); it != ribbonsLeft.end(); it++) {
         if (i++ >= m_K) break;
-        // TODO! -- this one and the other K-based one don't work because pop_back()
         const Ribbon r = *it;
         it = ribbonsLeft.erase(it);
         min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length()- 2 * Ribbon::RibbonWidth +

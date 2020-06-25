@@ -88,7 +88,7 @@ public:
      * This value comes back as a time, assuming maximum speed.
      * @return
      */
-    double computeApproxToGo();
+    double computeApproxToGo(const PlannerConfig& config);
 
     /**
      * Get the underlying state from this vertex.

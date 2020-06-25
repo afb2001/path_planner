@@ -51,7 +51,7 @@ double State::headingTo(const State& other) const {
 double State::headingTo(double x1, double y1) const {
     double dx = x1 - this->x();
     double dy = y1 - this->y();
-    double h = c_PiOverTwo - atan2(dy, dx); // TODO! -- is this correct?
+    double h = c_PiOverTwo - atan2(dy, dx);
     if (h < 0) h += c_TwoPi;
     return h;
 }

@@ -229,7 +229,7 @@ public:
     }
 
 private:
-    ros::NodeHandle m_node_handle; // TODO
+    ros::NodeHandle m_node_handle;
 
     geographic_msgs::GeoPoint m_origin;
 

@@ -101,7 +101,6 @@ void Executive::planLoop() {
             // copy the map pointer if it's been set (don't wait for the mutex because it may be a while)
             if (m_MapMutex.try_lock()) {
                 if (m_NewMap) {
-                    // TODO! -- Dunno what's going on but the map is messed up
                     m_PlannerConfig.setMap(m_NewMap);
                 }
                 m_NewMap = nullptr;

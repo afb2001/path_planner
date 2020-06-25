@@ -865,7 +865,7 @@ TEST(UnitTests, VertexTests1) {
     EXPECT_DOUBLE_EQ(t, c);
     EXPECT_DOUBLE_EQ(t, v1->currentCost());
     EXPECT_DOUBLE_EQ(v1->currentCost(), v1->state().time() - 1);
-    auto h = v1->computeApproxToGo();
+    auto h = v1->computeApproxToGo(plannerConfig);
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(v1->state().x(), v1->state().y(), v1->state().yaw()) / 2.5, h);
     EXPECT_DOUBLE_EQ(v1->f(), t + h);
 }
@@ -881,7 +881,7 @@ TEST(UnitTests, VertexTests2) {
     DynamicObstaclesManager obstacles;
     auto t = v1->parentEdge()->computeTrueCost(plannerConfig);
     EXPECT_DOUBLE_EQ(c, t);
-    auto h = v1->computeApproxToGo();
+    auto h = v1->computeApproxToGo(plannerConfig);
     EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 10 + 50 - 2 * Ribbon::minLength()) / 2.5, h);
 }
 
@@ -896,7 +896,7 @@ TEST(UnitTests, VertexTests3) {
     auto m = make_shared<Map>();
     DynamicObstaclesManager obstacles;
     v1->parentEdge()->computeTrueCost(plannerConfig);
-    auto h = v1->computeApproxToGo();
+    auto h = v1->computeApproxToGo(plannerConfig);
     EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 50 - 2 * Ribbon::minLength()) / 2.5, h);
 }
 

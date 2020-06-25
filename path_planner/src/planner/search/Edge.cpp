@@ -25,7 +25,7 @@ double Edge::netTime() {
 
 DubinsWrapper Edge::getPlan(const PlannerConfig& config) {
     approxCost(); // throw the error if not calculated
-    return m_DubinsWrapper; // TODO -- maybe visualize something here
+    return m_DubinsWrapper;
 }
 
 std::shared_ptr<Vertex> Edge::setEnd(const State &state) {

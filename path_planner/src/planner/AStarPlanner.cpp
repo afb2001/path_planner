@@ -29,7 +29,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
     auto startV = Vertex::makeRoot(start, m_RibbonManager);
     startV->state().speed() = m_Config.maxSpeed(); // state's speed is used to compute h so need to use max
-    startV->computeApproxToGo();
+    startV->computeApproxToGo(m_Config);
     m_BestVertex = nullptr;
 //    auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
     std::vector<State> brownPathSamples;
@@ -72,7 +72,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                     if (p.getNetTime() == 0) continue; // just trying this I guess
                     lastPlanEnd = Vertex::connect(lastPlanEnd, p, p.getRho() == m_Config.coverageTurningRadius());
                     lastPlanEnd->parentEdge()->computeTrueCost(m_Config);
-                    lastPlanEnd->computeApproxToGo();
+                    lastPlanEnd->computeApproxToGo(m_Config);
                     visualizeVertex(lastPlanEnd, "lastPlanEnd", false);
                     if (lastPlanEnd->parentEdge()->infeasible()) {
                         lastPlanEnd = startV;
@@ -103,7 +103,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                                            0 << " sample" << std::endl;
         }
         auto v = aStar(m_Config.obstacles(), endTime);
-        if (!m_BestVertex || (v && v->f() < m_BestVertex->f())) {
+        if (!m_BestVertex || (v && v->f() + 0.05 < m_BestVertex->f())) { // add fudge factor to favor earlier (simpler) plans
             // found a (better) plan
             m_BestVertex = v;
             if (v && m_Config.visualizations()) {

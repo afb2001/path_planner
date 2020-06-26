@@ -25,7 +25,7 @@ double Edge::netTime() {
 
 DubinsWrapper Edge::getPlan(const PlannerConfig& config) {
     approxCost(); // throw the error if not calculated
-    return m_DubinsWrapper; // TODO -- maybe visualize something here
+    return m_DubinsWrapper;
 }
 
 std::shared_ptr<Vertex> Edge::setEnd(const State &state) {
@@ -117,9 +117,10 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
             config.visualizationStream() << "State: (" << intermediate.toStringRad() << "), f: " << gSoFar + startH <<
                 ", g: " << gSoFar << ", h: " << startH << " trajectory" << std::endl;
         }
-        if (config.map()->getUnblockedDistance(intermediate.x(), intermediate.y()) <= config.collisionCheckingIncrement()) {
-            collisionPenalty += Edge::collisionPenaltyFactor();
-            std::cerr << "Infeasible edge discovered" << std::endl;
+        if (config.map()->isBlocked(intermediate.x(), intermediate.y())) {
+//        if (config.map()->getUnblockedDistance(intermediate.x(), intermediate.y()) <= config.collisionCheckingIncrement()) {
+//            collisionPenalty += Edge::collisionPenaltyFactor();
+//            std::cerr << "Infeasible edge discovered" << std::endl;
             m_Infeasible = true;
             break;
         }
@@ -163,6 +164,8 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     m_TrueCost = netTime() * Edge::timePenaltyFactor() + collisionPenalty;
 
     end()->setCurrentCost();
+
+    end()->computeApproxToGo(config);
 
     return m_TrueCost;
 }

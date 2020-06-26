@@ -17,10 +17,10 @@ public:
 
     ~GridWorldMap() override = default;
 
-    double getUnblockedDistance(double x, double y) const override;
+    bool isBlocked(double x, double y) const override;
 
 private:
-    std::vector<std::vector<double>> m_Distances;
+    std::vector<std::vector<bool>> m_Blocked;
     int m_Resolution;
 };
 

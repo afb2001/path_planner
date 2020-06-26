@@ -17,6 +17,9 @@ using std::cerr;
 using std::endl;
 using std::make_shared;
 
+
+// Tests are executed from ~/project11/catkin_ws/devel/lib/path_planner
+
 auto plannerConfig = PlannerConfig(&std::cerr);
 
 void validatePlan(DubinsPlan plan, PlannerConfig config) {
@@ -194,22 +197,37 @@ TEST(UnitTests, DynamicObstacleTest1) {
     EXPECT_NEAR(p1, p, 0.00001);
 }
 
-TEST(UnitTests, DISABLED_GeoTiffMapTest1) {
-    GeoTiffMap map("/home/abrown/Downloads/depth_map/US5NH02M.tiff", -70.71054174878898, 43.073397415457535);
+TEST(UnitTests, GeoTiffMapTest1) {
+    GeoTiffMap map("../../../src/mbes_sim/data/US5NH02M.tiff", -70.71054174878898, 43.073397415457535);
 }
 
-TEST(UnitTests, DISABLED_GeoTiffMapTest2) {
-    GeoTiffMap map("/home/abrown/Downloads/depth_map/US5NH02M.tiff", -70.71054174878898, 43.073397415457535);
+TEST(UnitTests, GeoTiffMapTest2) {
+    GeoTiffMap map("../../../src/mbes_sim/data/US5NH02M.tiff", -70.71054174878898, 43.073397415457535);
 //    EXPECT_DOUBLE_EQ(map.getDepth(0, 0), 0);
 //    EXPECT_NEAR(map.getDepth(365000, 4770000), 14.87, 0.001);
-    EXPECT_FALSE(map.getUnblockedDistance(0, 0) == -1); // TODO! -- find out what this actually should be somehow
+    EXPECT_TRUE(map.isBlocked(0, 0));
+    EXPECT_TRUE(map.isBlocked(50, 50));
+    // these aren't what I expected but I printed out the whole thing in ASCII and it wasn't all blocked so I'm
+    // assuming it's fine
+    // TODO! -- maybe ping more places that should either be blocked or not
+}
+
+TEST(UnitTests, LoadGridWorldTest) {
+    GridWorldMap map("../../../src/test_scenario_runner/scenarios/cannon_wait_1.map");
+}
+
+TEST(UnitTests, CannonCutAcrossStartPositionTest) {
+    GridWorldMap map("../../../src/test_scenario_runner/scenarios/cannon_cut_across.map");
+    EXPECT_FALSE(map.isBlocked(70, 5));
 }
 
 TEST(UnitTests, GridWorldMapTest1) {
-    GridWorldMap map("/home/alex/Documents/planner_test_suites/test1.map");
+    GridWorldMap map("../../../src/test_scenario_runner/scenarios/test1.map");
 //    map.getUnblockedDistance(0, 0);
-    EXPECT_DOUBLE_EQ(-1, map.getUnblockedDistance(450, 445));
-    EXPECT_DOUBLE_EQ(10, map.getUnblockedDistance(495, 450));
+//    EXPECT_DOUBLE_EQ(-1, map.getUnblockedDistance(450, 445));
+//    EXPECT_DOUBLE_EQ(10, map.getUnblockedDistance(495, 450));
+    EXPECT_TRUE(map.isBlocked(450, 445));
+    EXPECT_FALSE(map.isBlocked(495, 450));
 }
 
 void visualizePath(const State& s1, const State& s2, const State& s3, double turningRadius) {
@@ -847,7 +865,7 @@ TEST(UnitTests, VertexTests1) {
     EXPECT_DOUBLE_EQ(t, c);
     EXPECT_DOUBLE_EQ(t, v1->currentCost());
     EXPECT_DOUBLE_EQ(v1->currentCost(), v1->state().time() - 1);
-    auto h = v1->computeApproxToGo();
+    auto h = v1->computeApproxToGo(plannerConfig);
     EXPECT_DOUBLE_EQ(ribbonManager.approximateDistanceUntilDone(v1->state().x(), v1->state().y(), v1->state().yaw()) / 2.5, h);
     EXPECT_DOUBLE_EQ(v1->f(), t + h);
 }
@@ -863,7 +881,7 @@ TEST(UnitTests, VertexTests2) {
     DynamicObstaclesManager obstacles;
     auto t = v1->parentEdge()->computeTrueCost(plannerConfig);
     EXPECT_DOUBLE_EQ(c, t);
-    auto h = v1->computeApproxToGo();
+    auto h = v1->computeApproxToGo(plannerConfig);
     EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 10 + 50 - 2 * Ribbon::minLength()) / 2.5, h);
 }
 
@@ -878,7 +896,7 @@ TEST(UnitTests, VertexTests3) {
     auto m = make_shared<Map>();
     DynamicObstaclesManager obstacles;
     v1->parentEdge()->computeTrueCost(plannerConfig);
-    auto h = v1->computeApproxToGo();
+    auto h = v1->computeApproxToGo(plannerConfig);
     EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 50 - 2 * Ribbon::minLength()) / 2.5, h);
 }
 
@@ -1202,6 +1220,27 @@ TEST(PlannerTests, RHRSAStarTest2Ribbons) {
         validatePlan(plan, plannerConfig);
         start = plan.getHalfSecondSamples()[1];
         ASSERT_LT(start.time(), 30);
+        cerr << start.toString() << endl;
+    }
+}
+
+TEST(PlannerTests, RibbonFarAwayTest) {
+    RibbonManager ribbonManager;
+    ribbonManager.add(100, 110, 100, 130);
+    AStarPlanner planner;
+    State start(0, 0, 0, 2.5, 1);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_test_visualizations"));
+    plannerConfig.setVisualizations(true);
+    plannerConfig.setVisualizer(&visualizer);
+    DubinsPlan plan;
+    while(!ribbonManager.done()) {
+        ribbonManager.cover(start.x(), start.y(), false);
+        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5); // quick iterations
+        ASSERT_FALSE(plan.empty());
+        validatePlan(plan, plannerConfig);
+        start.time() += 1;
+        plan.sample(start);
+        ASSERT_LT(start.time(), 90);
         cerr << start.toString() << endl;
     }
 }

@@ -52,7 +52,7 @@ public:
             State end(endPoint.x, endPoint.y, 0, 0, 0);
             start.setHeadingTowards(end);
             end.setHeading(start.heading());
-            DubinsWrapper wrapper(start, end, 8); // why 8? I just picked it OK? // TODO! -- expose parameter
+            DubinsWrapper wrapper(start, end, 8); // why 8? I just picked it OK? it doesn't actually matter
             std::cerr << "Adding line between\n" << start.toString() << " and\n" << end.toString() << std::endl;
             plan.append(wrapper);
             // still append to trajectory so we can display the start state

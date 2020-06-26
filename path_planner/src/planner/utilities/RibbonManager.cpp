@@ -8,15 +8,15 @@ void RibbonManager::add(double x1, double y1, double x2, double y2) {
     if (m_Ribbons.size() > c_RibbonCountDangerThreshold)
         std::cerr << "Warning: adding more ribbons than can be used for TSP heuristics" << std::endl;
     Ribbon r(x1, y1, x2, y2);
-    add(r, m_Ribbons.end());
+    add(r, m_Ribbons.end(), false);
 }
 
 void RibbonManager::cover(double x, double y, bool strict) {
     auto i = m_Ribbons.begin();
     while (i != m_Ribbons.end()) {
         auto r = i->split(x, y, strict);
-        add(r, i);
-        if (i->covered()) i = m_Ribbons.erase(i);
+        add(r, i, strict);
+        if (i->covered(strict)) i = m_Ribbons.erase(i);
         else ++i;
     }
 }
@@ -82,7 +82,6 @@ double RibbonManager::tspPointRobotNoSplitKRibbons(std::list<Ribbon> ribbonsLeft
     int i = 0;
     for (auto it = ribbonsLeft.begin(); it != ribbonsLeft.end(); it++) {
         if (i++ >= m_K) break;
-        // TODO! -- this one and the other K-based one don't work because pop_back()
         const Ribbon r = *it;
         it = ribbonsLeft.erase(it);
         min = fmin(min, tspPointRobotNoSplitKRibbons(ribbonsLeft, distanceSoFar + r.length()- 2 * Ribbon::RibbonWidth +
@@ -152,8 +151,8 @@ double RibbonManager::minDistanceFrom(double x, double y) const {
     return min;
 }
 
-void RibbonManager::add(const Ribbon& r, std::list<Ribbon>::iterator i) {
-    if (r.covered()) return;
+void RibbonManager::add(const Ribbon& r, std::list<Ribbon>::iterator i, bool strict) {
+    if (r.covered(strict)) return;
     // TODO! -- issue warning about large numbers of ribbons
     // TODO! -- determine whether to split any of the prior ribbons based on this new one
     m_Ribbons.insert(i, r);
@@ -171,7 +170,7 @@ State RibbonManager::getNearestEndpointAsState(const State& state) const {
                 // we actually want the state at the other end of the ribbon
                 ret = r.endAsState();
                 ret.heading() = s.heading();
-                ret.move(-Ribbon::minLength() + 1e-5); // pull back up the ribbon a little because technically the ribbon can end here
+                ret.move(-Ribbon::minLength() / Ribbon::strictModifier() + 1e-5); // pull back up the ribbon a little because technically the ribbon can end here
             } else {
                 ret = s;
             }
@@ -184,7 +183,7 @@ State RibbonManager::getNearestEndpointAsState(const State& state) const {
                 // we actually want the state at the other end of the ribbon
                 ret = r.startAsState();
                 ret.heading() = s.heading();
-                ret.move(-Ribbon::minLength() + 1e-5); // pull back up the ribbon a little because technically the ribbon can end here
+                ret.move(-Ribbon::minLength() / Ribbon::strictModifier() + 1e-5); // pull back up the ribbon a little because technically the ribbon can end here
             } else {
                 ret = s;
             }

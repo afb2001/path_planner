@@ -5,8 +5,7 @@
 #include <memory>
 
 /**
- * Abstract class to represent a map. The maps need a slight re-write because the planner doesn't actually need the
- * unblocked distance.
+ * Base class to represent a map. This class has only the default implementation (nowhere is blocked).
  */
 class Map {
 public:
@@ -15,13 +14,12 @@ public:
     virtual ~Map() = default;
 
     /**
-     * Get the safe distance from the grid cell containing x and y to the nearest static obstacle. Deprecated because
-     * we really just want a bitmap.
+     * Access the occupancy bitmap at the given location (map coordinates).
      * @param x
      * @param y
-     * @return
+     * @return true iff the point is blocked
      */
-    virtual double getUnblockedDistance(double x, double y) const;
+    virtual bool isBlocked(double x, double y) const;
 };
 
 

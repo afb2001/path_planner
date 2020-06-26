@@ -43,15 +43,13 @@ Vertex::SharedPtr Vertex::makeRoot(const State& start, const RibbonManager& ribb
 }
 
 double Vertex::estimateApproxToGo(const State &destination) {
-    return 0; // TODO
+    return 0; // TODO - implement if you want to use BIT*
 }
 
-double Vertex::computeApproxToGo() {
-    // NOTE: using the current speed for computing time penalty by distance. With just one speed it works.
-    // TODO -- pass planner config to retrieve max speed instead of this assumption
+double Vertex::computeApproxToGo(const PlannerConfig& config) {
     double max;
     max = m_RibbonManager.approximateDistanceUntilDone(state().x(), state().y(), state().heading());
-    m_ApproxToGo = max / state().speed() * Edge::timePenaltyFactor();
+    m_ApproxToGo = max / config.maxSpeed() * Edge::timePenaltyFactor();
 
     // since we're using the ribbon manager, we should have computed true cost at this point.
     // PathMax or whatever. Guarantees heuristic consistency which is required for f pruning
@@ -81,7 +79,7 @@ double Vertex::currentCost() const {
 }
 
 double Vertex::approxToGo() {
-    if (m_ApproxToGo == -1) computeApproxToGo();
+    if (m_ApproxToGo == -1) throw std::runtime_error("Fetching unset approx to go (h)");
     return m_ApproxToGo;
 }
 

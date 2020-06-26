@@ -182,7 +182,7 @@ private:
         return dubins_path_length(&dubinsPath);
     }
 
-    void add(const Ribbon& r, std::list<Ribbon>::iterator i);
+    void add(const Ribbon& r, std::list<Ribbon>::iterator i, bool strict);
 
     /**
      * Calculate the max distance heuristic.

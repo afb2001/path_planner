@@ -92,7 +92,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         // have to loop around
 
 //        expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles(), true);
-        expandToCoverSpecificSamples(startV, brownPathSamples, m_Config.obstacles(), true);
+        expandToCoverSpecificSamples(startV, brownPathSamples, m_Config.obstaclesManager(), true);
         // On the first iteration add initialSamples samples, otherwise just double them
         if (m_Samples.size() < m_Config.initialSamples()) addSamples(generator, m_Config.initialSamples());
         else addSamples(generator); // double samples (BIT* linearly increases them...)
@@ -102,12 +102,12 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                 m_Config.visualizationStream() << "State: (" << s.toStringRad() << "), f: " << 0 << ", g: " << 0 << ", h: " <<
                                            0 << " sample" << std::endl;
         }
-        auto v = aStar(m_Config.obstacles(), endTime);
+        auto v = aStar(m_Config.obstaclesManager(), endTime);
         if (!m_BestVertex || (v && v->f() + 0.05 < m_BestVertex->f())) { // add fudge factor to favor earlier (simpler) plans
             // found a (better) plan
             m_BestVertex = v;
             if (v && m_Config.visualizations()) {
-                visualizePlan(tracePlan(v, false, m_Config.obstacles()));
+                visualizePlan(tracePlan(v, false, m_Config.obstaclesManager()));
                 visualizeVertex(v, "goal", false);
             }
         }
@@ -122,7 +122,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     } else {
 //        *m_Config.output() << "Final plan f value: " << m_BestVertex->f() << std::endl;
         *m_Config.output() << "Final plan depth: " << m_BestVertex->getDepth() << std::endl;
-        return tracePlan(m_BestVertex, false, m_Config.obstacles());
+        return tracePlan(m_BestVertex, false, m_Config.obstaclesManager());
     }
 }
 

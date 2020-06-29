@@ -59,9 +59,11 @@ add_library(path_planner_common # confusing; should change or move to the new pa
         src/common/map/Map.cpp
         src/common/dynamic_obstacles/Distribution.cpp
         src/common/dynamic_obstacles/DynamicObstacle.cpp
-        src/common/dynamic_obstacles/DynamicObstaclesManager.cpp
+        src/common/dynamic_obstacles/DynamicObstaclesManager1.cpp
         src/common/map/GeoTiffMap.cpp
         src/common/map/GridWorldMap.cpp
+        src/common/dynamic_obstacles/BinaryDynamicObstaclesManager.cpp
+        src/common/dynamic_obstacles/DynamicObstaclesManagerBase.h
         )
 
 target_link_libraries(path_planner_common ${GDAL_LIBRARIES})

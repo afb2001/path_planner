@@ -131,7 +131,8 @@ void Executive::planLoop() {
             }
 
             try {
-                m_PlannerConfig.setObstacles(m_DynamicObstaclesManager);
+//                m_PlannerConfig.setObstacles(m_DynamicObstaclesManager);
+                m_PlannerConfig.setObstaclesManager(m_BinaryDynamicObstaclesManager);
                 // trying to fix seg fault by eliminating concurrent access to ribbon manager (seems to have fixed it)
                 RibbonManager ribbonManagerCopy;
                 {
@@ -230,8 +231,14 @@ void Executive::planLoop() {
                 failureCount++;
                 if (failureCount > 2) {
                     m_PlannerConfig.setTimeHorizon(m_PlannerConfig.timeHorizon() / 2);
-                    cerr << "Failed " << failureCount << " times in a row. Reducing time horizon to " << m_PlannerConfig.timeHorizon() << std::endl;
-                    failureCount = 0;
+                    if (m_PlannerConfig.timeHorizon() < m_PlannerConfig.timeMinimum())
+                        // prevent from getting too small
+                        m_PlannerConfig.setTimeHorizon(m_PlannerConfig.timeMinimum());
+                    else {
+                        cerr << "Failed " << failureCount << " times in a row. Reducing time horizon to "
+                             << m_PlannerConfig.timeHorizon() << std::endl;
+                        failureCount = 0;
+                    }
                 }
             }
         }
@@ -257,6 +264,7 @@ void Executive::terminate()
 
 void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
     m_DynamicObstaclesManager.update(mmsi, inventDistributions(obstacle));
+    m_BinaryDynamicObstaclesManager->update(mmsi, obstacle.x(), obstacle.y(), obstacle.heading(), obstacle.speed(), obstacle.time(), 10, 30);
 }
 
 void Executive::refreshMap(const std::string& pathToMapFile, double latitude, double longitude) {
@@ -270,7 +278,7 @@ void Executive::refreshMap(const std::string& pathToMapFile, double latitude, do
                 *m_PlannerConfig.output() << "Map cleared. Using empty map now." << endl;
                 return;
             }
-            // could take some time for I/O, Dijkstra on entire map
+            // could take some time for I/O
             try {
                 // If the name looks like it's one of our gridworld maps, load it in that format, otherwise assume GeoTIFF
                 if (pathToMapFile.find(".map") == -1) {
@@ -370,5 +378,6 @@ void Executive::setPlannerVisualization(bool visualize, const std::string& visua
 
 void Executive::updateDynamicObstacle(uint32_t mmsi, const std::vector<Distribution>& obstacle) {
     m_DynamicObstaclesManager.update(mmsi, obstacle);
+    // TODO! -- other representations
 }
 

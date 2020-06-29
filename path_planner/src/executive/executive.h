@@ -5,6 +5,7 @@
 #include "../planner/utilities/RibbonManager.h"
 #include "../trajectory_publisher.h"
 #include "../planner/Planner.h"
+#include "../common/dynamic_obstacles/BinaryDynamicObstaclesManager.h"
 #include <future>
 #include <fstream>
 
@@ -133,7 +134,8 @@ private:
 
     Visualizer::UniquePtr m_Visualizer;
 
-    DynamicObstaclesManager m_DynamicObstaclesManager;
+    DynamicObstaclesManager1 m_DynamicObstaclesManager;
+    BinaryDynamicObstaclesManager::SharedPtr m_BinaryDynamicObstaclesManager = std::make_shared<BinaryDynamicObstaclesManager>();
 
     // start with no new map
     std::shared_ptr<Map> m_NewMap = nullptr;

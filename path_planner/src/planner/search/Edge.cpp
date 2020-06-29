@@ -124,17 +124,10 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
             m_Infeasible = true;
             break;
         }
-        if (dynamicDistance > config.collisionCheckingIncrement()) {
-            dynamicDistance -= config.collisionCheckingIncrement();
-        } else {
-            dynamicDistance = config.obstacles().distanceToNearestPossibleCollision(intermediate);
-            if (dynamicDistance <= config.collisionCheckingIncrement()) {
-                assert(std::isfinite(speed));
-                assert(std::isfinite(config.obstacles().collisionExists(intermediate)));
-                collisionPenalty += config.obstacles().collisionExists(intermediate) * Edge::collisionPenaltyFactor();
-                dynamicDistance = 0;
-            }
-        }
+
+        // assess collision penalty
+        collisionPenalty += config.obstaclesManager().collisionExists(intermediate) * Edge::collisionPenaltyFactor();
+
         if (toCoverDistance > config.collisionCheckingIncrement()) {
             toCoverDistance -= config.collisionCheckingIncrement();
         } else {

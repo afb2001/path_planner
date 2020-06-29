@@ -169,9 +169,9 @@ DubinsPlan SamplingBasedPlanner::plan(const RibbonManager&, const State& start, 
     std::shared_ptr<Vertex> vertex;
     for (vertex = Vertex::makeRoot(start, m_RibbonManager);
          !goalCondition(vertex); vertex = popVertexQueue()) {
-        expand(vertex, m_Config.obstacles());
+        expand(vertex, m_Config.obstaclesManager());
     }
-    return tracePlan(vertex, false, m_Config.obstacles());
+    return tracePlan(vertex, false, m_Config.obstaclesManager());
 }
 
 void SamplingBasedPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag, bool expanded) {

@@ -14,6 +14,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     m_Config = std::move(config); // gotta do this before we can call now()
     double endTime = timeRemaining + now();
     m_Config.setStartStateTime(start.time());
+    m_Config.setAdjustedEndTime(-1);
     m_RibbonManager = ribbonManager;
     m_RibbonManager.changeHeuristicIfTooManyRibbons(); // make sure ribbon heuristic is calculable
     m_ExpandedCount = 0;

@@ -39,8 +39,11 @@ std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getS
 }
 
 bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) {
-    return vertex->state().time() >= m_StartStateTime + m_Config.timeHorizon() ||
-           (vertex->done() && vertex->state().time() >= m_StartStateTime + m_Config.timeMinimum());
+    auto coverageDoneTime = (m_Config.adjustedEndTime() == -1)?
+            m_StartStateTime + m_Config.timeMinimum() : m_Config.adjustedEndTime();
+    auto nonCoverageDoneTime = m_StartStateTime + m_Config.timeHorizon();
+    return vertex->state().time() >= nonCoverageDoneTime ||
+           (vertex->done() && vertex->state().time() >= coverageDoneTime);
 }
 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, const DynamicObstaclesManager& obstacles) {

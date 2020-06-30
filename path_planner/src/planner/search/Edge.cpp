@@ -65,7 +65,7 @@ double Edge::computeApproxCost() {
     return computeApproxCost(end()->state().speed(), end()->turningRadius());
 }
 
-double Edge::computeTrueCost(const PlannerConfig& config) {
+double Edge::computeTrueCost(PlannerConfig& config) {
     if (start()->state().isCoLocated(end()->state())) {
         std::cerr << "Computing cost of edge between two co-located states is likely an error" << std::endl;
     }
@@ -138,8 +138,12 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
                 end()->ribbonManager().cover(intermediate.x(), intermediate.y(), true);
             }
             if (end()->ribbonManager().done()) {
-                // make it so we only need the min time if we finish covering
-                endTime = fmax(endTimeIfRibbonsDone, intermediate.time());
+                // if no prior edge has finished coverage yet, set the adjusted end time now
+                if (config.adjustedEndTime() == -1) {
+                    config.setAdjustedEndTime(intermediate.time() + config.timeMinimum());
+                }
+                // truncate only if we hit the time minimum *after coverage* - the adjusted end time
+                endTime = fmin(endTime, config.adjustedEndTime());
             }
 
         }

@@ -67,7 +67,7 @@ public:
      * @param config
      * @return
      */
-    double computeTrueCost(const PlannerConfig& config);
+    double computeTrueCost(PlannerConfig& config);
 
     /**
      * Retrieve the cached true cost, computing it if necessary.

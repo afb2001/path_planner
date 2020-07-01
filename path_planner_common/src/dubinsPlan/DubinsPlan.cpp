@@ -78,3 +78,11 @@ void DubinsPlan::changeIntoSuffix(double startTime) {
         m_DubinsPaths.erase(m_DubinsPaths.begin()); // yucky operation but it happens only rarely
     }
 }
+
+bool DubinsPlan::dangerous() const {
+    return m_Dangerous;
+}
+
+void DubinsPlan::setDangerous(bool dangerous) {
+    m_Dangerous = dangerous;
+}

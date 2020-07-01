@@ -84,6 +84,8 @@ double Edge::computeTrueCost(PlannerConfig& config) {
     // truncate longer edges than 30 seconds
     auto endTime = fmin(config.timeHorizon() + 1e-12 + config.startStateTime(),m_DubinsWrapper.getEndTime());
     auto endTimeIfRibbonsDone = fmin(m_DubinsWrapper.getEndTime(), config.timeMinimum() + config.startStateTime() + 1e-12);
+    auto ribbonsDoneTime = -1;
+    auto ribbonManagerStartedDone = end()->ribbonManager().done();
 
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
@@ -106,7 +108,14 @@ double Edge::computeTrueCost(PlannerConfig& config) {
         config.visualizationStream() << "Trajectory:" << std::endl;
     // collision check along the curve (and watch out for newly covered points, too)
     while (intermediate.time() < endTime) {
-        m_DubinsWrapper.sample(intermediate);
+        try {
+            m_DubinsWrapper.sample(intermediate);
+        }
+        catch (std::runtime_error& e) {
+            m_Infeasible = true;
+            *config.output() << "Encountered an error while collision checking: " << e.what() << std::endl;
+            break;
+        }
         // visualize
         if (config.visualizations() && visCount-- <= 0) {
             visCount = int(1.0 / config.collisionCheckingIncrement());
@@ -142,6 +151,7 @@ double Edge::computeTrueCost(PlannerConfig& config) {
                 if (config.adjustedEndTime() == -1) {
                     config.setAdjustedEndTime(intermediate.time() + config.timeMinimum());
                 }
+                ribbonsDoneTime = intermediate.time();
                 // truncate only if we hit the time minimum *after coverage* - the adjusted end time
                 endTime = fmin(endTime, config.adjustedEndTime());
             }
@@ -155,10 +165,25 @@ double Edge::computeTrueCost(PlannerConfig& config) {
     m_DubinsWrapper.sample(end()->state());
     m_DubinsWrapper.updateEndTime(end()->state().time()); // should just be truncating the path
 
+    // cover the last little bit
+    if (end()->coverageAllowed() || lastHeading == intermediate.heading()) {
+        end()->ribbonManager().cover(intermediate.x(), intermediate.y(), true);
+    }
+    if (end()->ribbonManager().done()) {
+        // may need to set adjusted time here too
+        if (config.adjustedEndTime() == -1) {
+            config.setAdjustedEndTime(intermediate.time() + config.timeMinimum());
+        }
+        ribbonsDoneTime = intermediate.time();
+    }
+
     assert(std::isfinite(netTime()));
     assert(std::isfinite(collisionPenalty));
     m_CollisionPenalty = collisionPenalty;
-    m_TrueCost = netTime() * Edge::timePenaltyFactor() + collisionPenalty;
+    // time after ribbons covered doesn't count against you
+    auto t = fmax(netTime() - (end()->ribbonManager().done()? (endTime - ribbonsDoneTime) : 0), 1e-12);
+    if (ribbonManagerStartedDone) t = 1e-12;
+    m_TrueCost = t * Edge::timePenaltyFactor() + collisionPenalty;
 
     end()->setCurrentCost();
 

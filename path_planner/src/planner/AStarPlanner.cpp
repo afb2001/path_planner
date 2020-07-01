@@ -58,6 +58,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     // big loop
     while (now() < endTime) {
         clearVertexQueue();
+//        m_Config.setAdjustedEndTime(-1);
         if (m_BestVertex && m_BestVertex->f() <= startV->f()) {
             *m_Config.output() << "Found best possible plan, assuming heuristic admissibility" << std::endl;
             break;
@@ -104,7 +105,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                                            0 << " sample" << std::endl;
         }
         auto v = aStar(m_Config.obstaclesManager(), endTime);
-        if (!m_BestVertex || (v && v->f() + 0.05 < m_BestVertex->f())) { // add fudge factor to favor earlier (simpler) plans
+        if (!m_BestVertex || (v && v->f() + 0.0 < m_BestVertex->f())) { // add fudge factor to favor earlier (simpler) plans
             // found a (better) plan
             m_BestVertex = v;
             if (v && m_Config.visualizations()) {

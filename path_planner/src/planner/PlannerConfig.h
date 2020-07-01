@@ -209,7 +209,7 @@ private:
     // It's a bit of a weird assumption, since it removes the benefit of finishing coverage early, but once coverage is
     // done we only care about dynamic obstacles. We're assuming the first covering path we find (which sets this) will
     // be pretty good, so we should only choose a different path if it's actually safer, rather than slightly shorter.
-    double m_AdjustedEndTime;
+    double m_AdjustedEndTime = -1;
 
 };
 

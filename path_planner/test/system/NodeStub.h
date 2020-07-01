@@ -13,7 +13,7 @@ public:
 
     State publishTrajectory(std::vector<State> trajectory) override;
 
-    void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) override;
+    void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory, bool dangerous) override;
 
     void allDone() override;
 

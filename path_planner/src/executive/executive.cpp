@@ -101,21 +101,23 @@ void Executive::planLoop() {
             }
 
             // copy the map pointer if it's been set (don't wait for the mutex because it may be a while)
-            if (m_MapMutex.try_lock()) {
-                if (m_NewMap) {
-                    m_PlannerConfig.setMap(m_NewMap);
-                }
-                m_NewMap = nullptr;
+            {
+                std::unique_lock<std::mutex> lock1(m_MapMutex, std::defer_lock);
+                if (lock1.try_lock()) {
+                    if (m_NewMap) {
+                        m_PlannerConfig.setMap(m_NewMap);
+                    }
+                    m_NewMap = nullptr;
 
-                // check if start state is blocked
-                if (m_PlannerConfig.map()->isBlocked(startState.x(), startState.y())) {
-                    cerr << "Starting state (" << startState.toString() << ") is blocked, according to most recent map. Trying again in 1s." << endl;
-                    m_MapMutex.unlock();
-                    sleep(1);
-                    continue;
+                    // check if start state is blocked
+                    // I don't remember why I put this inside the locked block but I'm sure I had a good reason
+                    if (m_PlannerConfig.map()->isBlocked(startState.x(), startState.y())) {
+                        cerr << "Starting state (" << startState.toString()
+                             << ") is blocked, according to most recent map. Trying again in 1s." << endl;
+                        sleep(1);
+                        continue;
+                    }
                 }
-
-                m_MapMutex.unlock();
             }
 
             if (!c_ReusePlanEnabled) plan = DubinsPlan();
@@ -133,6 +135,12 @@ void Executive::planLoop() {
             try {
 //                m_PlannerConfig.setObstacles(m_DynamicObstaclesManager);
                 m_PlannerConfig.setObstaclesManager(m_BinaryDynamicObstaclesManager);
+                // display dynamic obstacles
+                for (auto o : m_BinaryDynamicObstaclesManager->get()) {
+                    auto& obstacle = o.second;
+                    obstacle.project(m_TrajectoryPublisher->getTime());
+                    m_TrajectoryPublisher->displayDynamicObstacle(obstacle.X, obstacle.Y, obstacle.Yaw, obstacle.Width, obstacle.Length, o.first);
+                }
                 // trying to fix seg fault by eliminating concurrent access to ribbon manager (seems to have fixed it)
                 RibbonManager ribbonManagerCopy;
                 {
@@ -163,7 +171,7 @@ void Executive::planLoop() {
             this_thread::sleep_for(chrono::milliseconds(sleepTime));
 
             // display the trajectory
-            m_TrajectoryPublisher->displayTrajectory(plan.getHalfSecondSamples(), true);
+            m_TrajectoryPublisher->displayTrajectory(plan.getHalfSecondSamples(), true, plan.dangerous());
 
             if (!plan.empty()) {
                 failureCount = 0;
@@ -204,22 +212,22 @@ void Executive::planLoop() {
                     }
 
                     // debugging:
-                    cerr << "Start state is not along previous plan; did the controller let us know?" << endl;
-                    if (startState.x() != expectedStartState.x()) {
-                        if (startState.y() != expectedStartState.y()) {
-                            cerr << "Position is different: (" << startState.x() << ", " << startState.y() << ") vs ("
-                                 << expectedStartState.x() << ", " << expectedStartState.y() << "). ";
-                        } else {
-                            cerr << "X is different: " << startState.x() << " vs " << expectedStartState.x() << ". ";
-                        }
-                    } else if (startState.y() != expectedStartState.y()) {
-                        cerr << "Y is different: " << startState.y() << " vs " << expectedStartState.y() << ". ";
-                    }
-                    if (startState.headingDifference(expectedStartState) != 0) {
-                        cerr << "Headings are different: " << startState.heading() << " vs "
-                             << expectedStartState.heading() << ". ";
-                    }
-                    cerr << endl;
+//                    cerr << "Start state is not along previous plan; did the controller let us know?" << endl;
+//                    if (startState.x() != expectedStartState.x()) {
+//                        if (startState.y() != expectedStartState.y()) {
+//                            cerr << "Position is different: (" << startState.x() << ", " << startState.y() << ") vs ("
+//                                 << expectedStartState.x() << ", " << expectedStartState.y() << "). ";
+//                        } else {
+//                            cerr << "X is different: " << startState.x() << " vs " << expectedStartState.x() << ". ";
+//                        }
+//                    } else if (startState.y() != expectedStartState.y()) {
+//                        cerr << "Y is different: " << startState.y() << " vs " << expectedStartState.y() << ". ";
+//                    }
+//                    if (startState.headingDifference(expectedStartState) != 0) {
+//                        cerr << "Headings are different: " << startState.heading() << " vs "
+//                             << expectedStartState.heading() << ". ";
+//                    }
+//                    cerr << endl;
 
                 } else {
                     // expected start state is along plan so allow plan to be passed to planner as previous plan

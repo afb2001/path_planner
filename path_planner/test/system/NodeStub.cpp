@@ -29,7 +29,7 @@ State NodeStub::publishTrajectory(std::vector<State> trajectory) {
     return s;
 }
 
-void NodeStub::displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) {
+void NodeStub::displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory, bool dangerous) {
 //    cerr << "NodeStub displayed" << (plannerTrajectory? " planner " : " controller ") <<  "trajectory: \n";
 //    for (auto s : trajectory) cerr << s.toString() << endl;
 //    cerr << endl;

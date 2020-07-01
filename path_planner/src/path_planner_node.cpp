@@ -162,9 +162,9 @@ public:
 //        }
 //    }
 
-    void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) override
+    void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory, bool dangerous) override
     {
-        m_TrajectoryDisplayer.displayTrajectory(trajectory, plannerTrajectory);
+        m_TrajectoryDisplayer.displayTrajectory(trajectory, plannerTrajectory, !dangerous);
     }
 
     void allDone() final
@@ -226,6 +226,30 @@ public:
 
     State publishPlan(const DubinsPlan& plan) override {
         return NodeBase::publishPlan(plan);
+    }
+
+    void displayDynamicObstacle(double x, double y, double yaw, double width, double length, uint32_t id) override {
+        geographic_visualization_msgs::GeoVizItem geoVizItem;
+        std::stringstream fmt; fmt << "obstacle_" << id;
+        geoVizItem.id = fmt.str();
+        geographic_visualization_msgs::GeoVizPolygon polygon;
+        geographic_visualization_msgs::GeoVizSimplePolygon simplePolygon;
+        auto length_x = length / 2 * cos(yaw);
+        auto length_y = length / 2 * sin(yaw);
+        auto width_x = width / 2 * cos(yaw - M_PI_2);
+        auto width_y = width / 2 * sin(yaw - M_PI_2);
+        auto bow_port = convertToLatLong(State(x + length_x + width_x, y + length_y + width_y, 0, 0, 0));
+        auto bow_starboard = convertToLatLong(State(x + length_x - width_x, y + length_y - width_y, 0, 0, 0));
+        auto stern_port = convertToLatLong(State(x - length_x + width_x, y - length_y + width_y, 0, 0, 0));
+        auto stern_starboard = convertToLatLong(State(x - length_x - width_x, y - length_y - width_y, 0, 0, 0));
+        simplePolygon.points.push_back(bow_port); simplePolygon.points.push_back(bow_starboard);
+        simplePolygon.points.push_back(stern_starboard); simplePolygon.points.push_back(stern_port);
+        polygon.outer = simplePolygon;
+        polygon.edge_color.a = 0.2;
+        polygon.edge_color.b = 1;
+        polygon.fill_color = polygon.edge_color;
+        geoVizItem.polygons.push_back(polygon);
+        m_display_pub.publish(geoVizItem);
     }
 
 private:

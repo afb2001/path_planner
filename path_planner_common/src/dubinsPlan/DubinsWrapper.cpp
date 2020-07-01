@@ -1,5 +1,6 @@
 #include <cassert>
 #include <path_planner_common/DubinsWrapper.h>
+#include <sstream>
 
 DubinsWrapper::DubinsWrapper(const State& s1, const State& s2, double rho) {
     set(s1, s2, rho);
@@ -26,8 +27,12 @@ bool DubinsWrapper::containsTime(double time) const {
 }
 
 void DubinsWrapper::sample(State& s) const {
-    if (!containsTime(s.time()))
-        throw std::runtime_error("Invalid time in sample for Dubins path");
+    if (!containsTime(s.time())) {
+        std::stringstream stream;
+        stream << "Invalid time " << std::to_string(s.time()) << " in sample for Dubins path which spans from "
+            << std::to_string(getStartTime()) << " to " << std::to_string(getEndTime());
+        throw std::runtime_error(stream.str());
+    }
     double distance = (s.time() - m_StartTime) * m_Speed;
     // heading comes back as yaw
     int err = dubins_path_sample(&m_DubinsPath, distance, s.pose());

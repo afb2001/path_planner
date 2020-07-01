@@ -19,12 +19,21 @@ double BinaryDynamicObstaclesManager::collisionExists(double x, double y, double
 
 void BinaryDynamicObstaclesManager::update(uint32_t mmsi, double x, double y, double heading, double speed, double time,
         double width, double length) {
-    if (!isIgnored(mmsi)) m_Obstacles.emplace(std::piecewise_construct,
-            std::forward_as_tuple(mmsi),
-            std::forward_as_tuple(x, y, heading, speed, time, width, length)
-            );
+    if (!isIgnored(mmsi)) {
+        auto result = m_Obstacles.emplace(std::piecewise_construct,
+                                          std::forward_as_tuple(mmsi),
+                                          std::forward_as_tuple(x, y, heading, speed, time, width, length)
+        );
+        if (!result.second) {
+            result.first->second = Obstacle(x, y, heading, speed, time, width, length);
+        }
+    }
 }
 
 void BinaryDynamicObstaclesManager::forget(uint32_t mmsi) {
     m_Obstacles.erase(mmsi);
+}
+
+const std::unordered_map<uint32_t, BinaryDynamicObstaclesManager::Obstacle>& BinaryDynamicObstaclesManager::get() const {
+    return m_Obstacles;
 }

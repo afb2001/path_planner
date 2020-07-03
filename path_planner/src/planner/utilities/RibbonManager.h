@@ -159,10 +159,17 @@ public:
      */
     static void setRibbonWidth(double lineWidth) { Ribbon::RibbonWidth = lineWidth; }
 
+    double coverageCompletedTime() const;
+
+    void setCoverageCompletedTime(double coverageCompletedTime);
+
 private:
     Heuristic m_Heuristic;
     double m_TurningRadius = -1;
     int m_K;
+
+    // record when coverage is done so we know when to stop afterwards
+    double m_CoverageCompletedTime = -1;
 
     std::list<Ribbon> m_Ribbons;
 

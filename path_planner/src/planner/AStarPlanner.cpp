@@ -14,9 +14,9 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     m_Config = std::move(config); // gotta do this before we can call now()
     double endTime = timeRemaining + now();
     m_Config.setStartStateTime(start.time());
-    m_Config.setAdjustedEndTime(-1);
     m_RibbonManager = ribbonManager;
     m_RibbonManager.changeHeuristicIfTooManyRibbons(); // make sure ribbon heuristic is calculable
+    if (m_RibbonManager.done()) m_RibbonManager.setCoverageCompletedTime(start.time());
     m_ExpandedCount = 0;
     m_IterationCount = 0;
     m_StartStateTime = start.time();
@@ -27,7 +27,8 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     maxX = start.x() + magnitude;
     minY = start.y() - magnitude;
     maxY = start.y() + magnitude;
-    StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
+    auto seed = (unsigned long)endTime; // for different results each time. For consistency, use like 7 or something
+    StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, seed, m_RibbonManager); // lucky seed
     auto startV = Vertex::makeRoot(start, m_RibbonManager);
     startV->state().speed() = m_Config.maxSpeed(); // state's speed is used to compute h so need to use max
     startV->computeApproxToGo(m_Config);
@@ -38,12 +39,9 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         brownPathSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());
     }
 
-    // redundant start visualization because we do other vis before we actually start search
-//    visualizeVertex(startV, "start");
     // collision check old plan
     Vertex::SharedPtr lastPlanEnd = startV;
     if (!previousPlan.empty()) {
-//        auto p = previousPlan.get().front();
         for (const auto& p : previousPlan.get()) {
             if (p.getEndTime() <= start.time()) continue;
             if (p.getNetTime() == 0) continue; // There is sometimes a zero length edge at the end. Not sure why
@@ -53,12 +51,12 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                 lastPlanEnd = startV;
                 break;
             }
+            if (goalCondition(lastPlanEnd)) break;
         }
     }
     // big loop
     while (now() < endTime) {
         clearVertexQueue();
-//        m_Config.setAdjustedEndTime(-1);
         if (m_BestVertex && m_BestVertex->f() <= startV->f()) {
             *m_Config.output() << "Found best possible plan, assuming heuristic admissibility" << std::endl;
             break;
@@ -80,6 +78,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                         lastPlanEnd = startV;
                         break;
                     }
+                    if (goalCondition(lastPlanEnd)) break;
                 }
             }
         }
@@ -123,7 +122,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         return DubinsPlan();
     } else {
 //        *m_Config.output() << "Final plan f value: " << m_BestVertex->f() << std::endl;
-        *m_Config.output() << "Final plan depth: " << m_BestVertex->getDepth() << std::endl;
+//        *m_Config.output() << "Final plan depth: " << m_BestVertex->getDepth() << std::endl;
         return tracePlan(m_BestVertex, false, m_Config.obstaclesManager());
     }
 }
@@ -140,7 +139,6 @@ shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles,
 
         if (vertexQueueEmpty()) return Vertex::SharedPtr(nullptr);
         vertex = popVertexQueue();
-//        if (m_ExpandedCount >= m_Samples.size()) break; // probably can't find a good plan in these samples so add more
     }
     return shared_ptr<Vertex>(nullptr);
 }

@@ -83,7 +83,7 @@ double Edge::computeTrueCost(PlannerConfig& config) {
     State intermediate(start()->state());
     // truncate longer edges than 30 seconds
     auto endTime = fmin(config.timeHorizon() + 1e-12 + config.startStateTime(),m_DubinsWrapper.getEndTime());
-    auto endTimeIfRibbonsDone = fmin(m_DubinsWrapper.getEndTime(), config.timeMinimum() + config.startStateTime() + 1e-12);
+    // time, relative to this edge, of when the ribbons are done (not super necessary but convenient)
     auto ribbonsDoneTime = -1;
     auto ribbonManagerStartedDone = end()->ribbonManager().done();
 
@@ -127,9 +127,6 @@ double Edge::computeTrueCost(PlannerConfig& config) {
                 ", g: " << gSoFar << ", h: " << startH << " trajectory" << std::endl;
         }
         if (config.map()->isBlocked(intermediate.x(), intermediate.y())) {
-//        if (config.map()->getUnblockedDistance(intermediate.x(), intermediate.y()) <= config.collisionCheckingIncrement()) {
-//            collisionPenalty += Edge::collisionPenaltyFactor();
-//            std::cerr << "Infeasible edge discovered" << std::endl;
             m_Infeasible = true;
             break;
         }
@@ -147,13 +144,13 @@ double Edge::computeTrueCost(PlannerConfig& config) {
                 end()->ribbonManager().cover(intermediate.x(), intermediate.y(), true);
             }
             if (end()->ribbonManager().done()) {
-                // if no prior edge has finished coverage yet, set the adjusted end time now
-                if (config.adjustedEndTime() == -1) {
-                    config.setAdjustedEndTime(intermediate.time() + config.timeMinimum());
+                // if no prior edge has finished coverage yet, set the coverage completed time now
+                if (end()->ribbonManager().coverageCompletedTime() == -1) {
+                    end()->ribbonManager().setCoverageCompletedTime(intermediate.time());
                 }
                 ribbonsDoneTime = intermediate.time();
                 // truncate only if we hit the time minimum *after coverage* - the adjusted end time
-                endTime = fmin(endTime, config.adjustedEndTime());
+                endTime = fmin(endTime, end()->ribbonManager().coverageCompletedTime() + config.timeMinimum());
             }
 
         }
@@ -170,9 +167,9 @@ double Edge::computeTrueCost(PlannerConfig& config) {
         end()->ribbonManager().cover(intermediate.x(), intermediate.y(), true);
     }
     if (end()->ribbonManager().done()) {
-        // may need to set adjusted time here too
-        if (config.adjustedEndTime() == -1) {
-            config.setAdjustedEndTime(intermediate.time() + config.timeMinimum());
+        // may need to set the time here too
+        if (end()->ribbonManager().coverageCompletedTime() == -1) {
+            end()->ribbonManager().setCoverageCompletedTime(intermediate.time());
         }
         ribbonsDoneTime = intermediate.time();
     }

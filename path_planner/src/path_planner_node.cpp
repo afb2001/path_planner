@@ -92,6 +92,11 @@ public:
 
             m_Executive->addRibbon(start.x, start.y, end.x, end.y);
         }
+
+        // set the goal speed as the max speed
+        path_planner::path_plannerConfig config;
+        config.max_speed = goal->speed;
+
         // set goal to be valid
         m_CurrentGoalIsValid = true;
 
@@ -169,7 +174,7 @@ public:
 
     void allDone() final
     {
-        std::cerr << "Planner appears to have finished" << std::endl;
+//        std::cerr << "Planner appears to have finished" << std::endl;
         m_ActionDone = true;
         m_CurrentGoalIsValid = false;
         publishControllerMessage("terminate");

@@ -402,3 +402,12 @@ void RibbonManager::coverBetween(double x1, double y1, double x2, double y2) {
     cover(x2, y2, false);
 }
 
+double RibbonManager::coverageCompletedTime() const {
+    return m_CoverageCompletedTime;
+}
+
+void RibbonManager::setCoverageCompletedTime(double coverageCompletedTime) {
+    if (m_CoverageCompletedTime == -1)
+        m_CoverageCompletedTime = coverageCompletedTime;
+}
+

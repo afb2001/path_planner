@@ -125,14 +125,6 @@ public:
         m_StartStateTime = startStateTime;
     }
 
-    double adjustedEndTime() const {
-        return m_AdjustedEndTime;
-    }
-
-    void setAdjustedEndTime(double adjustedEndTime) {
-        m_AdjustedEndTime = adjustedEndTime;
-    }
-
     double timeHorizon() const {
         return m_TimeHorizon;
     }
@@ -204,12 +196,6 @@ private:
     std::function<double()> m_NowFunction;
     // handy place to keep track of the starting time this iteration
     double m_StartStateTime;
-    // also handy to keep track of the adjusted horizon this iteration (if we find a vertex that finished coverage)
-    // this should be reset each iteration (not batch), so all covering paths are scored to the same end time
-    // It's a bit of a weird assumption, since it removes the benefit of finishing coverage early, but once coverage is
-    // done we only care about dynamic obstacles. We're assuming the first covering path we find (which sets this) will
-    // be pretty good, so we should only choose a different path if it's actually safer, rather than slightly shorter.
-    double m_AdjustedEndTime = -1;
 
 };
 

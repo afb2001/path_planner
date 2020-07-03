@@ -9,6 +9,7 @@
 #include "../../src/common/map/GeoTiffMap.h"
 #include "../../src/common/map/GridWorldMap.h"
 #include "../../src/common/dynamic_obstacles/BinaryDynamicObstaclesManager.h"
+#include "../../src/common/dynamic_obstacles/GaussianDynamicObstaclesManager.h"
 #include <thread>
 #include <path_planner_common/Plan.h>
 
@@ -224,6 +225,16 @@ TEST(UnitTests, DerivedDynamicObstaclesTest) {
     plannerConfig.setObstaclesManager(b);
 
     EXPECT_DOUBLE_EQ(plannerConfig.obstaclesManager().collisionExists(42, 42, 1), 1);
+}
+
+TEST(UnitTests, GaussianDynamicObstacleTest1) {
+    GaussianDynamicObstaclesManager manager;
+    manager.update(1, 0, 0, 0, 1, 1);
+    for (int i = 0; i < 10; i++) {
+        cerr << manager.collisionExists(0, 10 * i, 1) << endl;
+        cerr << manager.collisionExists(10 * i, 10 * i, 1) << endl;
+        cerr << manager.collisionExists(10 * i, 0, 1) << endl;
+    }
 }
 
 TEST(UnitTests, GeoTiffMapTest1) {

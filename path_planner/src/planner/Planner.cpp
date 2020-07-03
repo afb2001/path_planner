@@ -18,7 +18,7 @@ DubinsPlan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, const
     for (auto cur = v; !cur->isRoot(); cur = cur->parent()) { // extra edge somehow???
         branch.push_back(cur->parentEdge());
         if (cur->parentEdge()->getSavedCollisionPenalty() > 0) {
-            std::cerr << "Collision possible in returned plan (penalty = " << cur->parentEdge()->collisionPenaltyFactor() << ")" << std::endl;
+            std::cerr << "Collision possible in returned plan (penalty = " << cur->parentEdge()->getSavedCollisionPenalty() << ")" << std::endl;
             dangerous = true;
         }
     }

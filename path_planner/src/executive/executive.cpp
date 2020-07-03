@@ -135,6 +135,7 @@ void Executive::planLoop() {
             try {
 //                m_PlannerConfig.setObstacles(m_DynamicObstaclesManager);
                 m_PlannerConfig.setObstaclesManager(m_BinaryDynamicObstaclesManager);
+//                m_PlannerConfig.setObstaclesManager(m_GaussianDynamicObstaclesManager);
                 // display dynamic obstacles
                 for (auto o : m_BinaryDynamicObstaclesManager->get()) {
                     auto& obstacle = o.second;
@@ -273,6 +274,7 @@ void Executive::terminate()
 void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
     m_DynamicObstaclesManager.update(mmsi, inventDistributions(obstacle));
     m_BinaryDynamicObstaclesManager->update(mmsi, obstacle.x(), obstacle.y(), obstacle.heading(), obstacle.speed(), obstacle.time(), 10, 30);
+    m_GaussianDynamicObstaclesManager->update(mmsi, obstacle.x(), obstacle.y(), obstacle.heading(), obstacle.speed(), obstacle.time());
 }
 
 void Executive::refreshMap(const std::string& pathToMapFile, double latitude, double longitude) {

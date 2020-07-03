@@ -6,6 +6,7 @@
 #include "../trajectory_publisher.h"
 #include "../planner/Planner.h"
 #include "../common/dynamic_obstacles/BinaryDynamicObstaclesManager.h"
+#include "../common/dynamic_obstacles/GaussianDynamicObstaclesManager.h"
 #include <future>
 #include <fstream>
 
@@ -136,6 +137,7 @@ private:
 
     DynamicObstaclesManager1 m_DynamicObstaclesManager;
     BinaryDynamicObstaclesManager::SharedPtr m_BinaryDynamicObstaclesManager = std::make_shared<BinaryDynamicObstaclesManager>();
+    GaussianDynamicObstaclesManager::SharedPtr m_GaussianDynamicObstaclesManager = std::make_shared<GaussianDynamicObstaclesManager>();
 
     // start with no new map
     std::shared_ptr<Map> m_NewMap = nullptr;

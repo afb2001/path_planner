@@ -15,6 +15,7 @@ void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     std::push_heap(m_VertexQueue.begin(), m_VertexQueue.end(), getVertexComparator());
 //    std::cerr << "Pushing to vertex queue: " << vertex->toString() << std::endl;
     visualizeVertex(vertex, "vertex", false);
+    m_Stats.Generated++;
 }
 
 std::shared_ptr<Vertex> SamplingBasedPlanner::popVertexQueue() {
@@ -125,7 +126,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
         destinationVertex->parentEdge()->computeTrueCost(m_Config);
         pushVertexQueue(destinationVertex);
     }
-    m_ExpandedCount++;
+    m_Stats.Expanded++;
 }
 
 int SamplingBasedPlanner::k() const {
@@ -155,13 +156,14 @@ std::function<bool(const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vert
     };
 }
 
-DubinsPlan SamplingBasedPlanner::plan(const RibbonManager&, const State& start, PlannerConfig config,
+Planner::Stats SamplingBasedPlanner::plan(const RibbonManager&, const State& start, PlannerConfig config,
                                       const DubinsPlan& previousPlan,
                                       double timeRemaining) {
     m_Config = config;
     m_StartStateTime = start.time();
     m_Samples.clear();
     m_VertexQueue.clear();
+    m_Stats = Stats();
     double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
     double magnitude = m_Config.maxSpeed() * m_Config.timeHorizon();
     minX = start.x() - magnitude;
@@ -176,7 +178,10 @@ DubinsPlan SamplingBasedPlanner::plan(const RibbonManager&, const State& start, 
          !goalCondition(vertex); vertex = popVertexQueue()) {
         expand(vertex, m_Config.obstaclesManager());
     }
-    return tracePlan(vertex, false, m_Config.obstaclesManager());
+    m_Stats.Plan = std::move(tracePlan(vertex, false, m_Config.obstaclesManager()));
+    m_Stats.Samples = m_Samples.size();
+    m_Stats.PlanDepth = vertex->getDepth();
+    return m_Stats;
 }
 
 void SamplingBasedPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag, bool expanded) {

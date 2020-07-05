@@ -196,7 +196,8 @@ public:
                                       config.time_horizon, config.time_minimum,
                                       config.collision_checking_increment,
                                       config.initial_samples,
-                                      config.use_brown_paths);
+                                      config.use_brown_paths,
+                                      config.dynamic_obstacles == 1, config.ignore_dynamic_obstacles);
         m_Executive->setPlannerVisualization(config.dump_visualization, config.visualization_file);
     }
 

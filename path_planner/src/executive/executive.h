@@ -99,7 +99,8 @@ public:
      */
     void setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double lineWidth, int k,
                           int heuristic, double timeHorizon, double timeMinimum, double collisionCheckingIncrement,
-                          int initialSamples, bool useBrownPaths);
+                          int initialSamples, bool useBrownPaths, bool useGaussianDynamicObstacles,
+                          bool ignoreDynamicObstacles);
 
     /**
      * Update the planner visualization status with a new visualization file. If visualize is false the path is ignored.
@@ -132,6 +133,10 @@ private:
 
     // TODO! -- use ROS_INFO
     PlannerConfig m_PlannerConfig = PlannerConfig(&std::cerr);
+
+    // TODO! -- expose which kind of obstacles to use to dynamic reconfig
+    bool m_UseGaussianDynamicObstacles = false;
+    bool m_IgnoreDynamicObstacles = false;
 
     Visualizer::UniquePtr m_Visualizer;
 

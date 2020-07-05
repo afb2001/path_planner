@@ -7,6 +7,7 @@ double GaussianDynamicObstaclesManager::collisionExists(double x, double y, doub
         obstacle.project(time);
         sum += obstacle.pdf(Eigen::Vector2d(x, y));
     }
+    // questionable
     if (sum < 1e-5) return 0;
     return sum;
 }

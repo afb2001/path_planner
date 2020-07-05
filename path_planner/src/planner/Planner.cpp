@@ -35,7 +35,7 @@ double Planner::now() const {
     return m_Config.now();
 }
 
-DubinsPlan Planner::plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
+Planner::Stats Planner::plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
                          const DubinsPlan& previousPlan, double timeRemaining) {
     m_Config = std::move(config);
     throw std::runtime_error("Ribbon point-to-point planner is not yet implemented");

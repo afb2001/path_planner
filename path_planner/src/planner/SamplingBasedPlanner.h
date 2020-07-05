@@ -15,7 +15,7 @@ public:
 
     ~SamplingBasedPlanner() override = default;
 
-    DubinsPlan plan(const RibbonManager&, const State& start, PlannerConfig config, const DubinsPlan& previousPlan,
+    Stats plan(const RibbonManager&, const State& start, PlannerConfig config, const DubinsPlan& previousPlan,
                     double timeRemaining) override;
 
     /**

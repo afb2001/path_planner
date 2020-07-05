@@ -9,7 +9,7 @@ std::function<bool(shared_ptr<Vertex> v1, shared_ptr<Vertex> v2)> AStarPlanner::
     };
 }
 
-DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
+Planner::Stats AStarPlanner::plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
                               const DubinsPlan& previousPlan, double timeRemaining) {
     m_Config = std::move(config); // gotta do this before we can call now()
     double endTime = timeRemaining + now();
@@ -17,7 +17,8 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
     m_RibbonManager = ribbonManager;
     m_RibbonManager.changeHeuristicIfTooManyRibbons(); // make sure ribbon heuristic is calculable
     if (m_RibbonManager.done()) m_RibbonManager.setCoverageCompletedTime(start.time());
-    m_ExpandedCount = 0;
+    m_Stats = Stats();
+//    m_ExpandedCount = 0;
     m_IterationCount = 0;
     m_StartStateTime = start.time();
     m_Samples.clear();
@@ -112,19 +113,18 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                 visualizeVertex(v, "goal", false);
             }
         }
-        m_IterationCount++;
+        m_Stats.Iterations++;
     }
     // Add expected final cost, total accrued cost (not here)
-    *m_Config.output() << m_Samples.size() << " total samples, " << m_ExpandedCount << " expanded in "
-        << m_IterationCount << " iterations" << std::endl;
+    m_Stats.Samples = m_Samples.size();
     if (!m_BestVertex) {
         *m_Config.output() << "Failed to find a plan" << std::endl;
-        return DubinsPlan();
     } else {
-//        *m_Config.output() << "Final plan f value: " << m_BestVertex->f() << std::endl;
-//        *m_Config.output() << "Final plan depth: " << m_BestVertex->getDepth() << std::endl;
-        return tracePlan(m_BestVertex, false, m_Config.obstaclesManager());
+        m_Stats.PlanFValue = m_BestVertex->f();
+        m_Stats.PlanDepth = m_BestVertex->getDepth();
+        m_Stats.Plan = std::move(tracePlan(m_BestVertex, false, m_Config.obstaclesManager()));
     }
+    return m_Stats;
 }
 
 shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles, double endTime) {

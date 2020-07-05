@@ -37,12 +37,9 @@ public:
         }
 
         double pdf(const Eigen::Vector2d& x) const {
-            double n = x.rows();
-            double sqrt2pi = std::sqrt(2 * M_PI);
+            double twoPi = 2 * M_PI;
             double quadform  = (x - mean).transpose() * covariance.inverse() * (x - mean);
-            double norm = std::pow(sqrt2pi, - n) *
-                          std::pow(covariance.determinant(), - 0.5);
-
+            double norm = 1.0 / twoPi / std::sqrt(covariance.determinant());
             return norm * exp(-0.5 * quadform);
         }
     };

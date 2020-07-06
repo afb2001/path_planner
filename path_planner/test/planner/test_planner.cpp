@@ -96,7 +96,7 @@ TEST(UnitTests, PlanTransferTest1) {
     State start(0, 0, 0, 2.5, 1);
     for (int i = 2; i < 5; i++){
         ribbonManager.cover(start.x(), start.y(), false);
-        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
         auto planMsg = getPlanMsg(plan);
@@ -202,17 +202,17 @@ TEST(UnitTests, DynamicObstacleTest1) {
 TEST(UnitTests, BinaryDynamicObstaclesTest1) {
     BinaryDynamicObstaclesManager manager;
     manager.update(1, 42, 42, 0, 1, 1, 5, 15);
-    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 42, 1), 1);
-    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 49, 1), 1);
-    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 50, 1), 0);
-    EXPECT_DOUBLE_EQ(manager.collisionExists(44, 42, 1), 1);
-    EXPECT_DOUBLE_EQ(manager.collisionExists(45, 42, 1), 0);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 42, 1, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 49, 1, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 50, 1, false), 0);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(44, 42, 1, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(45, 42, 1, false), 0);
 
-    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 52, 11), 1);
-    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 59, 11), 1);
-    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 60, 11), 0);
-    EXPECT_DOUBLE_EQ(manager.collisionExists(44, 52, 11), 1);
-    EXPECT_DOUBLE_EQ(manager.collisionExists(45, 52, 11), 0);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 52, 11, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 59, 11, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 60, 11, false), 0);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(44, 52, 11, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(45, 52, 11, false), 0);
 }
 
 TEST(UnitTests, DerivedDynamicObstaclesTest) {
@@ -220,20 +220,20 @@ TEST(UnitTests, DerivedDynamicObstaclesTest) {
     b->update(1, 42, 42, 0, 1, 1, 5, 15);
     const DynamicObstaclesManager& manager = *b;
 
-    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 42, 1), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 42, 1, false), 1);
 
     plannerConfig.setObstaclesManager(b);
 
-    EXPECT_DOUBLE_EQ(plannerConfig.obstaclesManager().collisionExists(42, 42, 1), 1);
+    EXPECT_DOUBLE_EQ(plannerConfig.obstaclesManager().collisionExists(42, 42, 1, false), 1);
 }
 
 TEST(UnitTests, GaussianDynamicObstacleTest1) {
     GaussianDynamicObstaclesManager manager;
     manager.update(1, 0, 0, 0, 1, 1);
     for (int i = 0; i < 10; i++) {
-        cerr << manager.collisionExists(0, 10 * i, 1) << endl;
-        cerr << manager.collisionExists(10 * i, 10 * i, 1) << endl;
-        cerr << manager.collisionExists(10 * i, 0, 1) << endl;
+        cerr << manager.collisionExists(0, 10 * i, 1, false) << endl;
+        cerr << manager.collisionExists(10 * i, 10 * i, 1, false) << endl;
+        cerr << manager.collisionExists(10 * i, 0, 1, false) << endl;
     }
 }
 
@@ -662,7 +662,7 @@ TEST(UnitTests, HeuristicComparison5) {
     plannerConfig.setCoverageTurningRadius(16); // eh probably don't need this but whatever
     State start(-20, -20, 0, 2.5, 1);
     AStarPlanner planner;
-    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
     auto previousConfig = plannerConfig;
     // done with that iteration, let's test what happens in the next one
@@ -1178,12 +1178,12 @@ TEST(PlannerTests, UsePreviousPlan) {
     plannerConfig.setVisualizer(&visualizer);
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
     start.time() = 2;
     plan.sample(start);
     // ribbon manager won't have changed
-    auto plan2 = planner.plan(ribbonManager, start, plannerConfig, plan, 0.95);
+    auto plan2 = planner.plan(ribbonManager, start, plannerConfig, plan, 0.95).Plan;
     EXPECT_FALSE(plan2.empty());
     validatePlan(plan2, plannerConfig);
 }
@@ -1196,7 +1196,7 @@ TEST(UnitTests, UsePreviousPlanUnitTest) {
     plannerConfig.setVisualizer(&visualizer);
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
     start.time() = 2;
     plan.sample(start);
@@ -1242,7 +1242,7 @@ TEST(PlannerTests, RHRSAStarTest1Ribbons) {
     ribbonManager.add(0, 10, 0, 30);
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
     validatePlan(plan, plannerConfig);
 //    for (auto s : plan.getHalfSecondSamples()) cerr << s.toString() << endl;
@@ -1255,7 +1255,7 @@ TEST(PlannerTests, RHRSAStarTest2Ribbons) {
     State start(0, 0, 0, 2.5, 1);
     while(!ribbonManager.done()) {
         ribbonManager.cover(start.x(), start.y(), false);
-        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.5); // quick iterations
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.5).Plan; // quick iterations
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
         start = plan.getHalfSecondSamples()[1];
@@ -1275,7 +1275,7 @@ TEST(PlannerTests, RibbonFarAwayTest) {
     DubinsPlan plan;
     while(!ribbonManager.done()) {
         ribbonManager.cover(start.x(), start.y(), false);
-        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5); // quick iterations
+        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5).Plan; // quick iterations
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
         start.time() += 1;
@@ -1296,7 +1296,7 @@ TEST(PlannerTests, RibbonNotQuiteAsFarAwayTest) {
     DubinsPlan plan;
     while(!ribbonManager.done()) {
         ribbonManager.cover(start.x(), start.y(), false);
-        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5); // quick iterations
+        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5).Plan; // quick iterations
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
         start.time() += 1;
@@ -1319,7 +1319,7 @@ TEST(PlannerTests, RHRSAStarTest4Ribbons) {
     DubinsPlan plan;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
-        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.95);
+        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.95).Plan;
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
         ASSERT_DOUBLE_EQ(plan.getStartTime(), start.time());
@@ -1346,7 +1346,7 @@ TEST(PlannerTests, RHRSAStarTest4aRibbons) {
     Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_test_visualizations"));
     plannerConfig.setVisualizations(true);
     plannerConfig.setVisualizer(&visualizer);
-    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
     for (auto s : plan.getHalfSecondSamples()) cerr << s.toString() << endl;
 }
@@ -1364,7 +1364,7 @@ TEST(PlannerTests, RHRSAStarSingleRibbonTSP) {
     plannerConfig.setVisualizer(&visualizer);
     while(!ribbonManager.done()) {
         /*if (!headingChanged)*/ ribbonManager.cover(start.x(), start.y(), false);
-        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5);
+        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5).Plan;
         ASSERT_FALSE(plan.empty());
 //        headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
         start.time() += 1;
@@ -1389,7 +1389,7 @@ TEST(PlannerTests, RHRSAStarTest5TspRibbons) {
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
-        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
         ASSERT_FALSE(plan.empty());
         headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
         start = plan.getHalfSecondSamples()[1];
@@ -1411,7 +1411,7 @@ TEST(PlannerTests, RHRSAStarTest6DubinsRibbons) {
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
-        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
         ASSERT_FALSE(plan.empty());
         headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
         start = plan.getHalfSecondSamples()[1];
@@ -1432,7 +1432,7 @@ TEST(PlannerTests, RHRSAStarSeparateThreadTest) {
     std::thread t ([&]{
         while(!ribbonManager.done()) {
             ribbonManager.cover(start.x(), start.y(), false);
-            auto plan = planner->plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+            auto plan = planner->plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
             ASSERT_FALSE(plan.empty());
             start = plan.getHalfSecondSamples()[1];
             ASSERT_LT(start.time(), 60);
@@ -1464,7 +1464,7 @@ TEST(PlannerTests, VisualizationTest) {
     config.setMap(make_shared<Map>());
     config.setObstacles(DynamicObstaclesManager1());
     config.setBranchingFactor(4);
-    auto plan = planner.plan(ribbonManager, start, config, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, config, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
 }
 
@@ -1491,7 +1491,7 @@ TEST(PlannerTests, VisualizationLongerTest) {
     std::thread t ([&]{
         while(!ribbonManager.done()) {
             ribbonManager.cover(start.x(), start.y(), false);
-            auto plan = planner.plan(ribbonManager, start, config, DubinsPlan(), 0.95);
+            auto plan = planner.plan(ribbonManager, start, config, DubinsPlan(), 0.95).Plan;
             ASSERT_FALSE(plan.empty());
             start = plan.getHalfSecondSamples()[1];
             ASSERT_LT(start.time(), 60);
@@ -1524,7 +1524,7 @@ TEST(PlannerTests, RandomVisualizationTest) {
     config.setObstacles(DynamicObstaclesManager1());
     StateGenerator generator(-10, 30, 0, 120, 2.5, 2.5, 9);
     for (int i = 0; i < 10; i++) {
-        auto plan = planner.plan(ribbonManager, generator.generate(), config, DubinsPlan(), 0.95);
+        auto plan = planner.plan(ribbonManager, generator.generate(), config, DubinsPlan(), 0.95).Plan;
         ASSERT_FALSE(plan.empty());
     }
 }
@@ -1540,7 +1540,7 @@ TEST(PlannerTests, RandomPointsTest) {
     AStarPlanner planner;
     StateGenerator generator(-10, 30, 0, 120, 2.5, 2.5, 9);
     for (int i = 0; i < 10; i++) {
-        auto plan = planner.plan(ribbonManager, generator.generate(), plannerConfig, DubinsPlan(), 9.95);
+        auto plan = planner.plan(ribbonManager, generator.generate(), plannerConfig, DubinsPlan(), 9.95).Plan;
         ASSERT_FALSE(plan.empty());
     }
 }

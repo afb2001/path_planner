@@ -20,11 +20,11 @@ public:
      * @param time
      * @return not a probability
      */
-    virtual double collisionExists(double x, double y, double time) const { return 0; };
+    virtual double collisionExists(double x, double y, double time, bool strict) const { return 0; };
 
     // convenience overload
-    double collisionExists(const State& s) const {
-        return collisionExists(s.x(), s.y(), s.time());
+    double collisionExists(const State& s, bool strict) const {
+        return collisionExists(s.x(), s.y(), s.time(), strict);
     };
 
 

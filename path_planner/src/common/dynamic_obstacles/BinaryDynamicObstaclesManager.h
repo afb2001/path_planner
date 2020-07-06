@@ -30,7 +30,7 @@ public:
 
     void forget(uint32_t mmsi);
 
-    double collisionExists(double x, double y, double time) const override;
+    double collisionExists(double x, double y, double time, bool strict) const override;
 
     const std::unordered_map<uint32_t, Obstacle>& get() const;
 

@@ -1,6 +1,6 @@
 #include "GaussianDynamicObstaclesManager.h"
 
-double GaussianDynamicObstaclesManager::collisionExists(double x, double y, double time) const {
+double GaussianDynamicObstaclesManager::collisionExists(double x, double y, double time, bool strict) const {
     double sum = 0;
     for (auto o : m_Obstacles) {
         auto& obstacle = o.second;

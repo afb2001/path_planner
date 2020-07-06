@@ -1,11 +1,15 @@
 #include <tuple>        // std::forward_as_tuple
 #include "BinaryDynamicObstaclesManager.h"
 
-double BinaryDynamicObstaclesManager::collisionExists(double x, double y, double time) const {
+double BinaryDynamicObstaclesManager::collisionExists(double x, double y, double time, bool strict) const {
     double sum = 0;
     for (auto o : m_Obstacles) {
         // not using references in loop statement because this mutates them
         auto& obstacle = o.second;
+        if (strict) {
+            obstacle.Width += 2;
+            obstacle.Length += 2;
+        }
         obstacle.project(time);
         auto translatedX = x - obstacle.X;
         auto translatedY = y - obstacle.Y;

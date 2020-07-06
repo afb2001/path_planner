@@ -132,7 +132,8 @@ double Edge::computeTrueCost(PlannerConfig& config) {
         }
 
         // assess collision penalty
-        collisionPenalty += config.obstaclesManager().collisionExists(intermediate) * Edge::collisionPenaltyFactor();
+        collisionPenalty +=
+                config.obstaclesManager().collisionExists(intermediate, true) * Edge::collisionPenaltyFactor();
 
         if (toCoverDistance > config.collisionCheckingIncrement()) {
             toCoverDistance -= config.collisionCheckingIncrement();
@@ -178,8 +179,8 @@ double Edge::computeTrueCost(PlannerConfig& config) {
     assert(std::isfinite(collisionPenalty));
     m_CollisionPenalty = collisionPenalty;
     // time after ribbons covered doesn't count against you
-    auto t = fmax(netTime() - (end()->ribbonManager().done()? (endTime - ribbonsDoneTime) : 0), 1e-12);
-    if (ribbonManagerStartedDone) t = 1e-12;
+    auto t = fmax(netTime() - (end()->ribbonManager().done()? (endTime - ribbonsDoneTime) : 0), 0);
+    if (ribbonManagerStartedDone) t = 0;
     m_TrueCost = t * Edge::timePenaltyFactor() + collisionPenalty;
 
     end()->setCurrentCost();

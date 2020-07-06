@@ -137,9 +137,11 @@ void Executive::planLoop() {
             // check for collision penalty
             double collisionPenalty = 0;
             if (m_UseGaussianDynamicObstacles) {
-                collisionPenalty = m_GaussianDynamicObstaclesManager->DynamicObstaclesManager::collisionExists(m_LastState);
+                collisionPenalty = m_GaussianDynamicObstaclesManager->DynamicObstaclesManager::collisionExists(
+                        m_LastState, false);
             } else {
-                collisionPenalty = m_BinaryDynamicObstaclesManager->DynamicObstaclesManager::collisionExists(m_LastState);
+                collisionPenalty = m_BinaryDynamicObstaclesManager->DynamicObstaclesManager::collisionExists(
+                        m_LastState, false);
             }
             cumulativeCollisionPenalty += collisionPenalty;
 

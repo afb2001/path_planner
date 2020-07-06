@@ -46,7 +46,7 @@ public:
 
     ~GaussianDynamicObstaclesManager() override = default;
 
-    double collisionExists(double x, double y, double time) const override;
+    double collisionExists(double x, double y, double time, bool strict) const override;
 
     void update(uint32_t mmsi, double x, double y, double heading, double speed, double time);
 

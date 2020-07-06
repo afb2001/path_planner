@@ -13,6 +13,8 @@
 #include "NodeBase.h"
 #include <path_planner/path_plannerConfig.h>
 #include <dynamic_reconfigure/server.h>
+#include <path_planner_common/Stats.h>
+#include <path_planner_common/TaskLevelStats.h>
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCInconsistentNamingInspection"
@@ -31,6 +33,9 @@ public:
 
     m_contact_sub = m_node_handle.subscribe("/contact", 10, &PathPlanner::contactCallback, this);
     m_origin_sub = m_node_handle.subscribe("/origin", 1, &PathPlanner::originCallback, this);
+
+    m_stats_pub = m_node_handle.advertise<path_planner_common::Stats>("/path_planner/stats", 1);
+    m_task_level_stats_pub = m_node_handle.advertise<path_planner_common::TaskLevelStats>("/path_planner/task_level_stats", 1);
 
     dynamic_reconfigure::Server<path_planner::path_plannerConfig>::CallbackType f;
     f = boost::bind(&PathPlanner::reconfigureCallback, this, _1, _2);
@@ -258,6 +263,36 @@ public:
         m_display_pub.publish(geoVizItem);
     }
 
+    void publishStats(const Planner::Stats& stats, double collisionPenalty, unsigned long cpuTime) override {
+//        std::cerr << stats.Samples << " total samples, " << stats.Generated << " generated, "
+//                         << stats.Expanded << " expanded in " << stats.Iterations << " iterations. F-value " <<
+//                         stats.PlanFValue << std::endl;
+
+        path_planner_common::Stats statsMsg;
+        statsMsg.samples = stats.Samples;
+        statsMsg.generated = stats.Generated;
+        statsMsg.expanded = stats.Expanded;
+        statsMsg.iterations = stats.Iterations;
+        statsMsg.plan_f_value = stats.PlanFValue;
+        statsMsg.plan_depth = stats.PlanDepth;
+        statsMsg.collision_penalty = collisionPenalty;
+        statsMsg.cpu_time = cpuTime;
+        m_stats_pub.publish(statsMsg);
+    }
+
+    void publishTaskLevelStats(double wallClockTime, double cumulativeCollisionPenalty,
+                               double cumulativeGValue) override {
+//        std::cerr << "Finished task in " << std::to_string(wallClockTime) << "s with total collision penalty "
+//                  << std::to_string(cumulativeCollisionPenalty) << ". That's a score of "
+//                  << std::to_string(cumulativeGValue) << std::endl;
+
+        path_planner_common::TaskLevelStats stats;
+        stats.time = wallClockTime;
+        stats.collision_penalty = cumulativeCollisionPenalty;
+        stats.score = cumulativeGValue;
+        m_task_level_stats_pub.publish(stats);
+    }
+
 private:
     ros::NodeHandle m_node_handle;
 
@@ -265,6 +300,9 @@ private:
 
     ros::Subscriber m_contact_sub;
     ros::Subscriber m_origin_sub;
+
+    ros::Publisher m_stats_pub;
+    ros::Publisher m_task_level_stats_pub;
 
     dynamic_reconfigure::Server<path_planner::path_plannerConfig> m_Dynamic_Reconfigure_Server;
 

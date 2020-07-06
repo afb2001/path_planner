@@ -40,7 +40,7 @@ void Executive::updateCovered(double x, double y, double speed, double heading, 
 }
 
 void Executive::planLoop() {
-    double trialStartTime = m_TrajectoryPublisher->getTime(), collisionPenalty = 0;
+    double trialStartTime = m_TrajectoryPublisher->getTime(), cumulativeCollisionPenalty = 0;
     // TODO? -- record uncovered or poorly covered?
     try {
         cerr << "Initializing planner" << endl;
@@ -134,6 +134,15 @@ void Executive::planLoop() {
                 m_RadiusShrink += c_RadiusShrinkAmount;
             }
 
+            // check for collision penalty
+            double collisionPenalty = 0;
+            if (m_UseGaussianDynamicObstacles) {
+                collisionPenalty = m_GaussianDynamicObstaclesManager->DynamicObstaclesManager::collisionExists(m_LastState);
+            } else {
+                collisionPenalty = m_BinaryDynamicObstaclesManager->DynamicObstaclesManager::collisionExists(m_LastState);
+            }
+            cumulativeCollisionPenalty += collisionPenalty;
+
             try {
                 if (m_UseGaussianDynamicObstacles) {
                     m_PlannerConfig.setObstaclesManager(m_GaussianDynamicObstaclesManager);
@@ -147,13 +156,6 @@ void Executive::planLoop() {
                     m_TrajectoryPublisher->displayDynamicObstacle(obstacle.X, obstacle.Y, obstacle.Yaw, obstacle.Width, obstacle.Length, o.first);
                 }
                 // TODO! -- display gaussian dynamic obstacles somehow
-
-                // check for collision penalty
-                if (m_UseGaussianDynamicObstacles) {
-                    collisionPenalty += m_GaussianDynamicObstaclesManager->DynamicObstaclesManager::collisionExists(m_LastState);
-                } else {
-                    collisionPenalty += m_BinaryDynamicObstaclesManager->DynamicObstaclesManager::collisionExists(m_LastState);
-                }
 
                 // trying to fix seg fault by eliminating concurrent access to ribbon manager (seems to have fixed it)
                 RibbonManager ribbonManagerCopy;
@@ -176,10 +178,7 @@ void Executive::planLoop() {
                 throw;
             }
 
-            // TODO! -- publish stats to topic(s)
-            *m_PlannerConfig.output() << stats.Samples << " total samples, " << stats.Generated << " generated, "
-                               << stats.Expanded << " expanded in " << stats.Iterations << " iterations. F-value " <<
-                               stats.PlanFValue << std::endl;
+            m_TrajectoryPublisher->publishStats(stats, collisionPenalty * Edge::collisionPenaltyFactor(), 0);
 
             // calculate remaining time (to sleep)
             double endTime = m_TrajectoryPublisher->getTime();
@@ -263,11 +262,11 @@ void Executive::planLoop() {
     // TODO! -- publish to a topic
     auto wallClockTime = trialEndTime - trialStartTime;
     // multiply penalties by weights
-    collisionPenalty *= Edge::collisionPenaltyFactor();
+    cumulativeCollisionPenalty *= Edge::collisionPenaltyFactor();
     auto timePenalty = wallClockTime * Edge::timePenaltyFactor();
-    *m_PlannerConfig.output() << "Finished task in " << std::to_string(wallClockTime) << "s with total collision penalty "
-    << std::to_string(collisionPenalty) << ". That's a score of " << std::to_string(timePenalty + collisionPenalty) << std::endl;
 
+    m_TrajectoryPublisher->publishTaskLevelStats(wallClockTime, cumulativeCollisionPenalty,
+            timePenalty + cumulativeCollisionPenalty);
     unique_lock<mutex> lock2(m_PlannerStateMutex);
     std::cerr << "Setting inactive state" << std::endl;
     m_PlannerState = PlannerState::Inactive;

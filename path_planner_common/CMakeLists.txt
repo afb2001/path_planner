@@ -26,6 +26,8 @@ add_message_files(
         StateMsg.msg
         DubinsPath.msg
         Plan.msg
+        Stats.msg
+        TaskLevelStats.msg
 )
 
 add_service_files(

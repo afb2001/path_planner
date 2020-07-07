@@ -104,6 +104,16 @@ double Edge::computeTrueCost(PlannerConfig& config) {
         }
         m_Infeasible = true;
     }
+
+    // Collision check at max speed, even if we're going slower. This will make going slower in congested areas look
+    // artificially better, because they'll accrue a smaller penalty per time
+    auto timeIncrement = config.collisionCheckingIncrement() / config.maxSpeed();
+
+    // nudge along a little so we check at an even amount of intervals from the start state
+    auto timeSinceStart = intermediate.time() - config.startStateTime();
+    auto timeNudge = fmod(timeSinceStart, timeIncrement);
+    intermediate.time() += timeNudge;
+
     if (config.visualizations())
         config.visualizationStream() << "Trajectory:" << std::endl;
     // collision check along the curve (and watch out for newly covered points, too)
@@ -155,7 +165,7 @@ double Edge::computeTrueCost(PlannerConfig& config) {
             }
 
         }
-        intermediate.time() += config.collisionCheckingIncrement() / speed;
+        intermediate.time() += timeIncrement;
         lastHeading = intermediate.heading();
     }
     // set to the end of the edge (potentially truncated)

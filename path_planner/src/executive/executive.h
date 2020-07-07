@@ -61,8 +61,8 @@ public:
      * @param mmsi
      * @param obstacle
      */
-    void updateDynamicObstacle(uint32_t mmsi, State obstacle);
-    void updateDynamicObstacle(uint32_t mmsi, const std::vector<Distribution>& obstacle);
+    void updateDynamicObstacle(uint32_t mmsi, State obstacle, double width, double length);
+//    void updateDynamicObstacle(uint32_t mmsi, const std::vector<Distribution>& obstacle);
 
     /**
      * Launch a new thread for the plan loop.

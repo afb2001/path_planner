@@ -142,6 +142,10 @@ public:
 
         auto point = m_CoordinateConverter.wgs84_to_map(inmsg->position);
 
+        // TODO! -- this assumes position is in the center of the contact. The message allows for that not to be the
+        //  case but it always will be for my tests. To fix it you'd just need to shift the position over a bit based
+        //  on the asymmetry in the measurements, but I'm pressed for time.
+
         obstacle.x() = point.x;
         obstacle.y() = point.y;
 
@@ -150,7 +154,14 @@ public:
 
         obstacle.time() = inmsg->header.stamp.toNSec() / 1.0e9;
 
-        m_Executive->updateDynamicObstacle(inmsg->mmsi, obstacle);
+        // get dimensions with some buffer
+        auto width = inmsg->dimension_to_port + inmsg->dimension_to_stbd + 5;
+        auto length = inmsg->dimension_to_bow + inmsg->dimension_to_stern + 10;
+
+        if (width <= 5) width = 10;
+        if (length <= 10) length = 30;
+
+        m_Executive->updateDynamicObstacle(inmsg->mmsi, obstacle, width, length);
     }
 
 //    State publishTrajectory(std::vector<State> trajectory) final

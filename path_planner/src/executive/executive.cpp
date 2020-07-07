@@ -42,6 +42,11 @@ void Executive::updateCovered(double x, double y, double speed, double heading, 
 void Executive::planLoop() {
     double trialStartTime = m_TrajectoryPublisher->getTime(), cumulativeCollisionPenalty = 0;
     // TODO? -- record uncovered or poorly covered?
+
+    // Forget all dynamic obstacles. In practice this is not a good idea but for testing it's sort of OK
+    m_BinaryDynamicObstaclesManager = std::make_shared<BinaryDynamicObstaclesManager>();
+    m_GaussianDynamicObstaclesManager = std::make_shared<GaussianDynamicObstaclesManager>();
+
     try {
         cerr << "Initializing planner" << endl;
 
@@ -152,11 +157,11 @@ void Executive::planLoop() {
                     m_PlannerConfig.setObstaclesManager(m_BinaryDynamicObstaclesManager);
                 }
                 // display (binary) dynamic obstacles
-                for (auto o : m_BinaryDynamicObstaclesManager->get()) {
-                    auto& obstacle = o.second;
-                    obstacle.project(m_TrajectoryPublisher->getTime());
-                    m_TrajectoryPublisher->displayDynamicObstacle(obstacle.X, obstacle.Y, obstacle.Yaw, obstacle.Width, obstacle.Length, o.first);
-                }
+//                for (auto o : m_BinaryDynamicObstaclesManager->get()) {
+//                    auto& obstacle = o.second;
+//                    obstacle.project(m_TrajectoryPublisher->getTime());
+//                    m_TrajectoryPublisher->displayDynamicObstacle(obstacle.X, obstacle.Y, obstacle.Yaw, obstacle.Width, obstacle.Length, o.first);
+//                }
                 // TODO! -- display gaussian dynamic obstacles somehow
 
                 // trying to fix seg fault by eliminating concurrent access to ribbon manager (seems to have fixed it)
@@ -184,10 +189,14 @@ void Executive::planLoop() {
 
             // calculate remaining time (to sleep)
             double endTime = m_TrajectoryPublisher->getTime();
-            int sleepTime = (endTime - startTime <= c_PlanningTimeSeconds) ? ((int) (
-                    (c_PlanningTimeSeconds - (endTime - startTime)) * 1000)) : 0;
-
-            this_thread::sleep_for(chrono::milliseconds(sleepTime));
+            int sleepTime = ((int) ((c_PlanningTimeSeconds - (endTime - startTime)) * 1000));
+            if (sleepTime >= 0) {
+//                *m_PlannerConfig.output() << "Finished with " << sleepTime << "ms extra time. Sleeping." << endl;
+                this_thread::sleep_for(chrono::milliseconds(sleepTime));
+            }
+//            else {
+//                *m_PlannerConfig.output() << "Failed to meet real-time bound by " << -sleepTime << "ms" << endl;
+//            }
 
             // display the trajectory
             m_TrajectoryPublisher->displayTrajectory(stats.Plan.getHalfSecondSamples(), true, stats.Plan.dangerous());
@@ -281,10 +290,12 @@ void Executive::terminate()
     cancelPlanner();
 }
 
-void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
+void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle, double width, double length) {
     m_DynamicObstaclesManager.update(mmsi, inventDistributions(obstacle));
-    m_BinaryDynamicObstaclesManager->update(mmsi, obstacle.x(), obstacle.y(), obstacle.heading(), obstacle.speed(), obstacle.time(), 10, 30);
-    m_GaussianDynamicObstaclesManager->update(mmsi, obstacle.x(), obstacle.y(), obstacle.heading(), obstacle.speed(), obstacle.time());
+    m_BinaryDynamicObstaclesManager->update(mmsi, obstacle.x(), obstacle.y(), obstacle.heading(),
+            obstacle.speed(), obstacle.time(), width, length);
+    m_GaussianDynamicObstaclesManager->update(mmsi, obstacle.x(), obstacle.y(), obstacle.heading(),
+            obstacle.speed(), obstacle.time());
 }
 
 void Executive::refreshMap(const std::string& pathToMapFile, double latitude, double longitude) {
@@ -399,8 +410,8 @@ void Executive::setPlannerVisualization(bool visualize, const std::string& visua
     }
 }
 
-void Executive::updateDynamicObstacle(uint32_t mmsi, const std::vector<Distribution>& obstacle) {
-    m_DynamicObstaclesManager.update(mmsi, obstacle);
-    // TODO! -- other representations
-}
+//void Executive::updateDynamicObstacle(uint32_t mmsi, const std::vector<Distribution>& obstacle) {
+//    m_DynamicObstaclesManager.update(mmsi, obstacle);
+//    // TODO! -- other representations
+//}
 

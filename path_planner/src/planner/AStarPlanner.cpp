@@ -22,6 +22,7 @@ Planner::Stats AStarPlanner::plan(const RibbonManager& ribbonManager, const Stat
     m_IterationCount = 0;
     m_StartStateTime = start.time();
     m_Samples.clear();
+    m_AttemptedSamples = 0;
     double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
     double magnitude = m_Config.maxSpeed() * m_Config.timeHorizon();
     minX = start.x() - magnitude;

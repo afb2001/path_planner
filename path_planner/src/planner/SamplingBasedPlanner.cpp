@@ -134,9 +134,11 @@ int SamplingBasedPlanner::k() const {
 }
 
 void SamplingBasedPlanner::addSamples(StateGenerator& generator, int n) {
+    m_AttemptedSamples += n;
     for (int i = 0; i < n; i++) {
         const auto s = generator.generate();
-        m_Samples.push_back(s);
+        if (!m_Config.map()->isBlocked(s.x(), s.y()))
+            m_Samples.push_back(s);
     }
 }
 

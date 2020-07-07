@@ -53,11 +53,11 @@ double Vertex::computeApproxToGo(const PlannerConfig& config) {
 
     // since we're using the ribbon manager, we should have computed true cost at this point.
     // PathMax or whatever. Guarantees heuristic consistency which is required for f pruning
-    if (!isRoot()) {
-        auto parentF = parent()->f();
-        auto diff = parentF - f();
-        if (diff > 0) m_ApproxToGo += diff;
-    }
+//    if (!isRoot()) {
+//        auto parentF = parent()->f();
+//        auto diff = parentF - f();
+//        if (diff > 0) m_ApproxToGo += diff;
+//    }
 
     return m_ApproxToGo;
 }

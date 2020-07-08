@@ -264,6 +264,8 @@ void Executive::planLoop() {
     catch(const std::exception& e) {
         cerr << "Exception thrown in plan loop:" << endl;
         cerr << e.what() << endl;
+        cerr << "Pausing." << endl;
+        cancelPlanner();
     } catch (...) {
         cerr << "Unknown exception thrown in plan loop" << endl;
     }
@@ -302,7 +304,8 @@ void Executive::refreshMap(const std::string& pathToMapFile, double latitude, do
     // Run asynchronously and headless. The ol' fire-off-and-pray method
     thread([this, pathToMapFile, latitude, longitude] {
         std::lock_guard<std::mutex> lock(m_MapMutex);
-        if (m_CurrentMapPath != pathToMapFile) {
+        // skip re-loading if we've already loaded it
+//        if (m_CurrentMapPath != pathToMapFile) {
             if (pathToMapFile.empty()) {
                 m_NewMap = make_shared<Map>();
                 m_CurrentMapPath = pathToMapFile;
@@ -331,11 +334,11 @@ void Executive::refreshMap(const std::string& pathToMapFile, double latitude, do
                 m_NewMap = nullptr;
                 m_CurrentMapPath = "";
             }
-        } else {
+//        } else {
             // refresh display anyway
 //            if (pathToMapFile.find(".map") != -1)
 //                m_TrajectoryPublisher->displayMap(pathToMapFile);
-        }
+//        }
     }).detach();
 }
 
@@ -362,15 +365,14 @@ void Executive::clearRibbons() {
     m_RibbonManager = RibbonManager(RibbonManager::Heuristic::TspPointRobotNoSplitKRibbons, m_PlannerConfig.turningRadius(), 2);
 }
 
-void Executive::setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double lineWidth,
-                                 int k,
-                                 int heuristic, double timeHorizon, double timeMinimum,
-                                 double collisionCheckingIncrement,
-                                 int initialSamples, bool useBrownPaths, bool useGaussianDynamicObstacles,
-                                 bool ignoreDynamicObstacles) {
+void Executive::setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double slowSpeed,
+                                 double lineWidth, int k, int heuristic, double timeHorizon, double timeMinimum,
+                                 double collisionCheckingIncrement, int initialSamples, bool useBrownPaths,
+                                 bool useGaussianDynamicObstacles, bool ignoreDynamicObstacles) {
     m_PlannerConfig.setTurningRadius(turningRadius);
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
     m_PlannerConfig.setMaxSpeed(maxSpeed);
+    m_PlannerConfig.setSlowSpeed(slowSpeed);
     RibbonManager::setRibbonWidth(lineWidth);
     m_PlannerConfig.setBranchingFactor(k);
     switch (heuristic) {

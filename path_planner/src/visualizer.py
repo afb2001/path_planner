@@ -58,7 +58,7 @@ class Iteration:
         self.start = [x, y, h]
         self.samples = []
         self.cost_min = 0
-        self.cost_max = 0
+        self.cost_max = 1
         self.items = []
         self.generated = []
         self.expanded = []

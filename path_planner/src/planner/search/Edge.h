@@ -91,6 +91,7 @@ public:
      * @return
      */
     DubinsWrapper getPlan(const PlannerConfig& config);
+    const DubinsWrapper& getPlan(const PlannerConfig& config) const { return m_DubinsWrapper; }
 
     /**
      * @return the start vertex.

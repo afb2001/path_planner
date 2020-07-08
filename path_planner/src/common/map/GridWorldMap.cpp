@@ -79,10 +79,12 @@ GridWorldMap::GridWorldMap(const std::string& path) {
 }
 
 bool GridWorldMap::isBlocked(double x, double y) const {
-    try {
+    if (x < 0 || x / m_Resolution >= m_Blocked.front().size()) return true;
+    if (y < 0 || y / m_Resolution >= m_Blocked.size()) return true;
+//    try {
         return m_Blocked.at(y / m_Resolution).at(x / m_Resolution);
-    }
-    catch (std::out_of_range&) {
-        return true;
-    }
+//    }
+//    catch (std::out_of_range&) {
+//        return true;
+//    }
 }

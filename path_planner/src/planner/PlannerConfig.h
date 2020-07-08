@@ -165,17 +165,26 @@ public:
         m_TimeMinimum = timeMinimum;
     }
 
+    double slowSpeed() const {
+        if (m_SlowSpeed <= 0) return m_MaxSpeed;
+        return m_SlowSpeed;
+    }
+
+    void setSlowSpeed(double slowSpeed) {
+        m_SlowSpeed = slowSpeed;
+    }
+
 private:
     // search branching factor
     int m_BranchingFactor = 9;
     // vehicle configuration (radii for Dubins model)
-    double m_MaxSpeed = 2.5, m_TurningRadius = 8, m_CoverageTurningRadius = 16;
+    double m_MaxSpeed = 2.5, m_SlowSpeed = 0.5, m_TurningRadius = 8, m_CoverageTurningRadius = 16;
     // time horizon and minimum plan duration
     double m_TimeHorizon = 30, m_TimeMinimum = 5;
     // increment at which plans are collision checked (m)
     // TODO! -- really oughta be in seconds because when we have different speeds slower will accrue less collision
     //  penalty per second of being within an obstacle's probability distribution
-    double m_CollisionCheckingIncrement = 1;
+    double m_CollisionCheckingIncrement = 0.05;
     // initial number of samples each planning iteration
     int m_InitialSamples = 100;
     // whether or not to be clever about getting onto the ribbon with some hand-picked curves

@@ -49,6 +49,7 @@ double Vertex::estimateApproxToGo(const State &destination) {
 double Vertex::computeApproxToGo(const PlannerConfig& config) {
     double max;
     max = m_RibbonManager.approximateDistanceUntilDone(state().x(), state().y(), state().heading());
+    // use max speed because we need a lower bound - we could go at max speed the rest of the way
     m_ApproxToGo = max / config.maxSpeed() * Edge::timePenaltyFactor();
 
     // since we're using the ribbon manager, we should have computed true cost at this point.

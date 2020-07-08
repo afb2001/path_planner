@@ -97,10 +97,10 @@ public:
      * @param k
      * @param heuristic
      */
-    void setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double lineWidth, int k,
-                          int heuristic, double timeHorizon, double timeMinimum, double collisionCheckingIncrement,
-                          int initialSamples, bool useBrownPaths, bool useGaussianDynamicObstacles,
-                          bool ignoreDynamicObstacles);
+    void setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double slowSpeed,
+                          double lineWidth, int k, int heuristic, double timeHorizon, double timeMinimum,
+                          double collisionCheckingIncrement, int initialSamples, bool useBrownPaths,
+                          bool useGaussianDynamicObstacles, bool ignoreDynamicObstacles);
 
     /**
      * Update the planner visualization status with a new visualization file. If visualize is false the path is ignored.

@@ -1,3 +1,4 @@
+# Message holding stats from the planner
 int64 samples
 int64 generated
 int64 expanded

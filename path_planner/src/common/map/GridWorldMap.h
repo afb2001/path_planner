@@ -19,9 +19,12 @@ public:
 
     bool isBlocked(double x, double y) const override;
 
+    const double* extremes() const override;
+
 private:
     std::vector<std::vector<bool>> m_Blocked;
     int m_Resolution;
+    double m_Extremes[4];
 };
 
 

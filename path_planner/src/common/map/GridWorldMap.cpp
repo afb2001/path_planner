@@ -26,6 +26,9 @@ GridWorldMap::GridWorldMap(const std::string& path) {
 
     m_Blocked = std::vector<std::vector<bool>>(rows, std::vector<bool>(cols, false));
 
+    m_Extremes[0] = 0; m_Extremes[1] = m_Blocked.front().size() * m_Resolution;
+    m_Extremes[2] = 0; m_Extremes[3] = m_Blocked.size() * m_Resolution;
+
 //    class BrushFireCell {
 //    public:
 //        BrushFireCell(int x, int y, double distanceToBlocked) : x(x), y(y), DistanceToBlocked(distanceToBlocked) {}
@@ -87,4 +90,8 @@ bool GridWorldMap::isBlocked(double x, double y) const {
 //    catch (std::out_of_range&) {
 //        return true;
 //    }
+}
+
+const double* GridWorldMap::extremes() const {
+    return m_Extremes;
 }

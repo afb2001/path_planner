@@ -25,10 +25,11 @@ Planner::Stats AStarPlanner::plan(const RibbonManager& ribbonManager, const Stat
     m_AttemptedSamples = 0;
     double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
     double magnitude = m_Config.maxSpeed() * m_Config.timeHorizon();
-    minX = start.x() - magnitude;
-    maxX = start.x() + magnitude;
-    minY = start.y() - magnitude;
-    maxY = start.y() + magnitude;
+    auto mapExtremes = m_Config.map()->extremes();
+    minX = fmax(start.x() - magnitude, mapExtremes[0]);
+    maxX = fmin(start.x() + magnitude, mapExtremes[1]);
+    minY = fmax(start.y() - magnitude, mapExtremes[2]);
+    maxY = fmin(start.y() + magnitude, mapExtremes[3]);
     auto seed = (unsigned long)endTime; // for different results each time. For consistency, use like 7 or something
     StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, seed, m_RibbonManager); // lucky seed
     auto startV = Vertex::makeRoot(start, m_RibbonManager);

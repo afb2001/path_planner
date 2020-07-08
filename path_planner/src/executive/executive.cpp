@@ -40,6 +40,13 @@ void Executive::updateCovered(double x, double y, double speed, double heading, 
 }
 
 void Executive::planLoop() {
+    double trialStartTime = m_TrajectoryPublisher->getTime(), cumulativeCollisionPenalty = 0;
+    // TODO? -- record uncovered or poorly covered?
+
+    // Forget all dynamic obstacles. In practice this is not a good idea but for testing it's sort of OK
+    m_BinaryDynamicObstaclesManager = std::make_shared<BinaryDynamicObstaclesManager>();
+    m_GaussianDynamicObstaclesManager = std::make_shared<GaussianDynamicObstaclesManager>();
+
     try {
         cerr << "Initializing planner" << endl;
 
@@ -60,8 +67,8 @@ void Executive::planLoop() {
         }
 
         State startState;
-        // declare plan here so that it persists between loops
-        DubinsPlan plan;
+        // declare stats here so that the plan persists between loops
+        Planner::Stats stats;
 
         // keep track of how many times in a row we fail to find a plan
         int failureCount = 0;
@@ -101,26 +108,28 @@ void Executive::planLoop() {
             }
 
             // copy the map pointer if it's been set (don't wait for the mutex because it may be a while)
-            if (m_MapMutex.try_lock()) {
-                if (m_NewMap) {
-                    m_PlannerConfig.setMap(m_NewMap);
-                }
-                m_NewMap = nullptr;
+            {
+                std::unique_lock<std::mutex> lock1(m_MapMutex, std::defer_lock);
+                if (lock1.try_lock()) {
+                    if (m_NewMap) {
+                        m_PlannerConfig.setMap(m_NewMap);
+                    }
+                    m_NewMap = nullptr;
 
-                // check if start state is blocked
-                if (m_PlannerConfig.map()->isBlocked(startState.x(), startState.y())) {
-                    cerr << "Starting state (" << startState.toString() << ") is blocked, according to most recent map. Trying again in 1s." << endl;
-                    m_MapMutex.unlock();
-                    sleep(1);
-                    continue;
+                    // check if start state is blocked
+                    // I don't remember why I put this inside the locked block but I'm sure I had a good reason
+                    if (m_PlannerConfig.map()->isBlocked(startState.x(), startState.y())) {
+                        cerr << "Starting state (" << startState.toString()
+                             << ") is blocked, according to most recent map. Trying again in 1s." << endl;
+                        sleep(1);
+                        continue;
+                    }
                 }
-
-                m_MapMutex.unlock();
             }
 
-            if (!c_ReusePlanEnabled) plan = DubinsPlan();
+            if (!c_ReusePlanEnabled) stats.Plan = DubinsPlan();
 
-            if (!plan.empty()) plan.changeIntoSuffix(startState.time()); // update the last plan
+            if (!stats.Plan.empty()) stats.Plan.changeIntoSuffix(startState.time()); // update the last plan
 
             // shrink turning radius (experimental)
             if (c_RadiusShrinkEnabled) {
@@ -130,8 +139,31 @@ void Executive::planLoop() {
                 m_RadiusShrink += c_RadiusShrinkAmount;
             }
 
+            // check for collision penalty
+            double collisionPenalty = 0;
+            if (m_UseGaussianDynamicObstacles) {
+                collisionPenalty = m_GaussianDynamicObstaclesManager->DynamicObstaclesManager::collisionExists(
+                        m_LastState, false);
+            } else {
+                collisionPenalty = m_BinaryDynamicObstaclesManager->DynamicObstaclesManager::collisionExists(
+                        m_LastState, false);
+            }
+            cumulativeCollisionPenalty += collisionPenalty;
+
             try {
-                m_PlannerConfig.setObstacles(m_DynamicObstaclesManager);
+                if (m_UseGaussianDynamicObstacles) {
+                    m_PlannerConfig.setObstaclesManager(m_GaussianDynamicObstaclesManager);
+                } else{
+                    m_PlannerConfig.setObstaclesManager(m_BinaryDynamicObstaclesManager);
+                }
+                // display (binary) dynamic obstacles
+//                for (auto o : m_BinaryDynamicObstaclesManager->get()) {
+//                    auto& obstacle = o.second;
+//                    obstacle.project(m_TrajectoryPublisher->getTime());
+//                    m_TrajectoryPublisher->displayDynamicObstacle(obstacle.X, obstacle.Y, obstacle.Yaw, obstacle.Width, obstacle.Length, o.first);
+//                }
+                // TODO! -- display gaussian dynamic obstacles somehow
+
                 // trying to fix seg fault by eliminating concurrent access to ribbon manager (seems to have fixed it)
                 RibbonManager ribbonManagerCopy;
                 {
@@ -140,35 +172,40 @@ void Executive::planLoop() {
                 }
                 // cover up to the state that we're planning from
                 ribbonManagerCopy.coverBetween(m_LastState.x(), m_LastState.y(), startState.x(), startState.y());
-                plan = planner->plan(ribbonManagerCopy, startState, m_PlannerConfig, plan,
+                stats = planner->plan(ribbonManagerCopy, startState, m_PlannerConfig, stats.Plan,
                                      startTime + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
             } catch (const std::exception& e) {
                 cerr << "Exception thrown while planning:" << endl;
                 cerr << e.what() << endl;
                 cerr << "Ignoring that and just trying to proceed." << endl;
-                plan = DubinsPlan();
-//                cancelPlanner();
+                stats.Plan = DubinsPlan();
             } catch (...) {
                 cerr << "Unknown exception thrown while planning; pausing" << endl;
                 cancelPlanner();
                 throw;
             }
 
+            m_TrajectoryPublisher->publishStats(stats, collisionPenalty * Edge::collisionPenaltyFactor(), 0);
+
             // calculate remaining time (to sleep)
             double endTime = m_TrajectoryPublisher->getTime();
-            int sleepTime = (endTime - startTime <= c_PlanningTimeSeconds) ? ((int) (
-                    (c_PlanningTimeSeconds - (endTime - startTime)) * 1000)) : 0;
-
-            this_thread::sleep_for(chrono::milliseconds(sleepTime));
+            int sleepTime = ((int) ((c_PlanningTimeSeconds - (endTime - startTime)) * 1000));
+            if (sleepTime >= 0) {
+//                *m_PlannerConfig.output() << "Finished with " << sleepTime << "ms extra time. Sleeping." << endl;
+                this_thread::sleep_for(chrono::milliseconds(sleepTime));
+            }
+//            else {
+//                *m_PlannerConfig.output() << "Failed to meet real-time bound by " << -sleepTime << "ms" << endl;
+//            }
 
             // display the trajectory
-            m_TrajectoryPublisher->displayTrajectory(plan.getHalfSecondSamples(), true);
+            m_TrajectoryPublisher->displayTrajectory(stats.Plan.getHalfSecondSamples(), true, stats.Plan.dangerous());
 
-            if (!plan.empty()) {
+            if (!stats.Plan.empty()) {
                 failureCount = 0;
                 // send trajectory to controller
                 try {
-                    startState = m_TrajectoryPublisher->publishPlan(plan);
+                    startState = m_TrajectoryPublisher->publishPlan(stats.Plan);
                 } catch (const std::exception& e) {
                     cerr << "Exception thrown while updating controller's reference trajectory:" << endl;
                     cerr << e.what() << endl;
@@ -182,17 +219,17 @@ void Executive::planLoop() {
                 }
                 // if we cancelled the planner, the controller might not give us a valid next plan start, so we
                 // should nope out now rather than fail with an exception in a couple of lines
-                if (!plan.containsTime(startState.time())) {
+                if (!stats.Plan.containsTime(startState.time())) {
                     unique_lock<mutex> lock2(m_PlannerStateMutex);
                     if (m_PlannerState == PlannerState::Cancelled) {
                         break;
                     }
                 }
                 State expectedStartState(startState);
-                plan.sample(expectedStartState);
+                stats.Plan.sample(expectedStartState);
                 if (!startState.isCoLocated(expectedStartState)) {
                     // reset plan because controller says we can't make it
-                    plan = DubinsPlan();
+                    stats.Plan = DubinsPlan();
 
                     // reset turning radius shrink because we can't follow original plan anymore
                     if (c_RadiusShrinkEnabled) {
@@ -201,24 +238,6 @@ void Executive::planLoop() {
                                 m_PlannerConfig.coverageTurningRadius() + m_RadiusShrink);
                         m_RadiusShrink = 0;
                     }
-
-                    // debugging:
-                    cerr << "Start state is not along previous plan; did the controller let us know?" << endl;
-                    if (startState.x() != expectedStartState.x()) {
-                        if (startState.y() != expectedStartState.y()) {
-                            cerr << "Position is different: (" << startState.x() << ", " << startState.y() << ") vs ("
-                                 << expectedStartState.x() << ", " << expectedStartState.y() << "). ";
-                        } else {
-                            cerr << "X is different: " << startState.x() << " vs " << expectedStartState.x() << ". ";
-                        }
-                    } else if (startState.y() != expectedStartState.y()) {
-                        cerr << "Y is different: " << startState.y() << " vs " << expectedStartState.y() << ". ";
-                    }
-                    if (startState.headingDifference(expectedStartState) != 0) {
-                        cerr << "Headings are different: " << startState.heading() << " vs "
-                             << expectedStartState.heading() << ". ";
-                    }
-                    cerr << endl;
 
                 } else {
                     // expected start state is along plan so allow plan to be passed to planner as previous plan
@@ -230,8 +249,14 @@ void Executive::planLoop() {
                 failureCount++;
                 if (failureCount > 2) {
                     m_PlannerConfig.setTimeHorizon(m_PlannerConfig.timeHorizon() / 2);
-                    cerr << "Failed " << failureCount << " times in a row. Reducing time horizon to " << m_PlannerConfig.timeHorizon() << std::endl;
-                    failureCount = 0;
+                    if (m_PlannerConfig.timeHorizon() < m_PlannerConfig.timeMinimum())
+                        // prevent from getting too small
+                        m_PlannerConfig.setTimeHorizon(m_PlannerConfig.timeMinimum());
+                    else {
+                        cerr << "Failed " << failureCount << " times in a row. Reducing time horizon to "
+                             << m_PlannerConfig.timeHorizon() << std::endl;
+                        failureCount = 0;
+                    }
                 }
             }
         }
@@ -243,6 +268,16 @@ void Executive::planLoop() {
         cerr << "Unknown exception thrown in plan loop" << endl;
     }
 
+    // task-level stats reporting
+    auto trialEndTime = m_TrajectoryPublisher->getTime();
+    // TODO! -- publish to a topic
+    auto wallClockTime = trialEndTime - trialStartTime;
+    // multiply penalties by weights
+    cumulativeCollisionPenalty *= Edge::collisionPenaltyFactor();
+    auto timePenalty = wallClockTime * Edge::timePenaltyFactor();
+
+    m_TrajectoryPublisher->publishTaskLevelStats(wallClockTime, cumulativeCollisionPenalty,
+            timePenalty + cumulativeCollisionPenalty);
     unique_lock<mutex> lock2(m_PlannerStateMutex);
     std::cerr << "Setting inactive state" << std::endl;
     m_PlannerState = PlannerState::Inactive;
@@ -255,8 +290,12 @@ void Executive::terminate()
     cancelPlanner();
 }
 
-void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle) {
+void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle, double width, double length) {
     m_DynamicObstaclesManager.update(mmsi, inventDistributions(obstacle));
+    m_BinaryDynamicObstaclesManager->update(mmsi, obstacle.x(), obstacle.y(), obstacle.heading(),
+            obstacle.speed(), obstacle.time(), width, length);
+    m_GaussianDynamicObstaclesManager->update(mmsi, obstacle.x(), obstacle.y(), obstacle.heading(),
+            obstacle.speed(), obstacle.time());
 }
 
 void Executive::refreshMap(const std::string& pathToMapFile, double latitude, double longitude) {
@@ -268,15 +307,19 @@ void Executive::refreshMap(const std::string& pathToMapFile, double latitude, do
                 m_NewMap = make_shared<Map>();
                 m_CurrentMapPath = pathToMapFile;
                 *m_PlannerConfig.output() << "Map cleared. Using empty map now." << endl;
+                m_TrajectoryPublisher->displayMap(pathToMapFile);
                 return;
             }
-            // could take some time for I/O, Dijkstra on entire map
+            // could take some time for I/O
             try {
                 // If the name looks like it's one of our gridworld maps, load it in that format, otherwise assume GeoTIFF
                 if (pathToMapFile.find(".map") == -1) {
+                    // don't try to display geotiff maps
+                    m_TrajectoryPublisher->displayMap("");
                     m_NewMap = make_shared<GeoTiffMap>(pathToMapFile, longitude, latitude);
                 } else {
                     m_NewMap = make_shared<GridWorldMap>(pathToMapFile);
+                    m_TrajectoryPublisher->displayMap(pathToMapFile);
                 }
                 m_CurrentMapPath = pathToMapFile;
                 *m_PlannerConfig.output() << "Loaded map file: " << pathToMapFile << endl;
@@ -288,6 +331,10 @@ void Executive::refreshMap(const std::string& pathToMapFile, double latitude, do
                 m_NewMap = nullptr;
                 m_CurrentMapPath = "";
             }
+        } else {
+            // refresh display anyway
+//            if (pathToMapFile.find(".map") != -1)
+//                m_TrajectoryPublisher->displayMap(pathToMapFile);
         }
     }).detach();
 }
@@ -319,7 +366,8 @@ void Executive::setConfiguration(double turningRadius, double coverageTurningRad
                                  int k,
                                  int heuristic, double timeHorizon, double timeMinimum,
                                  double collisionCheckingIncrement,
-                                 int initialSamples, bool useBrownPaths) {
+                                 int initialSamples, bool useBrownPaths, bool useGaussianDynamicObstacles,
+                                 bool ignoreDynamicObstacles) {
     m_PlannerConfig.setTurningRadius(turningRadius);
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
     m_PlannerConfig.setMaxSpeed(maxSpeed);
@@ -339,6 +387,8 @@ void Executive::setConfiguration(double turningRadius, double coverageTurningRad
     m_PlannerConfig.setCollisionCheckingIncrement(collisionCheckingIncrement);
     m_PlannerConfig.setInitialSamples(initialSamples);
     m_PlannerConfig.setUseBrownPaths(useBrownPaths);
+    m_UseGaussianDynamicObstacles = useGaussianDynamicObstacles;
+    m_IgnoreDynamicObstacles = ignoreDynamicObstacles;
 }
 
 void Executive::startPlanner() {
@@ -368,7 +418,8 @@ void Executive::setPlannerVisualization(bool visualize, const std::string& visua
     }
 }
 
-void Executive::updateDynamicObstacle(uint32_t mmsi, const std::vector<Distribution>& obstacle) {
-    m_DynamicObstaclesManager.update(mmsi, obstacle);
-}
+//void Executive::updateDynamicObstacle(uint32_t mmsi, const std::vector<Distribution>& obstacle) {
+//    m_DynamicObstaclesManager.update(mmsi, obstacle);
+//    // TODO! -- other representations
+//}
 

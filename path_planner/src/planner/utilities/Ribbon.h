@@ -128,7 +128,7 @@ private:
     // use a tolerance to compensate for floating point errors that were happening
     static constexpr double c_Tolerance = 1e-5;
 
-    static constexpr double c_StrictModifier = 8;
+    static constexpr double c_StrictModifier = 2;
 
     double squaredLength() const {
         return (m_EndX - m_StartX) * (m_EndX - m_StartX) + (m_EndY - m_StartY) * (m_EndY - m_StartY);

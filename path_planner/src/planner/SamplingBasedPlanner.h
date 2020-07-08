@@ -15,7 +15,7 @@ public:
 
     ~SamplingBasedPlanner() override = default;
 
-    DubinsPlan plan(const RibbonManager&, const State& start, PlannerConfig config, const DubinsPlan& previousPlan,
+    Stats plan(const RibbonManager&, const State& start, PlannerConfig config, const DubinsPlan& previousPlan,
                     double timeRemaining) override;
 
     /**
@@ -52,6 +52,7 @@ public:
 protected:
     double m_StartStateTime;
     std::vector<State> m_Samples;
+    unsigned long m_AttemptedSamples = 0;
     int m_ExpandedCount = 0;
 
     Vertex::SharedPtr m_BestVertex;

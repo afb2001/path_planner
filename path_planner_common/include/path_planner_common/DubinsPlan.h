@@ -99,6 +99,14 @@ public:
 private:
     std::vector<DubinsWrapper> m_DubinsPaths;
 
+    bool m_Dangerous = false;
+public:
+    bool dangerous() const;
+
+    void setDangerous(bool dangerous);
+
+private:
+
     static constexpr double c_PlanTimeDensity = 0.5;
 };
 

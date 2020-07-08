@@ -16,6 +16,21 @@
  */
 class Planner {
 public:
+    /**
+     * Hold all the stats for the planner.
+     *
+     * TODO! -- CPU time?
+     */
+    struct Stats {
+        unsigned long Samples;
+        unsigned long Generated;
+        unsigned long Expanded;
+        unsigned long Iterations;
+        double PlanFValue;
+        unsigned long PlanDepth;
+        DubinsPlan Plan;
+    };
+
     Planner();
 
     virtual ~Planner() = default;
@@ -29,7 +44,7 @@ public:
      * @param timeRemaining computation time bound
      * @return
      */
-    virtual DubinsPlan plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
+    virtual Stats plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
                             const DubinsPlan& previousPlan, double timeRemaining);
 
     /**
@@ -56,6 +71,8 @@ protected:
     double now() const;
 
     PlannerConfig m_Config;
+
+    Stats m_Stats;
 
 };
 

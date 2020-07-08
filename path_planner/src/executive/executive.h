@@ -5,6 +5,8 @@
 #include "../planner/utilities/RibbonManager.h"
 #include "../trajectory_publisher.h"
 #include "../planner/Planner.h"
+#include "../common/dynamic_obstacles/BinaryDynamicObstaclesManager.h"
+#include "../common/dynamic_obstacles/GaussianDynamicObstaclesManager.h"
 #include <future>
 #include <fstream>
 
@@ -59,8 +61,8 @@ public:
      * @param mmsi
      * @param obstacle
      */
-    void updateDynamicObstacle(uint32_t mmsi, State obstacle);
-    void updateDynamicObstacle(uint32_t mmsi, const std::vector<Distribution>& obstacle);
+    void updateDynamicObstacle(uint32_t mmsi, State obstacle, double width, double length);
+//    void updateDynamicObstacle(uint32_t mmsi, const std::vector<Distribution>& obstacle);
 
     /**
      * Launch a new thread for the plan loop.
@@ -97,7 +99,8 @@ public:
      */
     void setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double lineWidth, int k,
                           int heuristic, double timeHorizon, double timeMinimum, double collisionCheckingIncrement,
-                          int initialSamples, bool useBrownPaths);
+                          int initialSamples, bool useBrownPaths, bool useGaussianDynamicObstacles,
+                          bool ignoreDynamicObstacles);
 
     /**
      * Update the planner visualization status with a new visualization file. If visualize is false the path is ignored.
@@ -131,9 +134,15 @@ private:
     // TODO! -- use ROS_INFO
     PlannerConfig m_PlannerConfig = PlannerConfig(&std::cerr);
 
+    // TODO! -- expose which kind of obstacles to use to dynamic reconfig
+    bool m_UseGaussianDynamicObstacles = false;
+    bool m_IgnoreDynamicObstacles = false;
+
     Visualizer::UniquePtr m_Visualizer;
 
-    DynamicObstaclesManager m_DynamicObstaclesManager;
+    DynamicObstaclesManager1 m_DynamicObstaclesManager;
+    BinaryDynamicObstaclesManager::SharedPtr m_BinaryDynamicObstaclesManager = std::make_shared<BinaryDynamicObstaclesManager>();
+    GaussianDynamicObstaclesManager::SharedPtr m_GaussianDynamicObstaclesManager = std::make_shared<GaussianDynamicObstaclesManager>();
 
     // start with no new map
     std::shared_ptr<Map> m_NewMap = nullptr;

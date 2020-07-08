@@ -2,6 +2,7 @@
 #define SRC_TRAJECTORY_PUBLISHER_H
 
 #include "planner/utilities/RibbonManager.h"
+#include "planner/Planner.h"
 #include <path_planner_common/DubinsPlan.h>
 
 /**
@@ -25,7 +26,22 @@ public:
      * @param trajectory
      * @param plannerTrajectory
      */
-    virtual void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory) = 0;
+    virtual void displayTrajectory(std::vector<State> trajectory, bool plannerTrajectory, bool dangerous) = 0;
+
+    /**
+     * Display a (binary) dynamic obstacle
+     * @param x
+     * @param y
+     * @param width
+     * @param length
+     */
+    virtual void displayDynamicObstacle(double x, double y, double yaw, double width, double length, uint32_t id) = 0;
+
+    virtual void publishStats(const Planner::Stats&, double collisionPenalty, unsigned long cpuTime) = 0;
+
+    virtual void publishTaskLevelStats(double wallClockTime, double cumulativeCollisionPenalty, double cumulativeGValue) = 0;
+
+    virtual void displayMap(std::string path) = 0;
 
     /**
      * Alert the system that the planner has finished this iteration. This might deserve its own interface.

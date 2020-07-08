@@ -16,7 +16,7 @@ public:
 
     ~AStarPlanner() override = default;
 
-    DubinsPlan plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
+    Stats plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
                     const DubinsPlan& previousPlan, double timeRemaining) override;
 
 protected:

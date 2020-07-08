@@ -9,24 +9,28 @@ std::function<bool(shared_ptr<Vertex> v1, shared_ptr<Vertex> v2)> AStarPlanner::
     };
 }
 
-DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
+Planner::Stats AStarPlanner::plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
                               const DubinsPlan& previousPlan, double timeRemaining) {
     m_Config = std::move(config); // gotta do this before we can call now()
     double endTime = timeRemaining + now();
     m_Config.setStartStateTime(start.time());
     m_RibbonManager = ribbonManager;
     m_RibbonManager.changeHeuristicIfTooManyRibbons(); // make sure ribbon heuristic is calculable
-    m_ExpandedCount = 0;
+    if (m_RibbonManager.done()) m_RibbonManager.setCoverageCompletedTime(start.time());
+    m_Stats = Stats();
+//    m_ExpandedCount = 0;
     m_IterationCount = 0;
     m_StartStateTime = start.time();
     m_Samples.clear();
+    m_AttemptedSamples = 0;
     double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
     double magnitude = m_Config.maxSpeed() * m_Config.timeHorizon();
     minX = start.x() - magnitude;
     maxX = start.x() + magnitude;
     minY = start.y() - magnitude;
     maxY = start.y() + magnitude;
-    StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, 7, m_RibbonManager); // lucky seed
+    auto seed = (unsigned long)endTime; // for different results each time. For consistency, use like 7 or something
+    StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, seed, m_RibbonManager); // lucky seed
     auto startV = Vertex::makeRoot(start, m_RibbonManager);
     startV->state().speed() = m_Config.maxSpeed(); // state's speed is used to compute h so need to use max
     startV->computeApproxToGo(m_Config);
@@ -37,12 +41,9 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         brownPathSamples = m_RibbonManager.findNearStatesOnRibbons(start, m_Config.coverageTurningRadius());
     }
 
-    // redundant start visualization because we do other vis before we actually start search
-//    visualizeVertex(startV, "start");
     // collision check old plan
     Vertex::SharedPtr lastPlanEnd = startV;
     if (!previousPlan.empty()) {
-//        auto p = previousPlan.get().front();
         for (const auto& p : previousPlan.get()) {
             if (p.getEndTime() <= start.time()) continue;
             if (p.getNetTime() == 0) continue; // There is sometimes a zero length edge at the end. Not sure why
@@ -52,6 +53,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                 lastPlanEnd = startV;
                 break;
             }
+            if (goalCondition(lastPlanEnd)) break;
         }
     }
     // big loop
@@ -78,6 +80,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                         lastPlanEnd = startV;
                         break;
                     }
+                    if (goalCondition(lastPlanEnd)) break;
                 }
             }
         }
@@ -92,7 +95,7 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
         // have to loop around
 
 //        expandToCoverSpecificSamples(startV, ribbonSamples, m_Config.obstacles(), true);
-        expandToCoverSpecificSamples(startV, brownPathSamples, m_Config.obstacles(), true);
+        expandToCoverSpecificSamples(startV, brownPathSamples, m_Config.obstaclesManager(), true);
         // On the first iteration add initialSamples samples, otherwise just double them
         if (m_Samples.size() < m_Config.initialSamples()) addSamples(generator, m_Config.initialSamples());
         else addSamples(generator); // double samples (BIT* linearly increases them...)
@@ -102,28 +105,27 @@ DubinsPlan AStarPlanner::plan(const RibbonManager& ribbonManager, const State& s
                 m_Config.visualizationStream() << "State: (" << s.toStringRad() << "), f: " << 0 << ", g: " << 0 << ", h: " <<
                                            0 << " sample" << std::endl;
         }
-        auto v = aStar(m_Config.obstacles(), endTime);
-        if (!m_BestVertex || (v && v->f() + 0.05 < m_BestVertex->f())) { // add fudge factor to favor earlier (simpler) plans
+        auto v = aStar(m_Config.obstaclesManager(), endTime);
+        if (!m_BestVertex || (v && v->f() + 0.0 < m_BestVertex->f())) { // add fudge factor to favor earlier (simpler) plans
             // found a (better) plan
             m_BestVertex = v;
             if (v && m_Config.visualizations()) {
-                visualizePlan(tracePlan(v, false, m_Config.obstacles()));
+                visualizePlan(tracePlan(v, false, m_Config.obstaclesManager()));
                 visualizeVertex(v, "goal", false);
             }
         }
-        m_IterationCount++;
+        m_Stats.Iterations++;
     }
     // Add expected final cost, total accrued cost (not here)
-    *m_Config.output() << m_Samples.size() << " total samples, " << m_ExpandedCount << " expanded in "
-        << m_IterationCount << " iterations" << std::endl;
+    m_Stats.Samples = m_Samples.size();
     if (!m_BestVertex) {
         *m_Config.output() << "Failed to find a plan" << std::endl;
-        return DubinsPlan();
     } else {
-//        *m_Config.output() << "Final plan f value: " << m_BestVertex->f() << std::endl;
-        *m_Config.output() << "Final plan depth: " << m_BestVertex->getDepth() << std::endl;
-        return tracePlan(m_BestVertex, false, m_Config.obstacles());
+        m_Stats.PlanFValue = m_BestVertex->f();
+        m_Stats.PlanDepth = m_BestVertex->getDepth();
+        m_Stats.Plan = std::move(tracePlan(m_BestVertex, false, m_Config.obstaclesManager()));
     }
+    return m_Stats;
 }
 
 shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles, double endTime) {
@@ -138,7 +140,6 @@ shared_ptr<Vertex> AStarPlanner::aStar(const DynamicObstaclesManager& obstacles,
 
         if (vertexQueueEmpty()) return Vertex::SharedPtr(nullptr);
         vertex = popVertexQueue();
-//        if (m_ExpandedCount >= m_Samples.size()) break; // probably can't find a good plan in these samples so add more
     }
     return shared_ptr<Vertex>(nullptr);
 }

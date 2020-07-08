@@ -14,13 +14,16 @@ DubinsPlan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, const
     if (!v) {
         return DubinsPlan();
     }
+    bool dangerous = false;
     for (auto cur = v; !cur->isRoot(); cur = cur->parent()) { // extra edge somehow???
         branch.push_back(cur->parentEdge());
         if (cur->parentEdge()->getSavedCollisionPenalty() > 0) {
-            std::cerr << "Collision possible in returned plan (penalty = " << cur->parentEdge()->collisionPenaltyFactor() << ")" << std::endl;
+            std::cerr << "Collision possible in returned plan (penalty = " << cur->parentEdge()->getSavedCollisionPenalty() << ")" << std::endl;
+            dangerous = true;
         }
     }
     DubinsPlan plan;
+    plan.setDangerous(dangerous);
     for (auto it = branch.rbegin(); it != branch.rend(); it++) {
         plan.append((*it)->getPlan(m_Config));
     }
@@ -32,7 +35,7 @@ double Planner::now() const {
     return m_Config.now();
 }
 
-DubinsPlan Planner::plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
+Planner::Stats Planner::plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
                          const DubinsPlan& previousPlan, double timeRemaining) {
     m_Config = std::move(config);
     throw std::runtime_error("Ribbon point-to-point planner is not yet implemented");

@@ -20,6 +20,7 @@ void TrajectoryDisplayerHelper::displayTrajectory(const std::vector<State>& traj
     geographic_visualization_msgs::GeoVizPointList displayPoints;
     displayPoints.color.b = 1;
     if (!plannerTrajectory) {
+        // controller trajectory
         displayPoints.color.a = 0.8;
         displayPoints.size = 10;
         if (achievable) {
@@ -29,8 +30,14 @@ void TrajectoryDisplayerHelper::displayTrajectory(const std::vector<State>& traj
             displayPoints.color.r = 1;
         }
     } else {
+        // planner trajectory
         displayPoints.color.a = 1;
         displayPoints.size = 3.0;
+        if (!achievable) {
+            // dangerous, so color it red
+            displayPoints.color.b = 0;
+            displayPoints.color.r = 1;
+        }
     }
     for (const State& s : trajectory) {
         geographic_msgs::GeoPoint point;

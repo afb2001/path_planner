@@ -8,6 +8,8 @@
 #include "../../src/planner/AStarPlanner.h"
 #include "../../src/common/map/GeoTiffMap.h"
 #include "../../src/common/map/GridWorldMap.h"
+#include "../../src/common/dynamic_obstacles/BinaryDynamicObstaclesManager.h"
+#include "../../src/common/dynamic_obstacles/GaussianDynamicObstaclesManager.h"
 #include <thread>
 #include <path_planner_common/Plan.h>
 
@@ -94,7 +96,7 @@ TEST(UnitTests, PlanTransferTest1) {
     State start(0, 0, 0, 2.5, 1);
     for (int i = 2; i < 5; i++){
         ribbonManager.cover(start.x(), start.y(), false);
-        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
         auto planMsg = getPlanMsg(plan);
@@ -167,7 +169,7 @@ TEST(UnitTests, GaussianTruncateTest) {
 
 TEST(UnitTests, DynamicObstacleTest1) {
     // This test shouldn't pass right now
-    DynamicObstaclesManager obstaclesManager;
+    DynamicObstaclesManager1 obstaclesManager;
     double sigma[2][2] = {{1, 0}, {0, 1}};
     double mean[2] = {0, 0};
     std::vector<Distribution> distributions;
@@ -195,6 +197,44 @@ TEST(UnitTests, DynamicObstacleTest1) {
     obstaclesManager.update(1, distributions);
     auto p1 = obstaclesManager.collisionExists(1, 4, 3);
     EXPECT_NEAR(p1, p, 0.00001);
+}
+
+TEST(UnitTests, BinaryDynamicObstaclesTest1) {
+    BinaryDynamicObstaclesManager manager;
+    manager.update(1, 42, 42, 0, 1, 1, 5, 15);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 42, 1, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 49, 1, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 50, 1, false), 0);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(44, 42, 1, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(45, 42, 1, false), 0);
+
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 52, 11, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 59, 11, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 60, 11, false), 0);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(44, 52, 11, false), 1);
+    EXPECT_DOUBLE_EQ(manager.collisionExists(45, 52, 11, false), 0);
+}
+
+TEST(UnitTests, DerivedDynamicObstaclesTest) {
+    BinaryDynamicObstaclesManager::SharedPtr b = std::make_shared<BinaryDynamicObstaclesManager>();
+    b->update(1, 42, 42, 0, 1, 1, 5, 15);
+    const DynamicObstaclesManager& manager = *b;
+
+    EXPECT_DOUBLE_EQ(manager.collisionExists(42, 42, 1, false), 1);
+
+    plannerConfig.setObstaclesManager(b);
+
+    EXPECT_DOUBLE_EQ(plannerConfig.obstaclesManager().collisionExists(42, 42, 1, false), 1);
+}
+
+TEST(UnitTests, GaussianDynamicObstacleTest1) {
+    GaussianDynamicObstaclesManager manager;
+    manager.update(1, 0, 0, 0, 1, 1);
+    for (int i = 0; i < 10; i++) {
+        cerr << manager.collisionExists(0, 10 * i, 1, false) << endl;
+        cerr << manager.collisionExists(10 * i, 10 * i, 1, false) << endl;
+        cerr << manager.collisionExists(10 * i, 0, 1, false) << endl;
+    }
 }
 
 TEST(UnitTests, GeoTiffMapTest1) {
@@ -243,7 +283,7 @@ void visualizePath(const State& s1, const State& s2, const State& s3, double tur
         return t.tv_sec + t.tv_nsec * 1e-9;
     });
     config.setMap(make_shared<Map>());
-    config.setObstacles(DynamicObstaclesManager());
+    config.setObstacles(DynamicObstaclesManager1());
     config.setBranchingFactor(4);
     config.setMaxSpeed(2.5); // set this super high so we don't clip paths short
     config.setTurningRadius(turningRadius);
@@ -272,7 +312,7 @@ void visualizePath(const State& s1, const State& s2, double turningRadius) {
         return t.tv_sec + t.tv_nsec * 1e-9;
     });
     config.setMap(make_shared<Map>());
-    config.setObstacles(DynamicObstaclesManager());
+    config.setObstacles(DynamicObstaclesManager1());
     config.setBranchingFactor(4);
     config.setMaxSpeed(2); // set this super high so we don't clip paths short
     config.setTurningRadius(turningRadius);
@@ -622,7 +662,7 @@ TEST(UnitTests, HeuristicComparison5) {
     plannerConfig.setCoverageTurningRadius(16); // eh probably don't need this but whatever
     State start(-20, -20, 0, 2.5, 1);
     AStarPlanner planner;
-    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
     auto previousConfig = plannerConfig;
     // done with that iteration, let's test what happens in the next one
@@ -832,7 +872,7 @@ TEST(UnitTests, ComputeEdgeCostTest) {
     auto e = v2->parentEdge();
     auto a = e->computeApproxCost(plannerConfig.maxSpeed(), plannerConfig.turningRadius());
     Map::SharedPtr map = make_shared<Map>();
-    DynamicObstaclesManager dynamicObstacles;
+    DynamicObstaclesManager1 dynamicObstacles;
 //    Path path;
 //    path.add(0, 10);
     auto c = e->computeTrueCost(plannerConfig);
@@ -860,7 +900,7 @@ TEST(UnitTests, VertexTests1) {
     auto c = v1->parentEdge()->computeApproxCost(2.5, 8);
     EXPECT_DOUBLE_EQ(c, 10);
     Map::SharedPtr m = make_shared<Map>();
-    DynamicObstaclesManager obstacles;
+    DynamicObstaclesManager1 obstacles;
     auto t = v1->parentEdge()->computeTrueCost(plannerConfig);
     EXPECT_DOUBLE_EQ(t, c);
     EXPECT_DOUBLE_EQ(t, v1->currentCost());
@@ -878,7 +918,7 @@ TEST(UnitTests, VertexTests2) {
     auto v1 = Vertex::connect(root, State(5, -20, M_PI, 2.5, 0));
     auto c = v1->parentEdge()->computeApproxCost(2.5, 8);
     auto m = make_shared<Map>();
-    DynamicObstaclesManager obstacles;
+    DynamicObstaclesManager1 obstacles;
     auto t = v1->parentEdge()->computeTrueCost(plannerConfig);
     EXPECT_DOUBLE_EQ(c, t);
     auto h = v1->computeApproxToGo(plannerConfig);
@@ -894,7 +934,7 @@ TEST(UnitTests, VertexTests3) {
     auto v1 = Vertex::connect(root, State(5, -20, M_PI, 2.5, 0));
     v1->parentEdge()->computeApproxCost(2.5, 8);
     auto m = make_shared<Map>();
-    DynamicObstaclesManager obstacles;
+    DynamicObstaclesManager1 obstacles;
     v1->parentEdge()->computeTrueCost(plannerConfig);
     auto h = v1->computeApproxToGo(plannerConfig);
     EXPECT_DOUBLE_EQ((v1->state().distanceTo(30, 30) + 20 * sqrt(2) + 50 - 2 * Ribbon::minLength()) / 2.5, h);
@@ -1012,7 +1052,7 @@ TEST(UnitTests, ExpandTest1Ribbons) {
     start.time() = 1;
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 0, 30);
-    DynamicObstaclesManager obstacles;
+    const DynamicObstaclesManager& obstacles = BinaryDynamicObstaclesManager();
     auto root = Vertex::makeRoot(start, ribbonManager);
     AStarPlanner planner;
     planner.setConfig(plannerConfig);
@@ -1034,7 +1074,7 @@ TEST(UnitTests, ExpandDifferentTurningRadiiTest) {
     RibbonManager ribbonManager;
     ribbonManager.add(0, 0, 0, 30);
     Map::SharedPtr m = make_shared<Map>();
-    DynamicObstaclesManager obstacles;
+    const DynamicObstaclesManager& obstacles = BinaryDynamicObstaclesManager();
     auto root = Vertex::makeRoot(start, ribbonManager);
     AStarPlanner planner;
     planner.setConfig(plannerConfig);
@@ -1138,12 +1178,12 @@ TEST(PlannerTests, UsePreviousPlan) {
     plannerConfig.setVisualizer(&visualizer);
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
     start.time() = 2;
     plan.sample(start);
     // ribbon manager won't have changed
-    auto plan2 = planner.plan(ribbonManager, start, plannerConfig, plan, 0.95);
+    auto plan2 = planner.plan(ribbonManager, start, plannerConfig, plan, 0.95).Plan;
     EXPECT_FALSE(plan2.empty());
     validatePlan(plan2, plannerConfig);
 }
@@ -1156,7 +1196,7 @@ TEST(UnitTests, UsePreviousPlanUnitTest) {
     plannerConfig.setVisualizer(&visualizer);
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
     start.time() = 2;
     plan.sample(start);
@@ -1179,7 +1219,7 @@ TEST(UnitTests, UsePreviousPlanUnitTest) {
         }
     }
 
-    auto newPlan = planner.tracePlan(lastPlanEnd, false, plannerConfig.obstacles());
+    auto newPlan = planner.tracePlan(lastPlanEnd, false, plannerConfig.obstaclesManager());
     State s1 = start, s2 = start;
     while (s1.time() < newPlan.getEndTime()) {
         plan.sample(s1);
@@ -1202,7 +1242,7 @@ TEST(PlannerTests, RHRSAStarTest1Ribbons) {
     ribbonManager.add(0, 10, 0, 30);
     AStarPlanner planner;
     State start(0, 0, 0, 2.5, 1);
-    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
     validatePlan(plan, plannerConfig);
 //    for (auto s : plan.getHalfSecondSamples()) cerr << s.toString() << endl;
@@ -1215,7 +1255,7 @@ TEST(PlannerTests, RHRSAStarTest2Ribbons) {
     State start(0, 0, 0, 2.5, 1);
     while(!ribbonManager.done()) {
         ribbonManager.cover(start.x(), start.y(), false);
-        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.5); // quick iterations
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.5).Plan; // quick iterations
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
         start = plan.getHalfSecondSamples()[1];
@@ -1235,7 +1275,28 @@ TEST(PlannerTests, RibbonFarAwayTest) {
     DubinsPlan plan;
     while(!ribbonManager.done()) {
         ribbonManager.cover(start.x(), start.y(), false);
-        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5); // quick iterations
+        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5).Plan; // quick iterations
+        ASSERT_FALSE(plan.empty());
+        validatePlan(plan, plannerConfig);
+        start.time() += 1;
+        plan.sample(start);
+        ASSERT_LT(start.time(), 90);
+        cerr << start.toString() << endl;
+    }
+}
+
+TEST(PlannerTests, RibbonNotQuiteAsFarAwayTest) {
+    RibbonManager ribbonManager;
+    ribbonManager.add(50, 60, 50, 80);
+    AStarPlanner planner;
+    State start(0, 0, 0, 2.5, 1);
+    Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_test_visualizations"));
+    plannerConfig.setVisualizations(true);
+    plannerConfig.setVisualizer(&visualizer);
+    DubinsPlan plan;
+    while(!ribbonManager.done()) {
+        ribbonManager.cover(start.x(), start.y(), false);
+        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5).Plan; // quick iterations
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
         start.time() += 1;
@@ -1258,7 +1319,7 @@ TEST(PlannerTests, RHRSAStarTest4Ribbons) {
     DubinsPlan plan;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
-        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.95);
+        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.95).Plan;
         ASSERT_FALSE(plan.empty());
         validatePlan(plan, plannerConfig);
         ASSERT_DOUBLE_EQ(plan.getStartTime(), start.time());
@@ -1285,7 +1346,7 @@ TEST(PlannerTests, RHRSAStarTest4aRibbons) {
     Visualizer::UniquePtr visualizer(new Visualizer("/tmp/planner_test_visualizations"));
     plannerConfig.setVisualizations(true);
     plannerConfig.setVisualizer(&visualizer);
-    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
     for (auto s : plan.getHalfSecondSamples()) cerr << s.toString() << endl;
 }
@@ -1303,7 +1364,7 @@ TEST(PlannerTests, RHRSAStarSingleRibbonTSP) {
     plannerConfig.setVisualizer(&visualizer);
     while(!ribbonManager.done()) {
         /*if (!headingChanged)*/ ribbonManager.cover(start.x(), start.y(), false);
-        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5);
+        plan = planner.plan(ribbonManager, start, plannerConfig, plan, 0.5).Plan;
         ASSERT_FALSE(plan.empty());
 //        headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
         start.time() += 1;
@@ -1328,7 +1389,7 @@ TEST(PlannerTests, RHRSAStarTest5TspRibbons) {
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
-        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
         ASSERT_FALSE(plan.empty());
         headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
         start = plan.getHalfSecondSamples()[1];
@@ -1350,7 +1411,7 @@ TEST(PlannerTests, RHRSAStarTest6DubinsRibbons) {
     bool headingChanged = false;
     while(!ribbonManager.done()) {
         if (!headingChanged) ribbonManager.cover(start.x(), start.y(), false);
-        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+        auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
         ASSERT_FALSE(plan.empty());
         headingChanged = plan.getHalfSecondSamples()[1].heading() == start.heading();
         start = plan.getHalfSecondSamples()[1];
@@ -1371,7 +1432,7 @@ TEST(PlannerTests, RHRSAStarSeparateThreadTest) {
     std::thread t ([&]{
         while(!ribbonManager.done()) {
             ribbonManager.cover(start.x(), start.y(), false);
-            auto plan = planner->plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95);
+            auto plan = planner->plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
             ASSERT_FALSE(plan.empty());
             start = plan.getHalfSecondSamples()[1];
             ASSERT_LT(start.time(), 60);
@@ -1401,9 +1462,9 @@ TEST(PlannerTests, VisualizationTest) {
         return t.tv_sec + t.tv_nsec * 1e-9;
     });
     config.setMap(make_shared<Map>());
-    config.setObstacles(DynamicObstaclesManager());
+    config.setObstacles(DynamicObstaclesManager1());
     config.setBranchingFactor(4);
-    auto plan = planner.plan(ribbonManager, start, config, DubinsPlan(), 0.95);
+    auto plan = planner.plan(ribbonManager, start, config, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
 }
 
@@ -1426,11 +1487,11 @@ TEST(PlannerTests, VisualizationLongerTest) {
         return t.tv_sec + t.tv_nsec * 1e-9;
     });
     config.setMap(make_shared<Map>());
-    config.setObstacles(DynamicObstaclesManager());
+    config.setObstacles(DynamicObstaclesManager1());
     std::thread t ([&]{
         while(!ribbonManager.done()) {
             ribbonManager.cover(start.x(), start.y(), false);
-            auto plan = planner.plan(ribbonManager, start, config, DubinsPlan(), 0.95);
+            auto plan = planner.plan(ribbonManager, start, config, DubinsPlan(), 0.95).Plan;
             ASSERT_FALSE(plan.empty());
             start = plan.getHalfSecondSamples()[1];
             ASSERT_LT(start.time(), 60);
@@ -1460,10 +1521,10 @@ TEST(PlannerTests, RandomVisualizationTest) {
         return t.tv_sec + t.tv_nsec * 1e-9;
     });
     config.setMap(make_shared<Map>());
-    config.setObstacles(DynamicObstaclesManager());
+    config.setObstacles(DynamicObstaclesManager1());
     StateGenerator generator(-10, 30, 0, 120, 2.5, 2.5, 9);
     for (int i = 0; i < 10; i++) {
-        auto plan = planner.plan(ribbonManager, generator.generate(), config, DubinsPlan(), 0.95);
+        auto plan = planner.plan(ribbonManager, generator.generate(), config, DubinsPlan(), 0.95).Plan;
         ASSERT_FALSE(plan.empty());
     }
 }
@@ -1479,7 +1540,7 @@ TEST(PlannerTests, RandomPointsTest) {
     AStarPlanner planner;
     StateGenerator generator(-10, 30, 0, 120, 2.5, 2.5, 9);
     for (int i = 0; i < 10; i++) {
-        auto plan = planner.plan(ribbonManager, generator.generate(), plannerConfig, DubinsPlan(), 9.95);
+        auto plan = planner.plan(ribbonManager, generator.generate(), plannerConfig, DubinsPlan(), 9.95).Plan;
         ASSERT_FALSE(plan.empty());
     }
 }
@@ -1493,7 +1554,7 @@ int main(int argc, char **argv){
     };
     plannerConfig.setNowFunction(f);
     plannerConfig.setMap(make_shared<Map>());
-    plannerConfig.setObstacles(DynamicObstaclesManager());
+    plannerConfig.setObstacles(DynamicObstaclesManager1());
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

@@ -1,3 +1,4 @@
+# Service which updates the controller's reference trajectory and returns a state from which to start planning, 1s from now
 path_planner_common/Plan plan
 ---
 path_planner_common/StateMsg state

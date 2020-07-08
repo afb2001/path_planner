@@ -15,6 +15,7 @@ void SamplingBasedPlanner::pushVertexQueue(Vertex::SharedPtr vertex) {
     std::push_heap(m_VertexQueue.begin(), m_VertexQueue.end(), getVertexComparator());
 //    std::cerr << "Pushing to vertex queue: " << vertex->toString() << std::endl;
     visualizeVertex(vertex, "vertex", false);
+    m_Stats.Generated++;
 }
 
 std::shared_ptr<Vertex> SamplingBasedPlanner::popVertexQueue() {
@@ -39,8 +40,13 @@ std::function<bool(const State& s1, const State& s2)> SamplingBasedPlanner::getS
 }
 
 bool SamplingBasedPlanner::goalCondition(const std::shared_ptr<Vertex>& vertex) {
-    return vertex->state().time() >= m_StartStateTime + m_Config.timeHorizon() ||
-           (vertex->done() && vertex->state().time() >= m_StartStateTime + m_Config.timeMinimum());
+    auto coverageDoneTime = vertex->ribbonManager().coverageCompletedTime() + m_Config.timeMinimum();
+    if (vertex->ribbonManager().coverageCompletedTime() == -1 && vertex->ribbonManager().done()) {
+        throw std::runtime_error("Unset coverage completed time but coverage is done");
+    }
+    auto nonCoverageDoneTime = m_StartStateTime + m_Config.timeHorizon();
+    return vertex->state().time() >= nonCoverageDoneTime ||
+           (vertex->done() && vertex->state().time() >= coverageDoneTime);
 }
 
 void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, const DynamicObstaclesManager& obstacles) {
@@ -120,7 +126,7 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
         destinationVertex->parentEdge()->computeTrueCost(m_Config);
         pushVertexQueue(destinationVertex);
     }
-    m_ExpandedCount++;
+    m_Stats.Expanded++;
 }
 
 int SamplingBasedPlanner::k() const {
@@ -128,9 +134,11 @@ int SamplingBasedPlanner::k() const {
 }
 
 void SamplingBasedPlanner::addSamples(StateGenerator& generator, int n) {
+    m_AttemptedSamples += n;
     for (int i = 0; i < n; i++) {
         const auto s = generator.generate();
-        m_Samples.push_back(s);
+        if (!m_Config.map()->isBlocked(s.x(), s.y()))
+            m_Samples.push_back(s);
     }
 }
 
@@ -150,13 +158,14 @@ std::function<bool(const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vert
     };
 }
 
-DubinsPlan SamplingBasedPlanner::plan(const RibbonManager&, const State& start, PlannerConfig config,
+Planner::Stats SamplingBasedPlanner::plan(const RibbonManager&, const State& start, PlannerConfig config,
                                       const DubinsPlan& previousPlan,
                                       double timeRemaining) {
     m_Config = config;
     m_StartStateTime = start.time();
     m_Samples.clear();
     m_VertexQueue.clear();
+    m_Stats = Stats();
     double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
     double magnitude = m_Config.maxSpeed() * m_Config.timeHorizon();
     minX = start.x() - magnitude;
@@ -169,9 +178,12 @@ DubinsPlan SamplingBasedPlanner::plan(const RibbonManager&, const State& start, 
     std::shared_ptr<Vertex> vertex;
     for (vertex = Vertex::makeRoot(start, m_RibbonManager);
          !goalCondition(vertex); vertex = popVertexQueue()) {
-        expand(vertex, m_Config.obstacles());
+        expand(vertex, m_Config.obstaclesManager());
     }
-    return tracePlan(vertex, false, m_Config.obstacles());
+    m_Stats.Plan = std::move(tracePlan(vertex, false, m_Config.obstaclesManager()));
+    m_Stats.Samples = m_Samples.size();
+    m_Stats.PlanDepth = vertex->getDepth();
+    return m_Stats;
 }
 
 void SamplingBasedPlanner::visualizeVertex(Vertex::SharedPtr v, const std::string& tag, bool expanded) {

@@ -5,6 +5,7 @@
 #include <assert.h>
 #include "utilities/Visualizer.h"
 #include "../common/map//Map.h"
+#include "../common/dynamic_obstacles/DynamicObstaclesManager1.h"
 #include "../common/dynamic_obstacles/DynamicObstaclesManager.h"
 
 /**
@@ -86,12 +87,20 @@ public:
         m_Map = map;
     }
 
-    const DynamicObstaclesManager& obstacles() const {
+    const DynamicObstaclesManager1& obstacles() const {
         return m_Obstacles;
     }
 
-    void setObstacles(const DynamicObstaclesManager& obstacles) {
+    void setObstacles(const DynamicObstaclesManager1& obstacles) {
         m_Obstacles = obstacles;
+    }
+
+    const DynamicObstaclesManager& obstaclesManager() const {
+        return *m_ObstaclesManager;
+    }
+
+    void setObstaclesManager(DynamicObstaclesManager::SharedPtr obstaclesManager) {
+        m_ObstaclesManager = obstaclesManager;
     }
 
     std::ostream* output() const {
@@ -179,7 +188,8 @@ private:
     // static map
     Map::SharedPtr m_Map;
     // dynamic obstacles
-    DynamicObstaclesManager m_Obstacles;
+    DynamicObstaclesManager1 m_Obstacles;
+    DynamicObstaclesManager::SharedPtr m_ObstaclesManager = std::make_shared<DynamicObstaclesManager>();
     // Stream for output. Maybe this should go to its own ROS topic?
     std::ostream* m_Output;
     // function we pass in to let the planner check the time

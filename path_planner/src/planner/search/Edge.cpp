@@ -65,7 +65,7 @@ double Edge::computeApproxCost() {
     return computeApproxCost(end()->state().speed(), end()->turningRadius());
 }
 
-double Edge::computeTrueCost(const PlannerConfig& config) {
+double Edge::computeTrueCost(PlannerConfig& config) {
     if (start()->state().isCoLocated(end()->state())) {
         std::cerr << "Computing cost of edge between two co-located states is likely an error" << std::endl;
     }
@@ -83,7 +83,9 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     State intermediate(start()->state());
     // truncate longer edges than 30 seconds
     auto endTime = fmin(config.timeHorizon() + 1e-12 + config.startStateTime(),m_DubinsWrapper.getEndTime());
-    auto endTimeIfRibbonsDone = fmin(m_DubinsWrapper.getEndTime(), config.timeMinimum() + config.startStateTime() + 1e-12);
+    // time, relative to this edge, of when the ribbons are done (not super necessary but convenient)
+    auto ribbonsDoneTime = -1;
+    auto ribbonManagerStartedDone = end()->ribbonManager().done();
 
     double dynamicDistance = 0, toCoverDistance = 0;
     std::vector<std::pair<double, double>> newlyCovered;
@@ -102,11 +104,28 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
         }
         m_Infeasible = true;
     }
+
+    // Collision check at max speed, even if we're going slower. This will make going slower in congested areas look
+    // artificially better, because they'll accrue a smaller penalty per time
+    auto timeIncrement = config.collisionCheckingIncrement() / config.maxSpeed();
+
+    // nudge along a little so we check at an even amount of intervals from the start state
+    auto timeSinceStart = intermediate.time() - config.startStateTime();
+    auto timeNudge = fmod(timeSinceStart, timeIncrement);
+    intermediate.time() += timeNudge;
+
     if (config.visualizations())
         config.visualizationStream() << "Trajectory:" << std::endl;
     // collision check along the curve (and watch out for newly covered points, too)
     while (intermediate.time() < endTime) {
-        m_DubinsWrapper.sample(intermediate);
+        try {
+            m_DubinsWrapper.sample(intermediate);
+        }
+        catch (std::runtime_error& e) {
+            m_Infeasible = true;
+            *config.output() << "Encountered an error while collision checking: " << e.what() << std::endl;
+            break;
+        }
         // visualize
         if (config.visualizations() && visCount-- <= 0) {
             visCount = int(1.0 / config.collisionCheckingIncrement());
@@ -118,23 +137,14 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
                 ", g: " << gSoFar << ", h: " << startH << " trajectory" << std::endl;
         }
         if (config.map()->isBlocked(intermediate.x(), intermediate.y())) {
-//        if (config.map()->getUnblockedDistance(intermediate.x(), intermediate.y()) <= config.collisionCheckingIncrement()) {
-//            collisionPenalty += Edge::collisionPenaltyFactor();
-//            std::cerr << "Infeasible edge discovered" << std::endl;
             m_Infeasible = true;
             break;
         }
-        if (dynamicDistance > config.collisionCheckingIncrement()) {
-            dynamicDistance -= config.collisionCheckingIncrement();
-        } else {
-            dynamicDistance = config.obstacles().distanceToNearestPossibleCollision(intermediate);
-            if (dynamicDistance <= config.collisionCheckingIncrement()) {
-                assert(std::isfinite(speed));
-                assert(std::isfinite(config.obstacles().collisionExists(intermediate)));
-                collisionPenalty += config.obstacles().collisionExists(intermediate) * Edge::collisionPenaltyFactor();
-                dynamicDistance = 0;
-            }
-        }
+
+        // assess collision penalty
+        collisionPenalty +=
+                config.obstaclesManager().collisionExists(intermediate, true) * Edge::collisionPenaltyFactor();
+
         if (toCoverDistance > config.collisionCheckingIncrement()) {
             toCoverDistance -= config.collisionCheckingIncrement();
         } else {
@@ -145,12 +155,17 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
                 end()->ribbonManager().cover(intermediate.x(), intermediate.y(), true);
             }
             if (end()->ribbonManager().done()) {
-                // make it so we only need the min time if we finish covering
-                endTime = fmax(endTimeIfRibbonsDone, intermediate.time());
+                // if no prior edge has finished coverage yet, set the coverage completed time now
+                if (end()->ribbonManager().coverageCompletedTime() == -1) {
+                    end()->ribbonManager().setCoverageCompletedTime(intermediate.time());
+                }
+                ribbonsDoneTime = intermediate.time();
+                // truncate only if we hit the time minimum *after coverage* - the adjusted end time
+                endTime = fmin(endTime, end()->ribbonManager().coverageCompletedTime() + config.timeMinimum());
             }
 
         }
-        intermediate.time() += config.collisionCheckingIncrement() / speed;
+        intermediate.time() += timeIncrement;
         lastHeading = intermediate.heading();
     }
     // set to the end of the edge (potentially truncated)
@@ -158,10 +173,25 @@ double Edge::computeTrueCost(const PlannerConfig& config) {
     m_DubinsWrapper.sample(end()->state());
     m_DubinsWrapper.updateEndTime(end()->state().time()); // should just be truncating the path
 
+    // cover the last little bit
+    if (end()->coverageAllowed() || lastHeading == intermediate.heading()) {
+        end()->ribbonManager().cover(intermediate.x(), intermediate.y(), true);
+    }
+    if (end()->ribbonManager().done()) {
+        // may need to set the time here too
+        if (end()->ribbonManager().coverageCompletedTime() == -1) {
+            end()->ribbonManager().setCoverageCompletedTime(intermediate.time());
+        }
+        ribbonsDoneTime = intermediate.time();
+    }
+
     assert(std::isfinite(netTime()));
     assert(std::isfinite(collisionPenalty));
     m_CollisionPenalty = collisionPenalty;
-    m_TrueCost = netTime() * Edge::timePenaltyFactor() + collisionPenalty;
+    // time after ribbons covered doesn't count against you
+    auto t = fmax(netTime() - (end()->ribbonManager().done()? (endTime - ribbonsDoneTime) : 0), 0);
+    if (ribbonManagerStartedDone) t = 0;
+    m_TrueCost = t * Edge::timePenaltyFactor() + collisionPenalty;
 
     end()->setCurrentCost();
 

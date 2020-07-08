@@ -164,6 +164,7 @@ State RibbonManager::getNearestEndpointAsState(const State& state) const {
     State ret;
     for (const auto& r : m_Ribbons) {
         auto s = r.startAsState();
+        s.move(Ribbon::minLength() / Ribbon::strictModifier() + 1e-5);
         auto d = state.distanceTo(s);
         if (d < min) {
             if (d < Ribbon::minLength()){ // && r.contains(state.x(), state.y(), r.getProjection(state.x(), state.y))) {
@@ -177,6 +178,7 @@ State RibbonManager::getNearestEndpointAsState(const State& state) const {
             min = d;
         }
         s = r.endAsState();
+        s.move(Ribbon::minLength() / Ribbon::strictModifier() + 1e-5);
         d = state.distanceTo(s);
         if (d < min) {
             if (d < Ribbon::minLength()){ // && r.contains(state.x(), state.y(), r.getProjection(state.x(), state.y))) {
@@ -400,5 +402,14 @@ void RibbonManager::coverBetween(double x1, double y1, double x2, double y2) {
         y1 += Ribbon::minLength() * sin(theta) / 2;
     } while (d > Ribbon::minLength());
     cover(x2, y2, false);
+}
+
+double RibbonManager::coverageCompletedTime() const {
+    return m_CoverageCompletedTime;
+}
+
+void RibbonManager::setCoverageCompletedTime(double coverageCompletedTime) {
+    if (m_CoverageCompletedTime == -1)
+        m_CoverageCompletedTime = coverageCompletedTime;
 }
 

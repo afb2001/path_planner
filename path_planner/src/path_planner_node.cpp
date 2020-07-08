@@ -274,6 +274,112 @@ public:
         m_display_pub.publish(geoVizItem);
     }
 
+    void displayMap(std::string path) override {
+        geographic_visualization_msgs::GeoVizItem geoVizItem;
+        geoVizItem.id = "GridWorldMap";
+
+        // publish empty map to hopefully wipe previous one
+        if (path.empty()) {
+            m_display_pub.publish(geoVizItem);
+            return;
+        }
+
+        // parse map file
+        std::ifstream infile(path);
+        std::string line;
+        std::vector<std::string> lines;
+        int cols = -1, rows = 0;
+        double resolution;
+        try {
+            std::getline(infile, line);
+            std::istringstream s(line);
+            s >> resolution;
+            while (std::getline(infile, line)) {
+                if (cols == -1) cols = line.length();
+                else if (line.length() < cols) cols = line.length();
+                rows++;
+                lines.push_back(line);
+            }
+        } catch (...) {
+            std::cerr << "Error loading map for display. Ignoring" << std::endl;
+            m_display_pub.publish(geoVizItem);
+            return;
+        }
+        if (lines.empty()) {
+            m_display_pub.publish(geoVizItem);
+            return;
+        }
+        std::reverse(lines.begin(), lines.end());
+
+        // add squares of appropriate size at blocked coordinates
+        for (int y = 0; y < rows; y++) {
+            for (int x = 0; x < cols; x++) {
+                if (lines[y][x] == '#') {
+//                    std::cerr << "Adding blocked square to the map" << std::endl;
+                    geographic_visualization_msgs::GeoVizPolygon polygon;
+                    geographic_visualization_msgs::GeoVizSimplePolygon simplePolygon;
+                    auto xCoord = x * resolution; auto yCoord = y * resolution;
+                    auto bottomLeft = convertToLatLong(State(xCoord, yCoord, 0, 0, 0));
+                    auto bottomRight = convertToLatLong(State(xCoord + resolution, yCoord, 0, 0, 0));
+                    auto topLeft = convertToLatLong(State(xCoord, yCoord + resolution, 0, 0, 0));
+                    auto topRight = convertToLatLong(State(xCoord + resolution, yCoord + resolution, 0, 0, 0));
+                    simplePolygon.points.push_back(topRight); simplePolygon.points.push_back(topLeft);
+                    simplePolygon.points.push_back(bottomLeft); simplePolygon.points.push_back(bottomRight);
+                    polygon.outer = simplePolygon;
+                    polygon.edge_color.a = 0.5;
+                    polygon.edge_color.r = 0;
+                    polygon.edge_color.g = 0;
+                    polygon.edge_color.b = 0;
+                    polygon.fill_color = polygon.edge_color;
+                    geoVizItem.polygons.push_back(polygon);
+                }
+            }
+        }
+
+        // add boundary lines
+        auto bottomLeft = convertToLatLong(State(0, 0, 0, 0, 0));
+        auto bottomRight = convertToLatLong(State(resolution * lines[0].size(), 0, 0, 0, 0));
+        auto topRight = convertToLatLong(State(resolution * lines[0].size(), resolution * lines.size(), 0, 0, 0));
+        auto topLeft = convertToLatLong(State(0, resolution * lines.size(), 0, 0, 0));
+
+        geographic_visualization_msgs::GeoVizPointList bottom, right, top, left;
+        bottom.points.push_back(bottomLeft); bottom.points.push_back(bottomRight);
+        bottom.size = 5;
+        bottom.color.r = 0;
+        bottom.color.g = 0;
+        bottom.color.b = 0;
+        bottom.color.a = 1;
+
+        right.points.push_back(topRight); right.points.push_back(bottomRight);
+        right.size = 5;
+        right.color.r = 0;
+        right.color.g = 0;
+        right.color.b = 0;
+        right.color.a = 1;
+
+        top.points.push_back(topLeft); top.points.push_back(topRight);
+        top.size = 5;
+        top.color.r = 0;
+        top.color.g = 0;
+        top.color.b = 0;
+        top.color.a = 1;
+
+        left.points.push_back(bottomLeft); left.points.push_back(topLeft);
+        left.size = 5;
+        left.color.r = 0;
+        left.color.g = 0;
+        left.color.b = 0;
+        left.color.a = 1;
+
+        geoVizItem.lines.push_back(bottom);
+        geoVizItem.lines.push_back(right);
+        geoVizItem.lines.push_back(top);
+        geoVizItem.lines.push_back(left);
+
+        // publish
+        m_display_pub.publish(geoVizItem);
+    }
+
     void publishStats(const Planner::Stats& stats, double collisionPenalty, unsigned long cpuTime) override {
 //        std::cerr << stats.Samples << " total samples, " << stats.Generated << " generated, "
 //                         << stats.Expanded << " expanded in " << stats.Iterations << " iterations. F-value " <<

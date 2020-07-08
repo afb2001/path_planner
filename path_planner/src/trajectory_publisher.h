@@ -41,6 +41,8 @@ public:
 
     virtual void publishTaskLevelStats(double wallClockTime, double cumulativeCollisionPenalty, double cumulativeGValue) = 0;
 
+    virtual void displayMap(std::string path) = 0;
+
     /**
      * Alert the system that the planner has finished this iteration. This might deserve its own interface.
      */

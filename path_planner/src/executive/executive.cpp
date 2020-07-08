@@ -307,15 +307,19 @@ void Executive::refreshMap(const std::string& pathToMapFile, double latitude, do
                 m_NewMap = make_shared<Map>();
                 m_CurrentMapPath = pathToMapFile;
                 *m_PlannerConfig.output() << "Map cleared. Using empty map now." << endl;
+                m_TrajectoryPublisher->displayMap(pathToMapFile);
                 return;
             }
             // could take some time for I/O
             try {
                 // If the name looks like it's one of our gridworld maps, load it in that format, otherwise assume GeoTIFF
                 if (pathToMapFile.find(".map") == -1) {
+                    // don't try to display geotiff maps
+                    m_TrajectoryPublisher->displayMap("");
                     m_NewMap = make_shared<GeoTiffMap>(pathToMapFile, longitude, latitude);
                 } else {
                     m_NewMap = make_shared<GridWorldMap>(pathToMapFile);
+                    m_TrajectoryPublisher->displayMap(pathToMapFile);
                 }
                 m_CurrentMapPath = pathToMapFile;
                 *m_PlannerConfig.output() << "Loaded map file: " << pathToMapFile << endl;
@@ -327,6 +331,10 @@ void Executive::refreshMap(const std::string& pathToMapFile, double latitude, do
                 m_NewMap = nullptr;
                 m_CurrentMapPath = "";
             }
+        } else {
+            // refresh display anyway
+//            if (pathToMapFile.find(".map") != -1)
+//                m_TrajectoryPublisher->displayMap(pathToMapFile);
         }
     }).detach();
 }

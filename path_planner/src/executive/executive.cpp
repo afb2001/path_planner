@@ -8,6 +8,7 @@
 #include "../planner/AStarPlanner.h"
 #include "../common/map/GeoTiffMap.h"
 #include "../common/map/GridWorldMap.h"
+#include "../planner/PotentialFieldsPlanner.h"
 
 using namespace std;
 
@@ -50,8 +51,6 @@ void Executive::planLoop() {
     try {
         cerr << "Initializing planner" << endl;
 
-        auto planner = std::unique_ptr<Planner>(new AStarPlanner);
-
         { // new scope to use RAII and not mess with later "lock" variable
             unique_lock<mutex> lock(m_PlannerStateMutex);
             m_CancelCV.wait_for(lock, chrono::seconds(2), [=] { return m_PlannerState != PlannerState::Cancelled; });
@@ -74,6 +73,15 @@ void Executive::planLoop() {
         int failureCount = 0;
 
         while (true) {
+
+            // planner is stateless so we can make a new instance each time
+            unique_ptr<Planner> planner;
+            if (m_UsePotentialFields) {
+                planner = std::unique_ptr<Planner>(new PotentialFieldsPlanner);
+            } else {
+                planner = std::unique_ptr<Planner>(new AStarPlanner);
+            }
+
             double startTime = m_TrajectoryPublisher->getTime();
             // logging time each time through the loop for making sure we're hitting the time bound
 //            *m_PlannerConfig.output() << "Top of plan loop at time " << std::to_string(startTime) << std::endl;
@@ -171,7 +179,7 @@ void Executive::planLoop() {
                     ribbonManagerCopy = m_RibbonManager;
                 }
                 // cover up to the state that we're planning from
-                ribbonManagerCopy.coverBetween(m_LastState.x(), m_LastState.y(), startState.x(), startState.y());
+                ribbonManagerCopy.coverBetween(m_LastState.x(), m_LastState.y(), startState.x(), startState.y(), false);
                 stats = planner->plan(ribbonManagerCopy, startState, m_PlannerConfig, stats.Plan,
                                      startTime + c_PlanningTimeSeconds - m_TrajectoryPublisher->getTime());
             } catch (const std::exception& e) {
@@ -368,7 +376,8 @@ void Executive::clearRibbons() {
 void Executive::setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double slowSpeed,
                                  double lineWidth, int k, int heuristic, double timeHorizon, double timeMinimum,
                                  double collisionCheckingIncrement, int initialSamples, bool useBrownPaths,
-                                 bool useGaussianDynamicObstacles, bool ignoreDynamicObstacles) {
+                                 bool useGaussianDynamicObstacles, bool ignoreDynamicObstacles,
+                                 bool usePotentialFields) {
     m_PlannerConfig.setTurningRadius(turningRadius);
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
     m_PlannerConfig.setMaxSpeed(maxSpeed);
@@ -391,6 +400,7 @@ void Executive::setConfiguration(double turningRadius, double coverageTurningRad
     m_PlannerConfig.setUseBrownPaths(useBrownPaths);
     m_UseGaussianDynamicObstacles = useGaussianDynamicObstacles;
     m_IgnoreDynamicObstacles = ignoreDynamicObstacles;
+    m_UsePotentialFields = usePotentialFields;
 }
 
 void Executive::startPlanner() {

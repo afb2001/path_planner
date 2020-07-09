@@ -631,7 +631,7 @@ TEST(UnitTests, HeuristicConsistency4) {
     RibbonManager ribbonManager(RibbonManager::MaxDistance, 8, 2);
     ribbonManager.add(0, 0, 0, 80);
     State s1(0, 0, 0, plannerConfig.maxSpeed(), 1), s2(0, 75, 0, plannerConfig.maxSpeed(), 31);
-    ribbonManager.coverBetween(0, -2.5, 0, 0); // this happens in the real version so let's do it here; we've come from somewhere
+    ribbonManager.coverBetween(0, -2.5, 0, 0, false); // this happens in the real version so let's do it here; we've come from somewhere
     auto root = Vertex::makeRoot(s1, ribbonManager);
     auto v1 = Vertex::connect(root, s2);
     v1->parentEdge()->computeTrueCost(plannerConfig);
@@ -641,7 +641,7 @@ TEST(UnitTests, HeuristicConsistency4) {
     State s3(0, 0, 0, 0, 2), s4(0, 77.5, 0, 2.5, 32);
     path.sample(s3);
     path.updateStartTime(2);
-    ribbonManager.coverBetween(0, 0, s3.x(), s3.y());
+    ribbonManager.coverBetween(0, 0, s3.x(), s3.y(), false);
     plannerConfig.setStartStateTime(2);
     auto root2 = Vertex::makeRoot(s3, ribbonManager);
     auto v2 = Vertex::connect(root2, path, path.getRho() == plannerConfig.coverageTurningRadius());
@@ -726,7 +726,7 @@ TEST(UnitTests, RibbonManagerCoverBetweenTest) {
     RibbonManager ribbonManager;
     ribbonManager.add(10, 10, 20, 10);
     ribbonManager.setRibbonWidth(2);
-    ribbonManager.coverBetween(134.778, 62.1946, 133.708, 61.8953);
+    ribbonManager.coverBetween(134.778, 62.1946, 133.708, 61.8953, false);
 }
 
 TEST(Benchmarks, RibbonsTSPBenhcmark) {

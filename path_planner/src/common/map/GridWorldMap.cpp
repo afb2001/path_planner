@@ -95,3 +95,7 @@ bool GridWorldMap::isBlocked(double x, double y) const {
 const double* GridWorldMap::extremes() const {
     return m_Extremes;
 }
+
+int GridWorldMap::resolution() const {
+    return m_Resolution;
+}

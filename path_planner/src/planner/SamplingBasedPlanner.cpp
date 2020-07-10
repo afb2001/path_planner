@@ -53,78 +53,99 @@ void SamplingBasedPlanner::expand(const std::shared_ptr<Vertex>& sourceVertex, c
     
 //    std::cerr << "Expanding vertex " << sourceVertex->toString() << std::endl;
     visualizeVertex(sourceVertex, "vertex", true);
+
+    // define configurations
+    const auto& speeds = {m_Config.maxSpeed(), m_Config.maxSpeed() == m_Config.slowSpeed()?
+                                               -1 : m_Config.slowSpeed()};
+    const int nTurningRadii = 2;
+    const double turningRadii[nTurningRadii] = {m_Config.turningRadius(),
+                                m_Config.coverageTurningRadius() == m_Config.turningRadius()?
+                                -1 : m_Config.coverageTurningRadius()};
     // add nearest point to cover
     if (!sourceVertex->done()) {
         auto s = sourceVertex->getNearestPointAsState();
         // TODO! -- get some set of near points
         if (sourceVertex->state().distanceTo(s) > m_Config.collisionCheckingIncrement()) {
-            s.speed() = m_Config.maxSpeed();
-            auto destinationVertex = Vertex::connect(sourceVertex, s, m_Config.turningRadius(), false);
-            destinationVertex->parentEdge()->computeTrueCost(m_Config);
-            pushVertexQueue(destinationVertex);
-            // add again for coverage (may not be necessary, as we're unlikely to be covering stuff on the way to the nearest endpoint)
-            destinationVertex = Vertex::connect(sourceVertex, s, m_Config.coverageTurningRadius(), true);
-            destinationVertex->parentEdge()->computeTrueCost(m_Config);
-            pushVertexQueue(destinationVertex);
+            for (const auto& speed : speeds) {
+                if (speed <= 0) continue;
+                for (const auto& turningRadius : turningRadii) {
+                    if (turningRadius <= 0) continue;
+                    bool coverageAllowed = turningRadius == m_Config.coverageTurningRadius();
+                    s.speed() = speed;
+                    auto destinationVertex = Vertex::connect(sourceVertex, s, turningRadius, coverageAllowed);
+                    destinationVertex->parentEdge()->computeTrueCost(m_Config);
+                    pushVertexQueue(destinationVertex);
+                }
+            }
         }
     }
     auto comp = getStateComparator(sourceVertex->state());
     auto dubinsComp = getDubinsComparator(sourceVertex->state());
     // heapify first by Euclidean distance
     std::make_heap(m_Samples.begin(), m_Samples.end(), comp);
-    // Use another heap to sort by Dubins distance, skipping the samples which are farther away this time.
+    // Use more heaps to sort by Dubins distance, skipping the samples which are farther away this time.
     // Making all the vertices adds some allocation overhead but it lets us cache the dubins paths
-    std::vector<std::shared_ptr<Vertex>> bestSamples, bestCoverageSamples;
-    bool regularDone = false, coverageDone = false;
-    if (m_Config.coverageTurningRadius() <= 0) coverageDone = true;
-    for (uint64_t i = 0; i < m_Samples.size() && (!regularDone || !coverageDone); i++) {
+    std::vector<Vertex::SharedPtr> bestSamplesHeaps[nTurningRadii];
+    bool doneChecks[nTurningRadii] = {false, false};
+    // iterate through samples in closest (Euclidean distance) first order
+    for (uint64_t i = 0; i < m_Samples.size() && (!doneChecks[0] || !doneChecks[1]); i++) {
+        // get closest sample
         auto sample = m_Samples.front();
         std::pop_heap(m_Samples.begin(), m_Samples.end() - i, comp);
-        if (!regularDone && (bestSamples.size() < k() ||
-            bestSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
-            if (sourceVertex->state().distanceTo(sample) > m_Config.collisionCheckingIncrement()) {
-                // don't force speed to be anything in particular, allowing samples to come with unique speeds
-                bestSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.turningRadius(), false));
-                bestSamples.back()->parentEdge()->computeApproxCost();
-                std::push_heap(bestSamples.begin(), bestSamples.end(), dubinsComp);
-                if (bestSamples.size() > k()) {
-                    std::pop_heap(bestSamples.begin(), bestSamples.end(), dubinsComp);
-                    bestSamples.pop_back();
-                }
+        // iterate through turning radii
+        for (unsigned long j = 0; j < nTurningRadii; j++) {
+            // if we've filled up the heap for this radius we can skip
+            if (doneChecks[j]) continue;
+            const auto& turningRadius = turningRadii[j];
+            // if this radius isn't being used we can skip
+            if (turningRadius <= 0) {
+                doneChecks[j] = true;
+                continue;
             }
-        } else {
-            regularDone = true;
-        }
-        if (!coverageDone && (bestCoverageSamples.size() < k() ||
-            bestCoverageSamples.front()->parentEdge()->approxCost() > sample.distanceTo(sourceVertex->state()))) {
-            if (sourceVertex->state().distanceTo(sample) > m_Config.collisionCheckingIncrement()) {
-                bestCoverageSamples.push_back(Vertex::connect(sourceVertex, sample, m_Config.coverageTurningRadius(), true));
-                bestCoverageSamples.back()->parentEdge()->computeApproxCost();
-                std::push_heap(bestCoverageSamples.begin(), bestCoverageSamples.end(), dubinsComp);
-                if (bestCoverageSamples.size() > k()) {
-                    std::pop_heap(bestCoverageSamples.begin(), bestCoverageSamples.end(), dubinsComp);
-                    bestCoverageSamples.pop_back();
+            // grab the appropriate heap
+            auto& bestSamples = bestSamplesHeaps[j];
+            // if we haven't filled up the heap yet or this sample could possibly be better than the worst sample
+            // we've connected to so far, add it to the heap
+            if (bestSamples.size() < k() || bestSamples.front()->parentEdge()->getPlan(m_Config).length() >
+                    sample.distanceTo(sourceVertex->state())){
+                if (sourceVertex->state().distanceTo(sample) > m_Config.collisionCheckingIncrement()) {
+                    // set the speed to be the max speed for now - it could get changed later
+                    sample.speed() = m_Config.maxSpeed();
+                    // check whether to allow coverage
+                    bool coverageAllowed = turningRadius == m_Config.coverageTurningRadius();
+                    // connect to the sample and push it onto the heap
+                    bestSamples.push_back(Vertex::connect(sourceVertex, sample, turningRadius, coverageAllowed));
+                    // make sure to compute the approx cost before fixing the heap
+                    bestSamples.back()->parentEdge()->computeApproxCost();
+                    // fix the heap
+                    std::push_heap(bestSamples.begin(), bestSamples.end(), dubinsComp);
+                    // if we've filled up the heap, pop the worst sample
+                    if (bestSamples.size() > k()) {
+                        std::pop_heap(bestSamples.begin(), bestSamples.end(), dubinsComp);
+                        bestSamples.pop_back();
+                    }
                 }
+            } else {
+                // otherwise we're done with this turning radius (and heap)
+                doneChecks[j] = true;
             }
-        } else {
-            coverageDone = true;
         }
     }
-    // Push the closest K onto the open list
-    for (int i = 0; i < k(); i++) {
-        if (i >= bestSamples.size()) break;
-        auto destinationVertex = bestSamples.front();
-        std::pop_heap(bestSamples.begin(), bestSamples.end() - i, dubinsComp);
-        destinationVertex->parentEdge()->computeTrueCost(m_Config);
-        pushVertexQueue(destinationVertex);
-    }
-    // and again for coverage edges
-    for (int i = 0; i < k(); i++) {
-        if (i >= bestCoverageSamples.size()) break;
-        auto destinationVertex = bestCoverageSamples.front();
-        std::pop_heap(bestCoverageSamples.begin(), bestCoverageSamples.end() - i, dubinsComp);
-        destinationVertex->parentEdge()->computeTrueCost(m_Config);
-        pushVertexQueue(destinationVertex);
+    for (auto& bestSamples : bestSamplesHeaps) {
+        // Push the closest K onto the open list
+        if (bestSamples.size() > k()) throw std::runtime_error("Somehow got too many samples in the heap");
+        for (auto& destinationVertex : bestSamples) {
+            // use the wrapper from the vertex to save re-computing it but ditch the rest
+            auto wrapper = destinationVertex->parentEdge()->getPlan(m_Config);
+            for (const auto& speed : speeds) {
+                if (speed <= 0) continue;
+                // Changing the end state's speed will cause recalculation of approx cost if necessary
+                wrapper.setSpeed(speed);
+                auto v = Vertex::connect(sourceVertex, wrapper, destinationVertex->coverageAllowed());
+                v->parentEdge()->computeTrueCost(m_Config);
+                pushVertexQueue(v);
+            }
+        }
     }
     m_Stats.Expanded++;
 }

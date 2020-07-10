@@ -69,14 +69,19 @@ double Edge::computeTrueCost(PlannerConfig& config) {
     if (start()->state().isCoLocated(end()->state())) {
         std::cerr << "Computing cost of edge between two co-located states is likely an error" << std::endl;
     }
-    double speed = config.maxSpeed(), turningRadius = config.turningRadius();
+    // get speed from end state
+    double speed = end()->state().speed(), turningRadius = config.turningRadius();
     assert(speed > 0);
     if (end()->coverageAllowed()) {
         turningRadius = config.coverageTurningRadius();
     }
-    if (m_ApproxCost == -1 || (m_DubinsWrapper.getRho() != turningRadius || m_DubinsWrapper.getSpeed() != speed))
+    if (m_ApproxCost == -1 || (m_DubinsWrapper.getRho() != turningRadius))
         // if the parameters are different now we need to re-calculate the curve
         computeApproxCost(speed, turningRadius);
+    if (m_DubinsWrapper.getSpeed() != speed) {
+        // update the speed if it's different
+        m_DubinsWrapper.setSpeed(speed);
+    }
     if (m_ApproxCost < 0) throw std::runtime_error("Could not compute approximate cost");
     double collisionPenalty = 0;
     std::vector<std::pair<double, double>> result;

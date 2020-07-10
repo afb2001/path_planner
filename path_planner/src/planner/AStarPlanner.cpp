@@ -25,14 +25,15 @@ Planner::Stats AStarPlanner::plan(const RibbonManager& ribbonManager, const Stat
     m_AttemptedSamples = 0;
     double minX, maxX, minY, maxY, minSpeed = m_Config.maxSpeed(), maxSpeed = m_Config.maxSpeed();
     double magnitude = m_Config.maxSpeed() * m_Config.timeHorizon();
-    minX = start.x() - magnitude;
-    maxX = start.x() + magnitude;
-    minY = start.y() - magnitude;
-    maxY = start.y() + magnitude;
+    auto mapExtremes = m_Config.map()->extremes();
+    minX = fmax(start.x() - magnitude, mapExtremes[0]);
+    maxX = fmin(start.x() + magnitude, mapExtremes[1]);
+    minY = fmax(start.y() - magnitude, mapExtremes[2]);
+    maxY = fmin(start.y() + magnitude, mapExtremes[3]);
     auto seed = (unsigned long)endTime; // for different results each time. For consistency, use like 7 or something
     StateGenerator generator = StateGenerator(minX, maxX, minY, maxY, minSpeed, maxSpeed, seed, m_RibbonManager); // lucky seed
     auto startV = Vertex::makeRoot(start, m_RibbonManager);
-    startV->state().speed() = m_Config.maxSpeed(); // state's speed is used to compute h so need to use max
+    startV->state().speed() = m_Config.maxSpeed();
     startV->computeApproxToGo(m_Config);
     m_BestVertex = nullptr;
 //    auto ribbonSamples = m_RibbonManager.findStatesOnRibbonsOnCircle(start, m_Config.coverageTurningRadius() * 2 + 1);
@@ -148,10 +149,12 @@ void AStarPlanner::expandToCoverSpecificSamples(Vertex::SharedPtr root, const st
                                                 const DynamicObstaclesManager& obstacles, bool coverageAllowed) {
     if (m_Config.coverageTurningRadius() > 0) {
         for (auto s : samples) {
-            s.speed() = m_Config.maxSpeed();
-            auto destinationVertex = Vertex::connect(root, s, m_Config.coverageTurningRadius(), coverageAllowed);
-            destinationVertex->parentEdge()->computeTrueCost(m_Config);
-            pushVertexQueue(destinationVertex);
+            for (const auto& speed : {m_Config.maxSpeed(), m_Config.slowSpeed()}) {
+                s.speed() = speed;
+                auto destinationVertex = Vertex::connect(root, s, m_Config.coverageTurningRadius(), coverageAllowed);
+                destinationVertex->parentEdge()->computeTrueCost(m_Config);
+                pushVertexQueue(destinationVertex);
+            }
         }
     }
 }

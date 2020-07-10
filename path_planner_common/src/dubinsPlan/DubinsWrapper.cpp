@@ -54,6 +54,7 @@ bool DubinsWrapper::isInitialized() const {
 
 std::vector<State> DubinsWrapper::getSamples(double timeInterval, double offset) const {
     // TODO! -- offset
+    // deprecated
     std::vector<State> result;
     State intermediate;
     intermediate.speed() = m_Speed;
@@ -115,4 +116,9 @@ void DubinsWrapper::updateStartTime(double startTime) {
 
 double DubinsWrapper::getNetTime() const {
     return getEndTime() - getStartTime();
+}
+
+void DubinsWrapper::setSpeed(double speed) {
+    m_Speed = speed;
+    setEndTime();
 }

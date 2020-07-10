@@ -25,6 +25,8 @@ public:
 
     bool isBlocked(double x, double y) const override;
 
+    // TODO! -- to be useful in PF planner, override resolution function to allow querying at the right intervals
+
 private:
 //    GDALDataset* m_Dataset;
     std::vector<std::vector<float>> m_Data;

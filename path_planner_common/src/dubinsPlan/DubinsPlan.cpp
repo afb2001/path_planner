@@ -29,15 +29,12 @@ bool DubinsPlan::empty() const {
 std::vector<State> DubinsPlan::getHalfSecondSamples() const {
     // should check for duplicates
     std::vector<State> result;
-    double offset = 0; // gotta keep track of offsets in times of paths if we want exactly 0.5s intervals
-    for (const auto& p : m_DubinsPaths) {
-        if (p.getNetTime() < planTimeDensity()) {
-            offset += planTimeDensity() - p.getNetTime();
-            continue;
-        }
-        auto r = p.getSamples(planTimeDensity(), offset);
-        offset = planTimeDensity() - (p.getEndTime() - r.back().time());
-        for (const auto& s : r) result.push_back(s);
+    if (empty()) return result;
+    State s;
+    for (double time = getStartTime(); time < getEndTime(); time += planTimeDensity()) {
+        s.time() = time;
+        sample(s);
+        result.push_back(s);
     }
     return result;
 }

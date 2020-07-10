@@ -390,18 +390,18 @@ void RibbonManager::setHeuristic(Heuristic heuristic) {
     m_Heuristic = heuristic;
 }
 
-void RibbonManager::coverBetween(double x1, double y1, double x2, double y2) {
+void RibbonManager::coverBetween(double x1, double y1, double x2, double y2, bool strict) {
     double theta = atan((y2 - y1) / (x2 - x1));
     double d = distance(x1, y1, x2, y2);
     do {
         auto d1 = distance(x1, y1, x2, y2);
         if (d1 > d) break; // ensure distance to go is decreasing
         else d = d1;
-        cover(x1, y1, false);
+        cover(x1, y1, strict);
         x1 += Ribbon::minLength() * cos(theta) / 2; // so we don't overshoot
         y1 += Ribbon::minLength() * sin(theta) / 2;
     } while (d > Ribbon::minLength());
-    cover(x2, y2, false);
+    cover(x2, y2, strict);
 }
 
 double RibbonManager::coverageCompletedTime() const {

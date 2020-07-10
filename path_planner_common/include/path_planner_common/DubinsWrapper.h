@@ -74,6 +74,12 @@ public:
     double getSpeed() const;
 
     /**
+     * Update the speed.
+     * @param speed
+     */
+    void setSpeed(double speed);
+
+    /**
      * Gets the start time. If the start time has been updated, that updated value is returned.
      * @return
      */

@@ -631,7 +631,7 @@ TEST(UnitTests, HeuristicConsistency4) {
     RibbonManager ribbonManager(RibbonManager::MaxDistance, 8, 2);
     ribbonManager.add(0, 0, 0, 80);
     State s1(0, 0, 0, plannerConfig.maxSpeed(), 1), s2(0, 75, 0, plannerConfig.maxSpeed(), 31);
-    ribbonManager.coverBetween(0, -2.5, 0, 0); // this happens in the real version so let's do it here; we've come from somewhere
+    ribbonManager.coverBetween(0, -2.5, 0, 0, false); // this happens in the real version so let's do it here; we've come from somewhere
     auto root = Vertex::makeRoot(s1, ribbonManager);
     auto v1 = Vertex::connect(root, s2);
     v1->parentEdge()->computeTrueCost(plannerConfig);
@@ -641,7 +641,7 @@ TEST(UnitTests, HeuristicConsistency4) {
     State s3(0, 0, 0, 0, 2), s4(0, 77.5, 0, 2.5, 32);
     path.sample(s3);
     path.updateStartTime(2);
-    ribbonManager.coverBetween(0, 0, s3.x(), s3.y());
+    ribbonManager.coverBetween(0, 0, s3.x(), s3.y(), false);
     plannerConfig.setStartStateTime(2);
     auto root2 = Vertex::makeRoot(s3, ribbonManager);
     auto v2 = Vertex::connect(root2, path, path.getRho() == plannerConfig.coverageTurningRadius());
@@ -726,7 +726,7 @@ TEST(UnitTests, RibbonManagerCoverBetweenTest) {
     RibbonManager ribbonManager;
     ribbonManager.add(10, 10, 20, 10);
     ribbonManager.setRibbonWidth(2);
-    ribbonManager.coverBetween(134.778, 62.1946, 133.708, 61.8953);
+    ribbonManager.coverBetween(134.778, 62.1946, 133.708, 61.8953, false);
 }
 
 TEST(Benchmarks, RibbonsTSPBenhcmark) {
@@ -1054,12 +1054,13 @@ TEST(UnitTests, ExpandTest1Ribbons) {
     ribbonManager.add(0, 10, 0, 30);
     const DynamicObstaclesManager& obstacles = BinaryDynamicObstaclesManager();
     auto root = Vertex::makeRoot(start, ribbonManager);
+    root->computeApproxToGo(plannerConfig);
     AStarPlanner planner;
     planner.setConfig(plannerConfig);
     planner.addSamples(generator, 1000);
     planner.expand(root, obstacles);
     double fPrev = 0;
-    for (int i = 0; i < 20; i++) { // k + 1, at the time of this writing
+    for (int i = 0; i < 40; i++) { // k + 1, at the time of this writing, because we've got 4 configurations that get expanded
         auto v = planner.popVertexQueue();
         cerr << v->toString() << endl;
         EXPECT_LE(fPrev, v->f());
@@ -1069,13 +1070,14 @@ TEST(UnitTests, ExpandTest1Ribbons) {
 }
 
 TEST(UnitTests, ExpandDifferentTurningRadiiTest) {
-    // Obsolete test - why should the top vertex have coverage allowed?
+    // Obsolete test - why should the top vertex have coverage allowed since we can go straight?
     State start(0, 0, 0, 2.5, 1);
     RibbonManager ribbonManager;
     ribbonManager.add(0, 0, 0, 30);
     Map::SharedPtr m = make_shared<Map>();
     const DynamicObstaclesManager& obstacles = BinaryDynamicObstaclesManager();
     auto root = Vertex::makeRoot(start, ribbonManager);
+    root->computeApproxToGo(plannerConfig);
     AStarPlanner planner;
     planner.setConfig(plannerConfig);
     StateGenerator generator(-50, 50, -50, 50, 2.5, 2.5, 7);
@@ -1083,6 +1085,26 @@ TEST(UnitTests, ExpandDifferentTurningRadiiTest) {
     planner.expand(root, obstacles);
     auto v1 = planner.popVertexQueue();
     EXPECT_TRUE(v1->coverageAllowed());
+}
+
+TEST(UnitTests, DifferentSpeedsCoverageTest) {
+    State start(0, 0, 0, 2.5, 1);
+    RibbonManager ribbonManager;
+    ribbonManager.add(0, 0, 0, 30);
+    auto root = Vertex::makeRoot(start, ribbonManager);
+    root->computeApproxToGo(plannerConfig);
+    plannerConfig.setStartStateTime(start.time());
+    State fast(0, 30, 0, plannerConfig.maxSpeed(), 0), slow(0, 30, 0, plannerConfig.slowSpeed(), 0);
+    auto v1 = Vertex::connect(root, fast, plannerConfig.turningRadius(), false);
+    auto v2 = Vertex::connect(root, slow, plannerConfig.turningRadius(), false);
+    v1->parentEdge()->computeTrueCost(plannerConfig);
+    v2->parentEdge()->computeTrueCost(plannerConfig);
+    EXPECT_DOUBLE_EQ(30 / plannerConfig.maxSpeed(), v1->currentCost());
+    EXPECT_NEAR(plannerConfig.timeHorizon(), v2->currentCost(), 1e-5);
+    EXPECT_LT(v1->currentCost(), v2->currentCost());
+    v1->computeApproxToGo(plannerConfig);
+    v2->computeApproxToGo(plannerConfig);
+    EXPECT_LT(v1->f(), v2->f());
 }
 
 TEST(UnitTests, AngleConsistencyTest) {
@@ -1094,6 +1116,7 @@ TEST(UnitTests, AngleConsistencyTest) {
     RibbonManager ribbonManager;
     ribbonManager.add(0, 10, 20, 10);
     auto root = Vertex::makeRoot(rootState, ribbonManager);
+    root->computeApproxToGo(plannerConfig);
     for (int i = 0; i < 10; i++) {
         auto startState = generator.generate();
         auto start = Vertex::connect(root, startState);
@@ -1153,6 +1176,7 @@ TEST(UnitTests, EdgeTruncation) {
     RibbonManager ribbonManager;
     ribbonManager.add(100, 0, 100, 10);
     auto root = Vertex::makeRoot(s1, ribbonManager);
+    root->computeApproxToGo(plannerConfig);
     auto v1 = Vertex::connect(root, s2);
     auto d = v1->parentEdge()->computeApproxCost(plannerConfig.maxSpeed(), plannerConfig.turningRadius());
     EXPECT_DOUBLE_EQ(d, 4);
@@ -1203,6 +1227,7 @@ TEST(UnitTests, UsePreviousPlanUnitTest) {
 
     plan.changeIntoSuffix(2);
     auto startV = Vertex::makeRoot(start, ribbonManager);
+    startV->computeApproxToGo(plannerConfig);
 //    plannerConfig.setVisualizations(true);
 
     Vertex::SharedPtr lastPlanEnd = startV;
@@ -1245,7 +1270,7 @@ TEST(PlannerTests, RHRSAStarTest1Ribbons) {
     auto plan = planner.plan(ribbonManager, start, plannerConfig, DubinsPlan(), 0.95).Plan;
     EXPECT_FALSE(plan.empty());
     validatePlan(plan, plannerConfig);
-//    for (auto s : plan.getHalfSecondSamples()) cerr << s.toString() << endl;
+    for (auto s : plan.getHalfSecondSamples()) cerr << s.toString() << endl;
 }
 
 TEST(PlannerTests, RHRSAStarTest2Ribbons) {
@@ -1280,6 +1305,9 @@ TEST(PlannerTests, RibbonFarAwayTest) {
         validatePlan(plan, plannerConfig);
         start.time() += 1;
         plan.sample(start);
+        if (start.speed() < plannerConfig.maxSpeed()) {
+            cerr << "Ahh" << endl;
+        }
         ASSERT_LT(start.time(), 90);
         cerr << start.toString() << endl;
     }

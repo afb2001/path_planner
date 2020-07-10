@@ -37,9 +37,11 @@ public:
      */
     virtual void displayDynamicObstacle(double x, double y, double yaw, double width, double length, uint32_t id) = 0;
 
-    virtual void publishStats(const Planner::Stats&, double collisionPenalty, unsigned long cpuTime) = 0;
+    virtual void publishStats(const Planner::Stats& stats, double collisionPenalty, unsigned long cpuTime,
+                              bool lastPlanAchievable) = 0;
 
-    virtual void publishTaskLevelStats(double wallClockTime, double cumulativeCollisionPenalty, double cumulativeGValue) = 0;
+    virtual void publishTaskLevelStats(double wallClockTime, double cumulativeCollisionPenalty, double cumulativeGValue,
+                                       double uncoveredLength) = 0;
 
     virtual void displayMap(std::string path) = 0;
 

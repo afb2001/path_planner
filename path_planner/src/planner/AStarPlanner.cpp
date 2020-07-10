@@ -124,6 +124,8 @@ Planner::Stats AStarPlanner::plan(const RibbonManager& ribbonManager, const Stat
     } else {
         m_Stats.PlanFValue = m_BestVertex->f();
         m_Stats.PlanDepth = m_BestVertex->getDepth();
+        m_Stats.PlanTimePenalty = (m_BestVertex->state().time() - m_StartStateTime) * Edge::timePenaltyFactor();
+        m_Stats.PlanHValue = m_BestVertex->approxToGo();
         m_Stats.Plan = std::move(tracePlan(m_BestVertex, false, m_Config.obstaclesManager()));
     }
     return m_Stats;

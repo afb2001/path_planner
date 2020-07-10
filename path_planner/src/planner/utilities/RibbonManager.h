@@ -163,6 +163,8 @@ public:
 
     void setCoverageCompletedTime(double coverageCompletedTime);
 
+    double getTotalUncoveredLength() const;
+
 private:
     Heuristic m_Heuristic;
     double m_TurningRadius = -1;

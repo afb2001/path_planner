@@ -413,3 +413,9 @@ void RibbonManager::setCoverageCompletedTime(double coverageCompletedTime) {
         m_CoverageCompletedTime = coverageCompletedTime;
 }
 
+double RibbonManager::getTotalUncoveredLength() const {
+    auto sum = 0;
+    for (const auto& r : m_Ribbons) sum += r.length();
+    return sum;
+}
+

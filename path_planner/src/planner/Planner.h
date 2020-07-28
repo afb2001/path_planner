@@ -27,6 +27,9 @@ public:
         unsigned long Expanded;
         unsigned long Iterations;
         double PlanFValue;
+        double PlanCollisionPenalty = 0;
+        double PlanTimePenalty;
+        double PlanHValue;
         unsigned long PlanDepth;
         DubinsPlan Plan;
     };

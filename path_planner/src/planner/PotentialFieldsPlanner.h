@@ -39,13 +39,15 @@ private:
     };
 
     static double getRibbonMagnitude(double distance)  {
+        // avoid dividing by 0 with a max value
         if (distance <= 0.5) return 20;
         return 10 / distance;
     }
 
     static double getDynamicObstacleMagnitude(double distance, double width, double length) {
+        // if we're super close just return a really high value
         if (distance <= 0) return 1000;
-        // scale magnitude by obstacle area (why not?)
+        // scale magnitude by obstacle area
         return exp(-distance / 10) * width * length / 100;
     }
 

@@ -90,8 +90,10 @@ public:
 
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 
-        for (int i = 0; i + 1 < goal->path.poses.size(); i+= 1) {
-            // assume points represent track-line pairs
+        for (int i = 0; i + 1 < goal->path.poses.size(); i+= 2) {
+            // assume points represent track-line pairs, and that each line gets two points (they don't share points)
+            // this will skip every other line the way the mission manager currently sends track lines, but allows for
+            // lines to not be connected
             geometry_msgs::PointStamped::_point_type start = m_CoordinateConverter.wgs84_to_map(goal->path.poses[i].pose.position);
             geometry_msgs::PointStamped::_point_type end = m_CoordinateConverter.wgs84_to_map(goal->path.poses[i + 1].pose.position);
 
@@ -382,7 +384,8 @@ public:
         m_display_pub.publish(geoVizItem);
     }
 
-    void publishStats(const Planner::Stats& stats, double collisionPenalty, unsigned long cpuTime) override {
+    void publishStats(const Planner::Stats& stats, double collisionPenalty, unsigned long cpuTime,
+                      bool lastPlanAchievable) override {
 //        std::cerr << stats.Samples << " total samples, " << stats.Generated << " generated, "
 //                         << stats.Expanded << " expanded in " << stats.Iterations << " iterations. F-value " <<
 //                         stats.PlanFValue << std::endl;
@@ -393,22 +396,27 @@ public:
         statsMsg.expanded = stats.Expanded;
         statsMsg.iterations = stats.Iterations;
         statsMsg.plan_f_value = stats.PlanFValue;
+        statsMsg.plan_collision_penalty = stats.PlanCollisionPenalty;
+        statsMsg.plan_time_penalty = stats.PlanTimePenalty;
+        statsMsg.plan_h_value = stats.PlanHValue;
         statsMsg.plan_depth = stats.PlanDepth;
         statsMsg.collision_penalty = collisionPenalty;
         statsMsg.cpu_time = cpuTime;
+        statsMsg.last_plan_achievable = lastPlanAchievable;
         m_stats_pub.publish(statsMsg);
     }
 
-    void publishTaskLevelStats(double wallClockTime, double cumulativeCollisionPenalty,
-                               double cumulativeGValue) override {
-//        std::cerr << "Finished task in " << std::to_string(wallClockTime) << "s with total collision penalty "
-//                  << std::to_string(cumulativeCollisionPenalty) << ". That's a score of "
-//                  << std::to_string(cumulativeGValue) << std::endl;
+    void publishTaskLevelStats(double wallClockTime, double cumulativeCollisionPenalty, double cumulativeGValue,
+                               double uncoveredLength) override {
+        std::cerr << "Finished task in " << std::to_string(wallClockTime) << "s with total collision penalty "
+                  << std::to_string(cumulativeCollisionPenalty) << ". That's a score of "
+                  << std::to_string(cumulativeGValue) << std::endl;
 
         path_planner_common::TaskLevelStats stats;
         stats.time = wallClockTime;
         stats.collision_penalty = cumulativeCollisionPenalty;
         stats.score = cumulativeGValue;
+        stats.uncovered_length = uncoveredLength;
         m_task_level_stats_pub.publish(stats);
     }
 

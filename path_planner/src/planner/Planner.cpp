@@ -20,6 +20,7 @@ DubinsPlan Planner::tracePlan(const shared_ptr<Vertex>& v, bool smoothing, const
         if (cur->parentEdge()->getSavedCollisionPenalty() > 0) {
             std::cerr << "Collision possible in returned plan (penalty = " << cur->parentEdge()->getSavedCollisionPenalty() << ")" << std::endl;
             dangerous = true;
+            m_Stats.PlanCollisionPenalty += cur->parentEdge()->getSavedCollisionPenalty();
         }
     }
     DubinsPlan plan;

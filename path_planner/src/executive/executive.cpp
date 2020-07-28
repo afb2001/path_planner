@@ -69,10 +69,16 @@ void Executive::planLoop() {
         // declare stats here so that the plan persists between loops
         Planner::Stats stats;
 
+        // keep track of this so we can publish it with the stats
+        bool lastPlanAchievable = false;
+
         // keep track of how many times in a row we fail to find a plan
         int failureCount = 0;
 
         while (true) {
+            double startTime = m_TrajectoryPublisher->getTime();
+            // logging time each time through the loop for making sure we're hitting the time bound
+//            *m_PlannerConfig.output() << "Top of plan loop at time " << std::to_string(startTime) << std::endl;
 
             // planner is stateless so we can make a new instance each time
             unique_ptr<Planner> planner;
@@ -82,14 +88,9 @@ void Executive::planLoop() {
                 planner = std::unique_ptr<Planner>(new AStarPlanner);
             }
 
-            double startTime = m_TrajectoryPublisher->getTime();
-            // logging time each time through the loop for making sure we're hitting the time bound
-//            *m_PlannerConfig.output() << "Top of plan loop at time " << std::to_string(startTime) << std::endl;
-
             { // new scope for RAII again
                 unique_lock<mutex> lock(m_PlannerStateMutex);
                 if (m_PlannerState == PlannerState::Cancelled) {
-                    lock.unlock(); // unnecessary?
                     // if we're not supposed to be running right now go ahead and break out
                     break;
                 }
@@ -127,10 +128,14 @@ void Executive::planLoop() {
                     // check if start state is blocked
                     // I don't remember why I put this inside the locked block but I'm sure I had a good reason
                     if (m_PlannerConfig.map()->isBlocked(startState.x(), startState.y())) {
-                        cerr << "Starting state (" << startState.toString()
-                             << ") is blocked, according to most recent map. Trying again in 1s." << endl;
-                        sleep(1);
-                        continue;
+                        *m_PlannerConfig.output() << "We've run aground, according to the most recent map!\n" <<
+                        "Ending task now" << endl;
+//                        cerr << "Starting state (" << startState.toString()
+//                             << ") is blocked, according to most recent map. Trying again in 1s." << endl;
+//                        sleep(1);
+//                        continue;
+                        m_TrajectoryPublisher->allDone();
+                        break;
                     }
                 }
             }
@@ -193,7 +198,8 @@ void Executive::planLoop() {
                 throw;
             }
 
-            m_TrajectoryPublisher->publishStats(stats, collisionPenalty * Edge::collisionPenaltyFactor(), 0);
+            m_TrajectoryPublisher->publishStats(stats, collisionPenalty * Edge::collisionPenaltyFactor(),
+                                                0, lastPlanAchievable);
 
             // calculate remaining time (to sleep)
             double endTime = m_TrajectoryPublisher->getTime();
@@ -238,6 +244,7 @@ void Executive::planLoop() {
                 if (!startState.isCoLocated(expectedStartState)) {
                     // reset plan because controller says we can't make it
                     stats.Plan = DubinsPlan();
+                    lastPlanAchievable = false;
 
                     // reset turning radius shrink because we can't follow original plan anymore
                     if (c_RadiusShrinkEnabled) {
@@ -250,6 +257,7 @@ void Executive::planLoop() {
                 } else {
                     // expected start state is along plan so allow plan to be passed to planner as previous plan
                     m_RadiusShrink += c_RadiusShrinkAmount;
+                    lastPlanAchievable = true;
                 }
             } else {
                 cerr << "Planner returned empty trajectory." << endl;
@@ -280,14 +288,15 @@ void Executive::planLoop() {
 
     // task-level stats reporting
     auto trialEndTime = m_TrajectoryPublisher->getTime();
-    // TODO! -- publish to a topic
     auto wallClockTime = trialEndTime - trialStartTime;
     // multiply penalties by weights
     cumulativeCollisionPenalty *= Edge::collisionPenaltyFactor();
     auto timePenalty = wallClockTime * Edge::timePenaltyFactor();
+    auto uncoveredLength = m_RibbonManager.getTotalUncoveredLength();
 
     m_TrajectoryPublisher->publishTaskLevelStats(wallClockTime, cumulativeCollisionPenalty,
-            timePenalty + cumulativeCollisionPenalty);
+                                                 timePenalty + cumulativeCollisionPenalty,
+                                                 uncoveredLength);
     unique_lock<mutex> lock2(m_PlannerStateMutex);
     std::cerr << "Setting inactive state" << std::endl;
     m_PlannerState = PlannerState::Inactive;

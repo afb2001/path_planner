@@ -48,12 +48,13 @@ private:
         // if we're super close just return a really high value
         if (distance <= 0) return 1000;
         // scale magnitude by obstacle area
-        return exp(-distance / 10) * width * length / 100;
+        return exp(-distance / 13) * width * length / 10;
+//        return width * length / distance / distance / 100;
     }
 
     static double getStaticObstacleMagnitude(double distance) {
         if (distance > c_StaticObsIgnoreThreshold) return 0;
-        return exp(-distance / 10);
+        return exp(-distance / 15);
     }
 
     static constexpr int c_LookaheadSteps = 10;

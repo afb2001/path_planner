@@ -157,8 +157,8 @@ public:
         obstacle.time() = inmsg->header.stamp.toNSec() / 1.0e9;
 
         // get dimensions with some buffer
-        auto width = inmsg->dimension_to_port + inmsg->dimension_to_stbd + 5;
-        auto length = inmsg->dimension_to_bow + inmsg->dimension_to_stern + 10;
+        auto width = inmsg->dimension_to_port + inmsg->dimension_to_stbd;
+        auto length = inmsg->dimension_to_bow + inmsg->dimension_to_stern;
 
         if (width <= 5) width = 10;
         if (length <= 10) length = 30;

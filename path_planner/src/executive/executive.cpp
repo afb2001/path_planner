@@ -333,6 +333,14 @@ void Executive::refreshMap(const std::string& pathToMapFile, double latitude, do
             // could take some time for I/O
             try {
                 // If the name looks like it's one of our gridworld maps, load it in that format, otherwise assume GeoTIFF
+                if ( access( pathToMapFile.c_str(), F_OK ) == -1 ) {
+                    *m_PlannerConfig.output() << "Cannot find map file: " << pathToMapFile << endl;
+                    *m_PlannerConfig.output() << "Using empty map  for now." << endl;
+                    m_NewMap = make_shared<Map>();
+                    m_CurrentMapPath = "";
+                    m_TrajectoryPublisher->displayMap("");
+                    return;
+                }
                 if (pathToMapFile.find(".map") == -1) {
                     // don't try to display geotiff maps
                     m_TrajectoryPublisher->displayMap("");

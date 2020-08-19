@@ -8,7 +8,7 @@
 #include "../planner/AStarPlanner.h"
 #include "../common/map/GeoTiffMap.h"
 #include "../common/map/GridWorldMap.h"
-#include "../planner/PotentialFieldsPlanner.h"
+#include "../planner/PotentialFieldPlanner.h"
 
 using namespace std;
 
@@ -42,9 +42,10 @@ void Executive::updateCovered(double x, double y, double speed, double heading, 
 
 void Executive::planLoop() {
     double trialStartTime = m_TrajectoryPublisher->getTime(), cumulativeCollisionPenalty = 0;
-    // TODO? -- record uncovered or poorly covered?
 
     // Forget all dynamic obstacles. In practice this is not a good idea but for testing it's sort of OK
+    // Roland, you probably want to take this out at some point and find a better way to make the planner forget about
+    // old dynamic obstacles (timeout of some kind?)
     m_BinaryDynamicObstaclesManager = std::make_shared<BinaryDynamicObstaclesManager>();
     m_GaussianDynamicObstaclesManager = std::make_shared<GaussianDynamicObstaclesManager>();
 
@@ -82,8 +83,8 @@ void Executive::planLoop() {
 
             // planner is stateless so we can make a new instance each time
             unique_ptr<Planner> planner;
-            if (m_UsePotentialFields) {
-                planner = std::unique_ptr<Planner>(new PotentialFieldsPlanner);
+            if (m_UsePotentialField) {
+                planner = std::unique_ptr<Planner>(new PotentialFieldPlanner);
             } else {
                 planner = std::unique_ptr<Planner>(new AStarPlanner);
             }
@@ -310,7 +311,7 @@ void Executive::terminate()
 }
 
 void Executive::updateDynamicObstacle(uint32_t mmsi, State obstacle, double width, double length) {
-    m_DynamicObstaclesManager.update(mmsi, inventDistributions(obstacle));
+//    m_DynamicObstaclesManager.update(mmsi, inventDistributions(obstacle));
     m_BinaryDynamicObstaclesManager->update(mmsi, obstacle.x(), obstacle.y(), obstacle.heading(),
             obstacle.speed(), obstacle.time(), width, length);
     m_GaussianDynamicObstaclesManager->update(mmsi, obstacle.x(), obstacle.y(), obstacle.heading(),
@@ -394,7 +395,7 @@ void Executive::setConfiguration(double turningRadius, double coverageTurningRad
                                  double lineWidth, int k, int heuristic, double timeHorizon, double timeMinimum,
                                  double collisionCheckingIncrement, int initialSamples, bool useBrownPaths,
                                  bool useGaussianDynamicObstacles, bool ignoreDynamicObstacles,
-                                 bool usePotentialFields) {
+                                 bool usePotentialField) {
     m_PlannerConfig.setTurningRadius(turningRadius);
     m_PlannerConfig.setCoverageTurningRadius(coverageTurningRadius);
     m_PlannerConfig.setMaxSpeed(maxSpeed);
@@ -417,7 +418,7 @@ void Executive::setConfiguration(double turningRadius, double coverageTurningRad
     m_PlannerConfig.setUseBrownPaths(useBrownPaths);
     m_UseGaussianDynamicObstacles = useGaussianDynamicObstacles;
     m_IgnoreDynamicObstacles = ignoreDynamicObstacles;
-    m_UsePotentialFields = usePotentialFields;
+    m_UsePotentialField = usePotentialField;
 }
 
 void Executive::startPlanner() {
@@ -449,6 +450,5 @@ void Executive::setPlannerVisualization(bool visualize, const std::string& visua
 
 //void Executive::updateDynamicObstacle(uint32_t mmsi, const std::vector<Distribution>& obstacle) {
 //    m_DynamicObstaclesManager.update(mmsi, obstacle);
-//    // TODO! -- other representations
 //}
 

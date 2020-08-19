@@ -153,7 +153,6 @@ double RibbonManager::minDistanceFrom(double x, double y) const {
 
 void RibbonManager::add(const Ribbon& r, std::list<Ribbon>::iterator i, bool strict) {
     if (r.covered(strict)) return;
-    // TODO! -- issue warning about large numbers of ribbons
     // TODO! -- determine whether to split any of the prior ribbons based on this new one
     m_Ribbons.insert(i, r);
 }
@@ -295,7 +294,6 @@ std::vector<State> RibbonManager::findStatesOnRibbonsOnCircle(const State& cente
 }
 
 std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, double radius) const {
-    // This might not be right for all scenarios
     std::vector<State> states;
     auto h = start.yaw() + M_PI_2;
     // get points one radius away from start in the directions perpendicular to its heading
@@ -338,7 +336,7 @@ std::vector<State> RibbonManager::findNearStatesOnRibbons(const State& start, do
         } else {
             s = s2;
         }
-        auto h2 = s.yaw() - M_PI_2; // but which way??? // might not be right in all cases but seems to work in practice
+        auto h2 = s.yaw() - M_PI_2; // might not be right in all cases but seems to work in practice
         auto dx1 = cos(h2) * radius / 2;
         auto dy1 = sin(h2) * radius / 2;
 //        auto x3 = proj.first + proj.first < x ? dx1 : -dx1;

@@ -217,7 +217,7 @@ public:
                                       config.initial_samples,
                                       config.use_brown_paths,
                                       config.dynamic_obstacles == 1, config.ignore_dynamic_obstacles,
-                                      config.use_potential_fields_planner);
+                                      config.use_potential_field_planner);
         m_Executive->setPlannerVisualization(config.dump_visualization, config.visualization_file);
     }
 

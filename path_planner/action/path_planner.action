@@ -1,9 +1,11 @@
 # goal
+# pairwise endpoints of survey lines
 geographic_msgs/GeoPath path
+# desired default speed
 float32 speed
 ---
-# result
+# result (not used)
 std_msgs/Empty result
 ---
-# feedback
+# feedback (not used)
 float32 percent_complete

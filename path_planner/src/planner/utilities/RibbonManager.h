@@ -132,7 +132,8 @@ public:
     const std::list<Ribbon>& get() const;
 
     /**
-     * Find states on nearby ribbons radius distance away from the state
+     * Find states on nearby ribbons radius distance away from the state.
+     * Currently unused.
      * @param center
      * @param radius
      * @return
@@ -159,20 +160,43 @@ public:
      */
     static void setRibbonWidth(double lineWidth) { Ribbon::RibbonWidth = lineWidth; }
 
+    /**
+     * Get the time at which coverage was completed. If coverage has not yet been completed this will be < 0.
+     * @return
+     */
     double coverageCompletedTime() const;
 
+    /**
+     * Set the time at which coverage was completed. This should only be called once, at the time during collision
+     * checking when coverage is completed.
+     * @param coverageCompletedTime
+     */
     void setCoverageCompletedTime(double coverageCompletedTime);
 
+    /**
+     * Get the total length of uncovered ribbons.
+     * @return
+     */
     double getTotalUncoveredLength() const;
 
 private:
+    // which heuristic to use
     Heuristic m_Heuristic;
+
+    // turning radius for the Dubins TSP heuristics
     double m_TurningRadius = -1;
+
+    // K for K nearest TSP heuristic variants
     int m_K;
 
     // record when coverage is done so we know when to stop afterwards
     double m_CoverageCompletedTime = -1;
 
+    /**
+     * List of (uncovered) ribbons.
+     * This is a list (instead of, say, a vector) because there need to be constant time insertions and deletions. Plus,
+     * it never needs to be accessed by index.
+     */
     std::list<Ribbon> m_Ribbons;
 
     /**
@@ -237,13 +261,27 @@ private:
     double tspDubinsNoSplitKRibbons(std::list<Ribbon> ribbonsLeft, double distanceSoFar, double x,
                                     double y, double yaw) const;
 
+    /**
+     * Threshold for the number of ribbons that is too many for TSP heuristics to reliably handle. This number is not
+     * necessarily well-chosen as I haven't really benchmarked the TSP heuristics very much.
+     */
     static constexpr int c_RibbonCountDangerThreshold = 5;
+
+
     static double distance(std::pair<double, double> p1, std::pair<double, double> p2) {
         return distance(p1.first, p1.second, p2.first, p2.second);
     }
     static double distance(std::pair<double, double> p, double x, double y){
         return distance(p.first, p.second, x, y);
     }
+    /**
+     * Euclidean distance between (x1, y1) and (x2, y2). Has a couple convenience overloads.
+     * @param x1
+     * @param y1
+     * @param x2
+     * @param y2
+     * @return
+     */
     static double distance(double x1, double y1, double x2, double y2) {
         return sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2));
     }

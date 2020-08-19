@@ -1,12 +1,12 @@
-#ifndef SRC_POTENTIALFIELDSPLANNER_H
-#define SRC_POTENTIALFIELDSPLANNER_H
+#ifndef SRC_POTENTIALFIELDPLANNER_H
+#define SRC_POTENTIALFIELDPLANNER_H
 
 
 #include "Planner.h"
 
-class PotentialFieldsPlanner : public Planner {
+class PotentialFieldPlanner : public Planner {
 public:
-    ~PotentialFieldsPlanner() override = default;
+    ~PotentialFieldPlanner() override = default;
 
     Stats plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
                const DubinsPlan& previousPlan, double timeRemaining) override;
@@ -63,4 +63,4 @@ private:
 };
 
 
-#endif //SRC_POTENTIALFIELDSPLANNER_H
+#endif //SRC_POTENTIALFIELDPLANNER_H

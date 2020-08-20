@@ -9,6 +9,6 @@ const double* Map::extremes() const {
     return m_Extremes;
 }
 
-int Map::resolution() const {
+double Map::resolution() const {
     return 0;
 }

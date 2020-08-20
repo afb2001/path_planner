@@ -1,9 +1,9 @@
-#include "PotentialFieldsPlanner.h"
+#include "PotentialFieldPlanner.h"
 #include "../common/dynamic_obstacles/BinaryDynamicObstaclesManager.h"
 
-Planner::Stats PotentialFieldsPlanner::plan(const RibbonManager& ribbonManager, const State& start,
-                                            PlannerConfig config, const DubinsPlan& previousPlan,
-                                            double timeRemaining) {
+Planner::Stats PotentialFieldPlanner::plan(const RibbonManager& ribbonManager, const State& start,
+                                           PlannerConfig config, const DubinsPlan& previousPlan,
+                                           double timeRemaining) {
     Stats stats;
     auto current = start;
     current.speed() = config.maxSpeed();

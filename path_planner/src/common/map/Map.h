@@ -28,7 +28,7 @@ public:
      */
     virtual const double* extremes() const;
 
-    virtual int resolution() const;
+    virtual double resolution() const;
 
 private:
     double m_Extremes[4] = {-DBL_MAX, DBL_MAX, -DBL_MAX, DBL_MAX};

@@ -100,7 +100,7 @@ public:
     void setConfiguration(double turningRadius, double coverageTurningRadius, double maxSpeed, double slowSpeed,
                           double lineWidth, int k, int heuristic, double timeHorizon, double timeMinimum,
                           double collisionCheckingIncrement, int initialSamples, bool useBrownPaths,
-                          bool useGaussianDynamicObstacles, bool ignoreDynamicObstacles, bool usePotentialFields);
+                          bool useGaussianDynamicObstacles, bool ignoreDynamicObstacles, bool usePotentialField);
 
     /**
      * Update the planner visualization status with a new visualization file. If visualize is false the path is ignored.
@@ -121,10 +121,12 @@ private:
         Cancelled,
     };
 
+    // handling of planner state. This is mostly for making sure threads exit properly when canceled and start again correctly
     PlannerState m_PlannerState = PlannerState::Inactive;
     std::mutex m_PlannerStateMutex;
     std::condition_variable m_CancelCV;
 
+    // info for coverage checking
     std::mutex m_RibbonManagerMutex;
     RibbonManager m_RibbonManager;
     double m_LastUpdateTime = 1; // could use the time in m_LastState I think but this is cleaner
@@ -134,17 +136,25 @@ private:
     // TODO! -- use ROS_INFO
     PlannerConfig m_PlannerConfig = PlannerConfig(&std::cerr);
 
+    // only two obstacle managers for now so it can be a bool
     bool m_UseGaussianDynamicObstacles = false;
-    bool m_IgnoreDynamicObstacles = false;
-    bool m_UsePotentialFields = false;
 
+    // whether or not to ignore dynamic obstacles
+    bool m_IgnoreDynamicObstacles = false;
+
+    // flag for the potential field planner (ignores most other planner config options)
+    bool m_UsePotentialField = false;
+
+    // handle on a visualizer. This could probably be handled in a cleaner way
     Visualizer::UniquePtr m_Visualizer;
 
-    DynamicObstaclesManager1 m_DynamicObstaclesManager;
+//    DynamicObstaclesManager1 m_DynamicObstaclesManager;
+
+    // Just keep both dynamic obstacle managers up to date all the time, regardless of which we're using
     BinaryDynamicObstaclesManager::SharedPtr m_BinaryDynamicObstaclesManager = std::make_shared<BinaryDynamicObstaclesManager>();
     GaussianDynamicObstaclesManager::SharedPtr m_GaussianDynamicObstaclesManager = std::make_shared<GaussianDynamicObstaclesManager>();
 
-    // start with no new map
+    // map info (start with no new map)
     std::shared_ptr<Map> m_NewMap = nullptr;
     std::string m_CurrentMapPath = "";
     std::mutex m_MapMutex;
@@ -155,13 +165,21 @@ private:
     // pointer to the ROS node. Should this be a reference? I didn't know how to use references correctly when I wrote this
     TrajectoryPublisher* m_TrajectoryPublisher;
 
+    // radius shrink total
     double m_RadiusShrink = 0;
-
+    // other radius shrink info
     static constexpr bool c_RadiusShrinkEnabled = false;
     static constexpr double c_RadiusShrinkAmount = 1e-6;
 
+    // whether or not to re-use plans (I don't see why you would ever not want this except debugging and testing)
     static constexpr bool c_ReusePlanEnabled = true;
+
+    // heading rate constraint on coverage. This should really be looked at by someone who knows more about surveying
     static constexpr double c_CoverageHeadingRateMax = 0.1; // (in radians/sec)
+
+    // Planning time constant. Would be nice to make this a parameter but the controller depends on it being 1s.
+    // You might notice that this isn't actually 1s; I played around with it and this setting got closest to actually
+    // giving us 1s times.
     static constexpr double c_PlanningTimeSeconds = 0.85;
 
     /**
@@ -179,7 +197,7 @@ private:
      * @param obstacle
      * @return
      */
-    static std::vector<Distribution> inventDistributions(State obstacle);
+//    static std::vector<Distribution> inventDistributions(State obstacle);
 };
 
 #endif //SRC_EXECUTIVE_H

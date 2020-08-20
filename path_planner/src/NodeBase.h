@@ -31,7 +31,7 @@ public:
         m_node_handle.advertise<geographic_visualization_msgs::GeoVizItem>("/project11/display",1);
 
         m_controller_msgs_pub = m_node_handle.advertise<std_msgs::String>("/controller_msgs",1);
-        m_display_pub = m_node_handle.advertise<geographic_visualization_msgs::GeoVizItem>("/project11/display",1);
+        m_display_pub = m_node_handle.advertise<geographic_visualization_msgs::GeoVizItem>("/udp/project11/display",1);
 
         m_update_reference_trajectory_client = m_node_handle.serviceClient<path_planner_common::UpdateReferenceTrajectory>("/mpc/update_reference_trajectory");
 

@@ -270,6 +270,18 @@ TEST(UnitTests, GridWorldMapTest1) {
     EXPECT_FALSE(map.isBlocked(495, 450));
 }
 
+TEST(UnitTests, PepperrellCoveTest) {
+    GridWorldMap map("../../../src/test_scenario_runner/scenarios/pepperrell_cove_6.map");
+    EXPECT_FALSE(map.isBlocked(593, 592.76));
+    for (int y = 750; y >= 0; y -= 10) {
+        for (int x = 0; x < 1200; x += 10) {
+            std::cout << (map.isBlocked(x, y)? '#' : '_');
+        }
+        std::cout << '\n';
+    }
+    std::cout << endl;
+}
+
 void visualizePath(const State& s1, const State& s2, const State& s3, double turningRadius) {
     RibbonManager ribbonManager;
     ribbonManager.add(0, 0, 1000, 0);

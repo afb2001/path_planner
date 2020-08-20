@@ -157,8 +157,8 @@ public:
         obstacle.time() = inmsg->header.stamp.toNSec() / 1.0e9;
 
         // get dimensions with some buffer
-        auto width = inmsg->dimension_to_port + inmsg->dimension_to_stbd + 5;
-        auto length = inmsg->dimension_to_bow + inmsg->dimension_to_stern + 10;
+        auto width = inmsg->dimension_to_port + inmsg->dimension_to_stbd;
+        auto length = inmsg->dimension_to_bow + inmsg->dimension_to_stern;
 
         if (width <= 5) width = 10;
         if (length <= 10) length = 30;
@@ -217,7 +217,7 @@ public:
                                       config.initial_samples,
                                       config.use_brown_paths,
                                       config.dynamic_obstacles == 1, config.ignore_dynamic_obstacles,
-                                      config.use_potential_fields_planner);
+                                      config.use_potential_field_planner);
         m_Executive->setPlannerVisualization(config.dump_visualization, config.visualization_file);
     }
 
@@ -439,8 +439,6 @@ private:
 
     // handle on Executive
     Executive* m_Executive;
-    // constant for linear interpolation of points to cover
-    const double c_max_goal_distance = 10;
 };
 
 int main(int argc, char **argv)

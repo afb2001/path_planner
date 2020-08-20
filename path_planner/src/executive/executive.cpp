@@ -373,18 +373,18 @@ void Executive::addRibbon(double x1, double y1, double x2, double y2) {
     m_RibbonManager.add(x1, y1, x2, y2);
 }
 
-std::vector<Distribution> Executive::inventDistributions(State obstacle) {
-    // This definitely needs some work. Maybe Distribution does too.
-    std::vector<Distribution> distributions;
-    double mean[2] = {obstacle.x(), obstacle.y()};
-    double covariance[2][2] = {{1, 0},{0, 1}};
-    distributions.emplace_back(mean, covariance, 5, 5, obstacle.heading(), obstacle.time());
-    obstacle = obstacle.push(1);
-    mean[0] = obstacle.x(); mean[1] = obstacle.y();
-//    double covariance2[2][2] = {{2, 0}, {0, 2}}; // grow variance over time
-    distributions.emplace_back(mean, covariance, 5, 5, obstacle.heading(), obstacle.time());
-    return distributions;
-}
+//std::vector<Distribution> Executive::inventDistributions(State obstacle) {
+//    // This definitely needs some work. Maybe Distribution does too.
+//    std::vector<Distribution> distributions;
+//    double mean[2] = {obstacle.x(), obstacle.y()};
+//    double covariance[2][2] = {{1, 0},{0, 1}};
+//    distributions.emplace_back(mean, covariance, 5, 5, obstacle.heading(), obstacle.time());
+//    obstacle = obstacle.push(1);
+//    mean[0] = obstacle.x(); mean[1] = obstacle.y();
+////    double covariance2[2][2] = {{2, 0}, {0, 2}}; // grow variance over time
+//    distributions.emplace_back(mean, covariance, 5, 5, obstacle.heading(), obstacle.time());
+//    return distributions;
+//}
 
 void Executive::clearRibbons() {
     std::lock_guard<std::mutex> lock(m_RibbonManagerMutex);

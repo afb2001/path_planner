@@ -439,8 +439,6 @@ private:
 
     // handle on Executive
     Executive* m_Executive;
-    // constant for linear interpolation of points to cover
-    const double c_max_goal_distance = 10;
 };
 
 int main(int argc, char **argv)

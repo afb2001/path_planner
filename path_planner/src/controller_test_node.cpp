@@ -14,7 +14,8 @@
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 
 /**
- * Node to act as interface between ROS and path planning system.
+ * Node to test the model-predictive controller independently of the path planner. This node pretends to be the
+ * path planner node
  */
 class ControllerTest : public NodeBase
 {

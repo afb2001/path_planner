@@ -28,19 +28,19 @@ class PathPlanner final: public NodeBase, public TrajectoryPublisher
 {
 public:
     explicit PathPlanner(std::string name): NodeBase(std::move(name))
-{
-    m_Executive = new Executive(this);
+    {
+        m_Executive = new Executive(this);
 
-    m_contact_sub = m_node_handle.subscribe("/contact", 10, &PathPlanner::contactCallback, this);
-    m_origin_sub = m_node_handle.subscribe("/origin", 1, &PathPlanner::originCallback, this);
+        m_contact_sub = m_node_handle.subscribe("/contact", 10, &PathPlanner::contactCallback, this);
+        m_origin_sub = m_node_handle.subscribe("/origin", 1, &PathPlanner::originCallback, this);
 
-    m_stats_pub = m_node_handle.advertise<path_planner_common::Stats>("/path_planner/stats", 1);
-    m_task_level_stats_pub = m_node_handle.advertise<path_planner_common::TaskLevelStats>("/path_planner/task_level_stats", 1);
+        m_stats_pub = m_node_handle.advertise<path_planner_common::Stats>("/path_planner/stats", 1);
+        m_task_level_stats_pub = m_node_handle.advertise<path_planner_common::TaskLevelStats>("/path_planner/task_level_stats", 1);
 
-    dynamic_reconfigure::Server<path_planner::path_plannerConfig>::CallbackType f;
-    f = boost::bind(&PathPlanner::reconfigureCallback, this, _1, _2);
-    m_Dynamic_Reconfigure_Server.setCallback(f);
-}
+        dynamic_reconfigure::Server<path_planner::path_plannerConfig>::CallbackType f;
+        f = boost::bind(&PathPlanner::reconfigureCallback, this, _1, _2);
+        m_Dynamic_Reconfigure_Server.setCallback(f);
+    }
 
     void pilotingModeCallback(const std_msgs::String::ConstPtr& inmsg) override {
         if (inmsg->data == "autonomous") {

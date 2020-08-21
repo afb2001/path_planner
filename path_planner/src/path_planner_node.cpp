@@ -90,7 +90,7 @@ public:
 
         std::cerr << "Received " << goal->path.poses.size() << " points to cover" << std::endl;
 
-        for (int i = 0; i + 1 < goal->path.poses.size(); i+= 2) {
+        for (int i = 0; i + 1 < goal->path.poses.size(); i+= 1) {
             // assume points represent track-line pairs, and that each line gets two points (they don't share points)
             // this will skip every other line the way the mission manager currently sends track lines, but allows for
             // lines to not be connected

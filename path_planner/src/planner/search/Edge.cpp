@@ -1,8 +1,8 @@
-#include <utility>
-#include <algorithm>
-#include <memory>
 #include "Edge.h"
-#include <cfloat>
+#include <path_planner_common/State.h>
+
+#include <utility>
+#include <memory>
 
 Edge::Edge(std::shared_ptr<Vertex> start) {
     this->m_Start = std::move(start);

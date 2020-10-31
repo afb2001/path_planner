@@ -1,8 +1,10 @@
 #ifndef SRC_GRIDWORLDMAP_H
 #define SRC_GRIDWORLDMAP_H
 
-#include <vector>
 #include "Map.h"
+
+#include <string>
+#include <vector>
 
 /**
  * Represent a map loaded from a grid-world text file.

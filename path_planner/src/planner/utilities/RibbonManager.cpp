@@ -1,8 +1,8 @@
+#include "RibbonManager.h"
+
 #include <cfloat>
-#include <algorithm>
 #include <sstream>
 #include <vector>
-#include "RibbonManager.h"
 
 void RibbonManager::add(double x1, double y1, double x2, double y2) {
     if (m_Ribbons.size() > c_RibbonCountDangerThreshold)

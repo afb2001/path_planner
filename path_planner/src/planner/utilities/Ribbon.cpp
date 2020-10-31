@@ -1,5 +1,6 @@
-#include <sstream>
 #include "Ribbon.h"
+
+#include <sstream>
 
 double Ribbon::RibbonWidth = 1.5;
 

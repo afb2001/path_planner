@@ -2,6 +2,7 @@
 #define SRC_VISUALIZER_H
 
 #include <fstream>
+#include <memory>
 
 /**
  * Encapsulate IO for visualization.

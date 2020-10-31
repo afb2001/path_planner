@@ -1,10 +1,12 @@
 #ifndef SRC_RIBBONMANAGER_H
 #define SRC_RIBBONMANAGER_H
 
-#include <list>
-#include <vector>
 #include <path_planner_common/State.h>
 #include "Ribbon.h"
+
+#include <list>
+#include <vector>
+
 extern "C" {
 #include <dubins.h>
 }

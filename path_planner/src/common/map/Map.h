@@ -1,7 +1,6 @@
 #ifndef SRC_MAP_H
 #define SRC_MAP_H
 
-
 #include <memory>
 #include <cfloat>
 

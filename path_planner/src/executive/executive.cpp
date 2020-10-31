@@ -1,14 +1,21 @@
+#include "executive.h"
+#include "../planner/SamplingBasedPlanner.h"
+#include "../planner/AStarPlanner.h"
+#include "../planner/PotentialFieldPlanner.h"
+#include "../common/map/GeoTiffMap.h"
+#include "../common/map/GridWorldMap.h"
+#include <path_planner_common/State.h>
+#include "../trajectory_publisher.h"
+#include "../planner/search/Edge.h"
+
+#include <unistd.h>
+#include <string>
 #include <thread>
 #include <fstream>
 #include <wait.h>
 #include <future>
-#include <memory>
-#include "executive.h"
-#include "../planner/SamplingBasedPlanner.h"
-#include "../planner/AStarPlanner.h"
-#include "../common/map/GeoTiffMap.h"
-#include "../common/map/GridWorldMap.h"
-#include "../planner/PotentialFieldPlanner.h"
+#include <condition_variable>
+
 
 using namespace std;
 

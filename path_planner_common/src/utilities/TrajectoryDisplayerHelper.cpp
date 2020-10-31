@@ -1,5 +1,12 @@
 #include <path_planner_common/TrajectoryDisplayerHelper.h>
+#include <geographic_msgs/GeoPoint.h>
+#include "geographic_visualization_msgs/GeoVizItem.h"
+#include "geographic_visualization_msgs/GeoVizPointList.h"
+#include "project11_transformations/local_services.h"
+#include <path_planner_common/StateMsg.h>
+#include <path_planner_common/State.h>
 
+#include <vector>
 
 TrajectoryDisplayerHelper::TrajectoryDisplayerHelper(ros::NodeHandle& nodeHandle, ros::Publisher* displayPub): m_transformations(new project11::Transformations(nodeHandle))
 {

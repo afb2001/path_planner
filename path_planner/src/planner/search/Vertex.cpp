@@ -1,5 +1,6 @@
 #include <sstream>
 #include "Vertex.h"
+#include "Edge.h"
 
 Vertex::Vertex(State state) {
     this->m_State = state;

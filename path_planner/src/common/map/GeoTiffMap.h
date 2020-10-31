@@ -1,9 +1,10 @@
 #ifndef SRC_GEOTIFFMAP_H
 #define SRC_GEOTIFFMAP_H
 
-#include <gdal_priv.h>
-#include <string>
 #include "Map.h"
+
+#include <vector>
+#include <string>
 
 /**
  * Represent a map loaded from a GeoTiff.

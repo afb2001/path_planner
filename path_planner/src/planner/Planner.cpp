@@ -1,5 +1,5 @@
 #include <memory>
-
+#include "search/Edge.h"
 #include "Planner.h"
 #include "search/Vertex.h"
 #include <algorithm>    // std::remove_if, std::reverse

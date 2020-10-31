@@ -1,9 +1,11 @@
+#include "GridWorldMap.h"
+
+#include <string>
 #include <fstream>
 #include <sstream>
 #include <queue>
 #include <cmath>
 #include <cfloat>
-#include "GridWorldMap.h"
 #include <algorithm>
 #include <iostream>
 
@@ -17,8 +19,7 @@ GridWorldMap::GridWorldMap(const std::string& path) {
     s >> m_Resolution;
     int cols = -1, rows = 0;
     while (std::getline(infile, line)) {
-        if (cols == -1) cols = line.length();
-        else if (line.length() < cols) cols = line.length();
+        if (cols == -1 || line.length() < cols) cols = line.length();
         rows++;
         lines.push_back(line);
     }
@@ -26,8 +27,10 @@ GridWorldMap::GridWorldMap(const std::string& path) {
 
     m_Blocked = std::vector<std::vector<bool>>(rows, std::vector<bool>(cols, false));
 
-    m_Extremes[0] = 0; m_Extremes[1] = m_Blocked.front().size() * m_Resolution;
-    m_Extremes[2] = 0; m_Extremes[3] = m_Blocked.size() * m_Resolution;
+    m_Extremes[0] = 0;
+    m_Extremes[1] = m_Blocked.front().size() * m_Resolution;
+    m_Extremes[2] = 0;
+    m_Extremes[3] = m_Blocked.size() * m_Resolution;
 
 //    class BrushFireCell {
 //    public:
@@ -85,7 +88,7 @@ bool GridWorldMap::isBlocked(double x, double y) const {
     if (x < 0 || x / m_Resolution >= m_Blocked.front().size()) return true;
     if (y < 0 || y / m_Resolution >= m_Blocked.size()) return true;
 //    try {
-        return m_Blocked.at(y / m_Resolution).at(x / m_Resolution);
+    return m_Blocked.at(y / m_Resolution).at(x / m_Resolution);
 //    }
 //    catch (std::out_of_range&) {
 //        return true;

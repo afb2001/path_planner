@@ -1,6 +1,11 @@
-#include <cassert>
+#include <path_planner_common/State.h>
 #include <path_planner_common/DubinsWrapper.h>
+
 #include <sstream>
+
+extern "C" {
+#include <dubins.h>
+}
 
 DubinsWrapper::DubinsWrapper(const State& s1, const State& s2, double rho) {
     set(s1, s2, rho);

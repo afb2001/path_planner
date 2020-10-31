@@ -1,13 +1,14 @@
 #ifndef SRC_PLANNER_H
 #define SRC_PLANNER_H
 
-
-#include <vector>
 #include <path_planner_common/State.h>
 #include "../common/map/Map.h"
 #include "search/Vertex.h"
 #include <path_planner_common/DubinsPlan.h>
 #include "PlannerConfig.h"
+#include "utilities/RibbonManager.h"
+
+#include <vector>
 
 /**
  * Interface to represent all planners. This might not have been really necessary but when I ported everything to C++
@@ -48,7 +49,7 @@ public:
      * @return
      */
     virtual Stats plan(const RibbonManager& ribbonManager, const State& start, PlannerConfig config,
-                            const DubinsPlan& previousPlan, double timeRemaining);
+                       const DubinsPlan& previousPlan, double timeRemaining);
 
     /**
      * Construct a single plan by tracing back from the given vertex to the root.

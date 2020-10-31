@@ -1,4 +1,5 @@
 #include "AStarPlanner.h"
+#include "search/Edge.h"
 #include <utility>
 
 using std::shared_ptr;

@@ -1,4 +1,5 @@
 #include "SamplingBasedPlanner.h"
+#include "search/Edge.h"
 #include <algorithm>
 #include <utility>
 

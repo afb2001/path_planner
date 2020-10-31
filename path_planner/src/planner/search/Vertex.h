@@ -1,12 +1,13 @@
 #ifndef SRC_VERTEX_H
 #define SRC_VERTEX_H
 
-#include <memory>
 #include <path_planner_common/State.h>
-#include "Edge.h"
 #include "../utilities/RibbonManager.h"
 #include "path_planner_common/DubinsWrapper.h"
 #include "../PlannerConfig.h"
+
+#include <memory>
+#include <string>
 
 // forward declaration to resolve circular dependency
 class Edge;

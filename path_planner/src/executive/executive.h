@@ -1,14 +1,19 @@
 #ifndef SRC_EXECUTIVE_H
 #define SRC_EXECUTIVE_H
 
-#include <condition_variable>
 #include "../planner/utilities/RibbonManager.h"
 #include "../trajectory_publisher.h"
 #include "../planner/Planner.h"
 #include "../common/dynamic_obstacles/BinaryDynamicObstaclesManager.h"
 #include "../common/dynamic_obstacles/GaussianDynamicObstaclesManager.h"
-#include <future>
+#include <path_planner_common/State.h>
+
+#include <condition_variable>
+#include <cstdio> // stderr
 #include <fstream>
+#include <future>
+#include <memory>
+#include <string>
 
 /**
  * Class calls the planner and manages associated configurations and other data.

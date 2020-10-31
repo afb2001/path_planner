@@ -1,9 +1,10 @@
 #ifndef SRC_STATEGENERATOR_H
 #define SRC_STATEGENERATOR_H
 
+#include "RibbonManager.h"
+
 #include <random>
 #include <path_planner_common/State.h>
-#include "RibbonManager.h"
 
 /**
  * Encapsulate state generation. Construct a state generator with bounds and a seed and it'll do the rest.

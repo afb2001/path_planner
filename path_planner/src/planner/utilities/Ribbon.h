@@ -1,10 +1,11 @@
 #ifndef SRC_RIBBON_H
 #define SRC_RIBBON_H
 
+#include <path_planner_common/State.h>
+
 #include <cmath>
 #include <utility>
 #include <string>
-#include <path_planner_common/State.h>
 
 /**
  * Represent a survey line as a line segment with a width (ribbon).
@@ -116,8 +117,8 @@ public:
 
     // perpendicular distance to line through (startX, startY), (endX, endY)
     double distance(double x, double y) const {
-        return (fabs((m_EndY - m_StartY) * x - (m_EndX - m_StartX) * y + m_EndX*m_StartY - m_EndY*m_StartX)) /
-               sqrt(squaredLength());
+        return (std::fabs((m_EndY - m_StartY) * x - (m_EndX - m_StartX) * y + m_EndX*m_StartY - m_EndY*m_StartX)) /
+                std::sqrt(squaredLength());
     }
 
     static constexpr double strictModifier() { return c_StrictModifier; }

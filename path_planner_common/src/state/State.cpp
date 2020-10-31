@@ -1,5 +1,7 @@
 #include <path_planner_common/State.h>
 
+#include <cmath>
+
 State::State(double x, double y, double heading, double speed, double t) {
     setX(x);
     setY(y);
@@ -11,8 +13,8 @@ State::State(double x, double y, double heading, double speed, double t) {
 State State::push(double timeInterval) const {
     State s;
     double displacement = timeInterval * speed();
-    s.x() = x() + sin(heading()) * displacement;
-    s.y() = y() + cos(heading()) * displacement;
+    s.x() = x() + std::sin(heading()) * displacement;
+    s.y() = y() + std::cos(heading()) * displacement;
     s.heading() = heading();
     s.speed() = speed();
     s.time() = time() + timeInterval;
@@ -20,8 +22,8 @@ State State::push(double timeInterval) const {
 }
 
 void State::move(double distance) {
-    x() += cos(yaw()) * distance;
-    y() += sin(yaw()) * distance;
+    x() += std::cos(yaw()) * distance;
+    y() += std::sin(yaw()) * distance;
 }
 
 std::string State::toString() const {
@@ -51,7 +53,7 @@ double State::headingTo(const State& other) const {
 double State::headingTo(double x1, double y1) const {
     double dx = x1 - this->x();
     double dy = y1 - this->y();
-    double h = c_PiOverTwo - atan2(dy, dx);
+    double h = c_PiOverTwo - std::atan2(dy, dx);
     if (h < 0) h += c_TwoPi;
     return h;
 }
@@ -89,7 +91,7 @@ double State::distanceTo(const State& other) const {
 }
 
 double State::distanceTo(double x1, double y1) const {
-    return sqrt((this->x() - x1)*(this->x() - x1) + (this->y() - y1)*(this->y() - y1));
+    return std::sqrt((this->x() - x1)*(this->x() - x1) + (this->y() - y1)*(this->y() - y1));
 }
 
 State State::interpolate(const State& other, double desiredTime) const {
@@ -117,5 +119,5 @@ double State::headingDifference(const State& other) const {
 }
 
 double State::headingDifference(double otherHeading) const {
-    return (fmod(fmod((otherHeading - heading()), c_TwoPi) + 3 * M_PI, c_TwoPi) - M_PI);
+    return (std::fmod(std::fmod((otherHeading - heading()), c_TwoPi) + 3 * M_PI, c_TwoPi) - M_PI);
 }

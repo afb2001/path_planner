@@ -1,6 +1,10 @@
 #include <path_planner_common/DubinsPlan.h>
+#include <path_planner_common/DubinsWrapper.h>
+#include <path_planner_common/State.h>
 
-void DubinsPlan::append(const DubinsPlan &plan) {
+#include <algorithm>    // std::any_of
+
+void DubinsPlan::append(const DubinsPlan& plan) {
     for (auto s : plan.m_DubinsPaths) append(s);
 }
 
@@ -49,8 +53,8 @@ double DubinsPlan::totalTime() const {
 }
 
 bool DubinsPlan::containsTime(double time) const {
-    for (const auto& p : m_DubinsPaths) if (p.containsTime(time)) return true;
-    return false;
+    return std::any_of(m_DubinsPaths.begin(), m_DubinsPaths.end(),
+                       [time](const DubinsWrapper& p) { return p.containsTime(time); });
 }
 
 double DubinsPlan::getStartTime() const {

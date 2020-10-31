@@ -4,6 +4,7 @@
 #include <cfloat>
 #include <queue>
 #include "GeoTiffMap.h"
+#include <gdal_priv.h>
 
 GeoTiffMap::GeoTiffMap(const std::string& path, double originLongitude, double originLatitude) {
     GDALAllRegister();
@@ -102,7 +103,7 @@ GeoTiffMap::GeoTiffMap(const std::string& path, double originLongitude, double o
 //        std::cerr << std::endl;
 //    }
 
-    std::cerr << blockedCount << " out of " << rasterCols*rasterRows << " cells blocked" << std::endl;
+    std::cerr << blockedCount << " out of " << rasterCols * rasterRows << " cells blocked" << std::endl;
 //
 //    while (!brushFireQueue.empty()) {
 //        auto& cell = brushFireQueue.front();
@@ -123,8 +124,8 @@ float GeoTiffMap::getDepth(double x, double y) const {
     auto yi = m_InverseGeoTransform[3] + x * m_InverseGeoTransform[4] + y * m_InverseGeoTransform[5];
     // bad: using exceptions for control flow
     try {
-        return m_Data.at((int)yi).at((int)xi);
-    } catch(std::out_of_range&) {
+        return m_Data.at((int) yi).at((int) xi);
+    } catch (std::out_of_range&) {
         return 0;
     }
 

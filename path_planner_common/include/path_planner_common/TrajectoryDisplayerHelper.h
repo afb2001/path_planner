@@ -1,13 +1,20 @@
 #ifndef SRC_TRAJECTORYDISPLAYERUTILITIES_H
 #define SRC_TRAJECTORYDISPLAYERUTILITIES_H
 
-#include <ros/ros.h>
 #include <geographic_msgs/GeoPoint.h>
-#include "State.h"
 #include "geographic_visualization_msgs/GeoVizItem.h"
 #include "geographic_visualization_msgs/GeoVizPointList.h"
 #include "project11_transformations/local_services.h"
 #include <path_planner_common/StateMsg.h>
+#include "State.h"
+
+#include <vector>
+
+// forward declarations
+namespace ros {
+    class NodeHandle;
+    class Publisher;
+}
 
 /**
  * Utility class which holds the code for displaying trajectories to /project11/display.
